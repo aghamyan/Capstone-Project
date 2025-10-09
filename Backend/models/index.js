@@ -10,6 +10,8 @@ import Friend from "./Friend.js";
 import GroupChallenge from "./GroupChallenge.js";
 import UserGroupChallenge from "./UserGroupChallenge.js";
 
+Schedule.belongsTo(Habit, { foreignKey: "habit_id", as: "habit" });
+Habit.hasMany(Schedule, { foreignKey: "habit_id" });
 
 
 export {

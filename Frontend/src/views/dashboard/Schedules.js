@@ -264,7 +264,7 @@ const MySchedule = () => {
                 {schedules.map((s) => (
                   <CListGroupItem key={s.id}>
                     <strong>
-                      {s.Habit?.title || s.notes?.split("—")[0] || "Custom Event"}
+                      {s.habit?.title || s.notes?.split("—")[0] || "Custom Event"}
                     </strong>{" "}
                     — {s.day} ({s.starttime} - {s.endtime || "—"}) [{s.repeat}]
                     {s.notes && (

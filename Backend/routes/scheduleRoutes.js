@@ -13,6 +13,7 @@ router.get("/user/:userId", async (req, res) => {
       include: [
         {
           model: Habit,
+          as: "habit",
           attributes: ["id", "title"],
           required: false,
         },
@@ -21,8 +22,8 @@ router.get("/user/:userId", async (req, res) => {
     });
     res.json(schedules);
   } catch (err) {
-    console.error("❌ Error fetching schedules:", err);
-    res.status(500).json({ error: "Failed to fetch schedules" });
+    console.error("Error fetching schedules:", err);
+    res.status(500).json({ error: "Failed to fetch schedules", "err": err });
   }
 });
 
@@ -52,7 +53,7 @@ router.post("/", async (req, res) => {
     res.status(201).json(created);
   } catch (err) {
     console.error("❌ Error creating schedule:", err);
-    res.status(500).json({ error: "Failed to add schedule" });
+    res.status(500).json({ error: "Failed to add schedule", "err": err });
   }
 });
 

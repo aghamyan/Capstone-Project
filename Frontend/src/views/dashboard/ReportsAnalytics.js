@@ -1,39 +1,33 @@
-import express from "express";
-import { Progress, Habit } from "../models/index.js";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 
+function ReportsAnalytics() {
+  const [progress, setProgress] = useState([]);
 
-const router = express.Router();
+  useEffect(() => {
+    axios
+      .get("http://localhost:5000/api/reports/progress?userId=1")
+      .then((res) => setProgress(res.data))
+      .catch((err) => console.error("Error fetching progress:", err));
+  }, []);
 
-// Fetch per-habit progress series
-router.get("/progress", async (req, res) => {
-  const { userId } = req.query;
-  try {
-    const progressRows = await Progress.findAll({
-      where: { user_id: userId },
-      include: [{ model: Habit, attributes: ["name"] }],
-    });
+  return (
+    <div>
+      <h2>Progress Analytics</h2>
+      {progress.map((habit) => (
+        <div key={habit.habitId}>
+          <h4>{habit.habitName}</h4>
+          <ul>
+            {habit.points.map((p, i) => (
+              <li key={i}>
+                {p.date}: {p.value ? "✅ done" : "❌ missed"}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
 
-    // Group by habit_id
-    const grouped = {};
-    for (const row of progressRows) {
-      const hid = row.habit_id;
-      if (!grouped[hid]) grouped[hid] = {
-        habitId: hid,
-        habitName: row.Habit.name,
-        points: [],
-      };
-      grouped[hid].points.push({
-        date: row.progress_date,
-        value: row.status === "done" ? 1 : 0,
-      });
-    }
-
-    const result = Object.values(grouped);
-    res.json(result);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to fetch progress analytics" });
-  }
-});
-
-export default router;
+export default ReportsAnalytics;

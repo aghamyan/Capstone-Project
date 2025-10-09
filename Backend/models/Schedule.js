@@ -8,7 +8,7 @@ const Schedule = sequelize.define(
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
 
     // your actual DB columns
-    habit_id: { type: DataTypes.INTEGER, allowNull: false },
+    habit_id: { type: DataTypes.INTEGER, allowNull: true },
     userid:   { type: DataTypes.INTEGER, allowNull: false },
 
     day:       { type: DataTypes.DATEONLY, allowNull: false },

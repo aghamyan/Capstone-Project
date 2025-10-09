@@ -2,10 +2,11 @@
 const BASE_URL = "http://localhost:5001/api/habits";
 
 export const getHabits = async (userId) => {
-  const res = await fetch(`${BASE_URL}?user_id=${userId}`);
+  const res = await fetch(`${BASE_URL}/user/${userId}`);
   if (!res.ok) throw new Error("Failed to fetch habits");
   return await res.json();
 };
+
 
 export const createHabit = async (habit) => {
   const res = await fetch(BASE_URL, {
