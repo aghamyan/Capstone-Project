@@ -13,6 +13,13 @@ import groupChallengeRoutes from "./routes/groupChallengeRoutes.js";
 import achievementRoutes from "./routes/achievementRoutes.js";
 import friendRoutes from "./routes/friendRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
+import avatarRoutes from "./routes/avatarRoutes.js"; // ✅ new route
+
+// === Node path handling for ES modules ===
+import path from "path";
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -22,6 +29,9 @@ const PORT = process.env.PORT || 5001;
 // === Middlewares ===
 app.use(cors());
 app.use(express.json());
+
+// === Serve uploaded images ===
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // === Base Health Route ===
 app.get("/", (req, res) => {
@@ -38,19 +48,21 @@ app.use("/api/group-challenges", groupChallengeRoutes);
 app.use("/api/achievements", achievementRoutes);
 app.use("/api/friends", friendRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/avatar", avatarRoutes); // ✅ avatar upload route
 
 // === Global Error Handler ===
 app.use((err, req, res, next) => {
   console.error("🔥 Server Error:", err);
   res.status(500).json({ error: "Internal server error" });
 });
-// ✅ Sync DB
+
+// === Sync DB ===
 sequelize
   .sync()
   .then(() => console.log("✅ Database connected"))
   .catch((err) => console.error("❌ DB connection error:", err));
 
-// === Connect Database ===
+// === Connect Database and Start Server ===
 const connectDB = async () => {
   try {
     await sequelize.authenticate();
@@ -67,7 +79,5 @@ const connectDB = async () => {
     process.exit(1);
   }
 };
-
-
 
 connectDB();

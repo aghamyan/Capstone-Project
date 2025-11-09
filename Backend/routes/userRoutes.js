@@ -1,34 +1,40 @@
-// StepHabit_backend/routes/userRoutes.js
 import express from "express";
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 
 const router = express.Router();
 
-// ✅ Register
+// Register
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    if (!name || !email || !password)
-      return res.status(400).json({ error: "All fields are required" });
+    if (!name || !email || !password) return res.status(400).json({ error: "All fields required" });
 
     const existing = await User.findOne({ where: { email } });
     if (existing) return res.status(400).json({ error: "Email already exists" });
 
     const hashed = await bcrypt.hash(password, 10);
     const newUser = await User.create({ name, email, password: hashed });
-    res.status(201).json({ message: "User created", user: newUser });
+
+    res.status(201).json({
+      message: "User created",
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        avatar: newUser.avatar || "/uploads/default-avatar.png",
+      },
+    });
   } catch (err) {
-    console.error("❌ Registration error:", err);
+    console.error(err);
     res.status(500).json({ error: "Registration failed" });
   }
 });
 
-// ✅ Login
+// Login
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
     const user = await User.findOne({ where: { email } });
     if (!user) return res.status(404).json({ error: "User not found" });
 
@@ -37,10 +43,15 @@ router.post("/login", async (req, res) => {
 
     res.json({
       message: "Login successful",
-      user: { id: user.id, name: user.name, email: user.email },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar || "/uploads/default-avatar.png",
+      },
     });
   } catch (err) {
-    console.error("❌ Login error:", err);
+    console.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

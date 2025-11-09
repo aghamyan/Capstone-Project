@@ -98,7 +98,7 @@ const Login = () => {
                       </CButton>
                     </CCol>
                     <CCol xs={6} className="text-end">
-                      <Link to="/signup">Create Account</Link>
+                      <Link to="/register">Create Account</Link>
                     </CCol>
                   </CRow>
                 </CForm>
