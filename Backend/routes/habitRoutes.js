@@ -8,6 +8,7 @@ import {
 
 const router = express.Router();
 
+router.get("/", getHabitsByUser);
 router.get("/user/:userId", getHabitsByUser);
 router.post("/", createHabit);
 router.delete("/:id", removeHabit);
