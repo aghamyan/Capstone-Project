@@ -32,10 +32,16 @@ import {
   cilSettings,
   cilTask,
   cilUser,
+  cilSpeedometer,
+  cilStar,
 } from "@coreui/icons";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import { HabitContext } from "../../context/HabitContext";
+import { getProgressAnalytics } from "../../services/analytics";
+
+const numberFormatter = new Intl.NumberFormat();
+const formatCount = (value) => numberFormatter.format(value ?? 0);
 
 const genderOptions = [
   { label: "Select gender", value: "" },
@@ -80,6 +86,9 @@ const UserProfile = () => {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState("");
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -128,6 +137,26 @@ const UserProfile = () => {
     loadProfile();
   }, [authUser?.id]);
 
+  useEffect(() => {
+    const loadAnalytics = async () => {
+      if (!authUser?.id) return;
+
+      try {
+        setAnalyticsLoading(true);
+        setAnalyticsError("");
+        const data = await getProgressAnalytics(authUser.id);
+        setAnalytics(data);
+      } catch (err) {
+        console.error(err);
+        setAnalyticsError("We couldn't load your activity insights just yet.");
+      } finally {
+        setAnalyticsLoading(false);
+      }
+    };
+
+    loadAnalytics();
+  }, [authUser?.id]);
+
   const profileCompletion = useMemo(() => {
     const requirements = [
       form.name,
@@ -174,10 +203,72 @@ const UserProfile = () => {
         label: "Activity sharing",
         value: settingsSnapshot.shareActivity ? "Sharing with friends" : "Private",
       },
+      {
+        icon: cilCalendar,
+        label: "Weekly summary",
+        value: settingsSnapshot.weeklySummaryDay || "Sunday",
+      },
+      {
+        icon: cilEnvelopeOpen,
+        label: "Email updates",
+        value: settingsSnapshot.emailNotifications ? "Enabled" : "Disabled",
+      },
+      {
+        icon: cilBell,
+        label: "Push alerts",
+        value: settingsSnapshot.pushNotifications ? "Enabled" : "Disabled",
+      },
     ];
   }, [settingsSnapshot]);
 
   const topHabits = useMemo(() => habits.slice(0, 5), [habits]);
+
+  const activityHighlights = useMemo(() => {
+    if (!analytics?.summary) return [];
+
+    const { summary } = analytics;
+    return [
+      {
+        icon: cilListRich,
+        label: "Habits tracked",
+        value: formatCount(summary.totalHabits || 0),
+        tone: "primary",
+      },
+      {
+        icon: cilTask,
+        label: "Total check-ins",
+        value: formatCount(summary.totalCheckIns || 0),
+        tone: "success",
+      },
+      {
+        icon: cilSpeedometer,
+        label: "Completion rate",
+        value: `${summary.completionRate ?? 0}%`,
+        tone: "info",
+      },
+      {
+        icon: cilStar,
+        label: "Best streak",
+        value: summary.streakLeader
+          ? `${summary.streakLeader.bestStreak}-day run`
+          : "Build your streak",
+        tone: "warning",
+      },
+    ];
+  }, [analytics]);
+
+  const leaderboard = useMemo(
+    () => analytics?.summary?.habitLeaderboard || [],
+    [analytics]
+  );
+
+  const momentumHabits = useMemo(() => {
+    if (!analytics?.habits?.length) return [];
+
+    return [...analytics.habits]
+      .sort((a, b) => (b.recent?.completionRate || 0) - (a.recent?.completionRate || 0))
+      .slice(0, 3);
+  }, [analytics]);
 
   const handleInputChange = (event) => {
     const { id, value } = event.target;
@@ -448,6 +539,174 @@ const UserProfile = () => {
                   </CButton>
                 </div>
               </CForm>
+            </CCardBody>
+          </CCard>
+
+          <CCard className="mb-4">
+            <CCardHeader>Performance snapshot</CCardHeader>
+            <CCardBody>
+              {analyticsError && (
+                <CAlert color="warning" className="mb-3">
+                  {analyticsError}
+                </CAlert>
+              )}
+              {analyticsLoading ? (
+                <div className="text-center py-4">
+                  <CSpinner color="primary" />
+                  <div className="text-body-secondary small mt-2">
+                    Gathering your progress…
+                  </div>
+                </div>
+              ) : analytics ? (
+                <>
+                  <CRow className="g-3">
+                    {activityHighlights.map((item) => (
+                      <CCol md={6} key={item.label}>
+                        <CCard className="border-0 shadow-sm h-100">
+                          <CCardBody className="d-flex align-items-center justify-content-between">
+                            <div>
+                              <div className="text-uppercase text-body-secondary small mb-1">
+                                {item.label}
+                              </div>
+                              <div className="fw-bold fs-4">{item.value}</div>
+                            </div>
+                            <div className={`bg-${item.tone}-subtle text-${item.tone} rounded-circle p-3`}>
+                              <CIcon icon={item.icon} size="lg" />
+                            </div>
+                          </CCardBody>
+                        </CCard>
+                      </CCol>
+                    ))}
+                  </CRow>
+
+                  <CRow className="g-4 mt-1">
+                    <CCol md={6}>
+                      <CCard className="h-100 border-0 shadow-sm">
+                        <CCardHeader>Peak day</CCardHeader>
+                        <CCardBody>
+                          {analytics.summary?.peakDay ? (
+                            <>
+                              <div className="fw-bold fs-5 mb-2">
+                                {formatDate(analytics.summary.peakDay.date)}
+                              </div>
+                              <p className="mb-1">
+                                <span className="fw-semibold">{analytics.summary.peakDay.completed}</span>{" "}
+                                completed · {" "}
+                                <span className="fw-semibold">{analytics.summary.peakDay.missed}</span>{" "}
+                                missed
+                              </p>
+                              <p className="text-body-secondary mb-0">
+                                Keep the momentum going by planning your next check-ins.
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-body-secondary mb-0">
+                              Complete a few habits to discover your standout day.
+                            </p>
+                          )}
+                        </CCardBody>
+                      </CCard>
+                    </CCol>
+                    <CCol md={6}>
+                      <CCard className="h-100 border-0 shadow-sm">
+                        <CCardHeader>Streak leader</CCardHeader>
+                        <CCardBody>
+                          {analytics.summary?.streakLeader ? (
+                            <>
+                              <div className="fw-bold fs-5 mb-1">
+                                {analytics.summary.streakLeader.habitName}
+                              </div>
+                              <p className="mb-1">
+                                <span className="fw-semibold">{analytics.summary.streakLeader.currentStreak}</span>{" "}
+                                day current streak · best run {" "}
+                                <span className="fw-semibold">{analytics.summary.streakLeader.bestStreak}</span>{" "}
+                                days
+                              </p>
+                              <p className="text-body-secondary mb-0">
+                                Try logging this habit today to keep the streak alive!
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-body-secondary mb-0">
+                              Build consistent check-ins to unlock your first streak badge.
+                            </p>
+                          )}
+                        </CCardBody>
+                      </CCard>
+                    </CCol>
+                  </CRow>
+
+                  <CRow className="g-4 mt-1">
+                    <CCol xl={6}>
+                      <CCard className="h-100 border-0 shadow-sm">
+                        <CCardHeader>Top habits</CCardHeader>
+                        <CCardBody>
+                          {leaderboard.length > 0 ? (
+                            <CListGroup flush>
+                              {leaderboard.map((item) => (
+                                <CListGroupItem
+                                  key={item.habitId}
+                                  className="d-flex justify-content-between align-items-center"
+                                >
+                                  <div>
+                                    <div className="fw-semibold">{item.habitName}</div>
+                                    <div className="text-body-secondary small">
+                                      {item.totalCheckIns} total check-ins · {item.successRate}% success
+                                    </div>
+                                  </div>
+                                  <CBadge color="success" className="px-3 py-2">
+                                    <CIcon icon={cilStar} className="me-2" />
+                                    {item.currentStreak} day streak
+                                  </CBadge>
+                                </CListGroupItem>
+                              ))}
+                            </CListGroup>
+                          ) : (
+                            <p className="text-body-secondary mb-0 text-center">
+                              Your leaderboard will appear once you start tracking habits regularly.
+                            </p>
+                          )}
+                        </CCardBody>
+                      </CCard>
+                    </CCol>
+                    <CCol xl={6}>
+                      <CCard className="h-100 border-0 shadow-sm">
+                        <CCardHeader>Recent momentum</CCardHeader>
+                        <CCardBody>
+                          {momentumHabits.length > 0 ? (
+                            <CListGroup flush>
+                              {momentumHabits.map((habit) => (
+                                <CListGroupItem
+                                  key={habit.habitId}
+                                  className="d-flex justify-content-between align-items-center"
+                                >
+                                  <div>
+                                    <div className="fw-semibold">{habit.habitName}</div>
+                                    <div className="text-body-secondary small">
+                                      Last 7 days · {habit.recent?.done ?? 0} done / {habit.recent?.missed ?? 0} missed
+                                    </div>
+                                  </div>
+                                  <CBadge color={(habit.recent?.completionRate || 0) >= 70 ? "success" : "info"}>
+                                    {habit.recent?.completionRate ?? 0}%
+                                  </CBadge>
+                                </CListGroupItem>
+                              ))}
+                            </CListGroup>
+                          ) : (
+                            <p className="text-body-secondary mb-0 text-center">
+                              Track a habit for a week to see your rising trends here.
+                            </p>
+                          )}
+                        </CCardBody>
+                      </CCard>
+                    </CCol>
+                  </CRow>
+                </>
+              ) : (
+                <p className="text-body-secondary mb-0">
+                  Start checking in your habits to unlock personalised insights.
+                </p>
+              )}
             </CCardBody>
           </CCard>
 

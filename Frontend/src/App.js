@@ -13,8 +13,6 @@ const Login = React.lazy(() => import("./views/auth/Login"));
 const Register = React.lazy(() => import("./views/auth/Register"));
 const Page404 = React.lazy(() => import("./views/pages/Page404"));
 const Page500 = React.lazy(() => import("./views/pages/Page500"));
-const Profile = React.lazy(() => import("./views/pages/Profile"));
-
 
 const PrivateRoute = ({ children }) => {
   const { user, isInitializing } = useContext(AuthContext);
@@ -65,15 +63,6 @@ const App = () => {
               <Route path="/500" element={<Page500 />} />
 
               {/* Protected */}
-              <Route
-                path="/profile"
-                element={
-                  <PrivateRoute>
-                    <Profile />
-                  </PrivateRoute>
-                }
-              />
-
               {/* All other routes */}
               <Route
                 path="*"
