@@ -21,9 +21,9 @@ import {
   cilCheckCircle,
   cilClock,
   cilLoopCircular,
-  cilTarget,
-  cilTrendingUp,
+  cilLightbulb,
   cilWarning,
+  cilSpeedometer,
 } from "@coreui/icons";
 import {
   Area,
@@ -191,7 +191,7 @@ const DailyChallenge = () => {
                           Streak
                         </div>
                         <div className="d-flex align-items-center gap-2">
-                          <CIcon icon={cilTrendingUp} className="text-primary" />
+                          <CIcon icon={cilSpeedometer} className="text-primary" />
                           <span className="fs-4 fw-semibold">
                             {focusHabit.streak.current} day{focusHabit.streak.current === 1 ? "" : "s"}
                           </span>
@@ -436,7 +436,7 @@ const DailyChallenge = () => {
                   <CCol md={4} key={idx}>
                     <div className="p-3 border rounded h-100">
                       <div className="d-flex align-items-center gap-2 mb-2">
-                        <CIcon icon={cilTarget} className="text-primary" />
+                        <CIcon icon={cilLightbulb} className="text-primary" />
                         <span className="fw-semibold">{insight.title}</span>
                       </div>
                       <div className="text-body-secondary small">{insight.body}</div>
