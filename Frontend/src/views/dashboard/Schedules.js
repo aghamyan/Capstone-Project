@@ -14,7 +14,11 @@ import {
   CListGroupItem,
   CAlert,
   CSpinner,
+  CInputGroup,
+  CInputGroupText,
 } from "@coreui/react"
+import CIcon from "@coreui/icons-react"
+import { cilClock } from "@coreui/icons"
 
 const MySchedule = () => {
   const user = JSON.parse(localStorage.getItem("user"))
@@ -77,19 +81,31 @@ const MySchedule = () => {
       if (!newSchedule.day || !newSchedule.starttime)
         return setError("Please fill required fields (day and start time)")
 
+      if (
+        newSchedule.type === "custom" &&
+        (!newSchedule.custom_title || !newSchedule.custom_title.trim())
+      ) {
+        return setError("Please provide a title for your custom event")
+      }
+
       const payload = {
         userid: user.id,
-        habit_id: newSchedule.type === "habit" ? newSchedule.habit_id || null : null,
+        type: newSchedule.type,
+        habit_id:
+          newSchedule.type === "habit" && newSchedule.habit_id
+            ? Number(newSchedule.habit_id)
+            : null,
+        custom_title:
+          newSchedule.type === "custom"
+            ? newSchedule.custom_title.trim()
+            : null,
         day: newSchedule.day,
         starttime: newSchedule.starttime,
         endtime: newSchedule.endtime || null,
         enddate: newSchedule.enddate || null,
         repeat: newSchedule.repeat,
-        customdays: newSchedule.customdays || null,
-        notes:
-          newSchedule.type === "custom"
-            ? `${newSchedule.custom_title}${newSchedule.notes ? " — " + newSchedule.notes : ""}`
-            : newSchedule.notes,
+        customdays: newSchedule.repeat === "custom" ? newSchedule.customdays || null : null,
+        notes: newSchedule.notes || null,
       }
 
       const res = await fetch("http://localhost:5001/api/schedules", {
@@ -193,18 +209,32 @@ const MySchedule = () => {
               />
 
               <CFormLabel className="mt-2">Start Time</CFormLabel>
-              <CFormInput
-                type="time"
-                value={newSchedule.starttime}
-                onChange={(e) => setNewSchedule({ ...newSchedule, starttime: e.target.value })}
-              />
+              <CInputGroup>
+                <CInputGroupText>
+                  <CIcon icon={cilClock} />
+                </CInputGroupText>
+                <CFormInput
+                  type="time"
+                  value={newSchedule.starttime}
+                  onChange={(e) =>
+                    setNewSchedule({ ...newSchedule, starttime: e.target.value })
+                  }
+                />
+              </CInputGroup>
 
               <CFormLabel className="mt-2">End Time</CFormLabel>
-              <CFormInput
-                type="time"
-                value={newSchedule.endtime}
-                onChange={(e) => setNewSchedule({ ...newSchedule, endtime: e.target.value })}
-              />
+              <CInputGroup>
+                <CInputGroupText>
+                  <CIcon icon={cilClock} />
+                </CInputGroupText>
+                <CFormInput
+                  type="time"
+                  value={newSchedule.endtime}
+                  onChange={(e) =>
+                    setNewSchedule({ ...newSchedule, endtime: e.target.value })
+                  }
+                />
+              </CInputGroup>
 
               <CFormLabel className="mt-2">End Date (optional)</CFormLabel>
               <CFormInput
@@ -263,14 +293,10 @@ const MySchedule = () => {
                 )}
                 {schedules.map((s) => (
                   <CListGroupItem key={s.id}>
-                    <strong>
-                      {s.habit?.title || s.notes?.split("—")[0] || "Custom Event"}
-                    </strong>{" "}
+                    <strong>{s.habit?.title || s.notes || "Custom Event"}</strong>{" "}
                     — {s.day} ({s.starttime} - {s.endtime || "—"}) [{s.repeat}]
                     {s.notes && (
-                      <div className="text-muted small mt-1">
-                        {s.notes.includes("—") ? s.notes.split("—")[1] : s.notes}
-                      </div>
+                      <div className="text-muted small mt-1">{s.notes}</div>
                     )}
                     <CButton
                       color="danger"
