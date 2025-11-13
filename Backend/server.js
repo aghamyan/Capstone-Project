@@ -17,6 +17,9 @@ import analyticsRoutes from "./routes/analyticsRoutes.js";
 import avatarRoutes from "./routes/avatarRoutes.js"; // ✅ new route
 import dailyChallengeRoutes from "./routes/dailyChallengeRoutes.js";
 import smartSchedulerRoutes from "./routes/smartSchedulerRoutes.js";
+import libraryRoutes from "./routes/libraryRoutes.js";
+import assistantRoutes from "./routes/assistantRoutes.js";
+import calendarRoutes from "./routes/calendarRoutes.js";
 
 // === Node path handling for ES modules ===
 import path from "path";
@@ -54,6 +57,9 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/avatar", avatarRoutes); // ✅ avatar upload route
 app.use("/api/daily-challenge", dailyChallengeRoutes);
 app.use("/api/smart-scheduler", smartSchedulerRoutes);
+app.use("/api/library", libraryRoutes);
+app.use("/api/assistant", assistantRoutes);
+app.use("/api/calendar", calendarRoutes);
 
 // === Global Error Handler ===
 app.use((err, req, res, next) => {
@@ -67,7 +73,11 @@ const startServer = async () => {
     await sequelize.authenticate();
     console.log("✅ Database connection established successfully.");
 
-    await sequelize.sync();
+    // Ensure any new columns or tables introduced in the models are available
+    // without requiring a manual migration step. This keeps features such as
+    // user profile preferences in sync across environments where the schema
+    // might have been created before these fields existed.
+    await sequelize.sync({ alter: true });
 
     app.listen(PORT, () =>
       console.log(`🚀 Server running on http://localhost:${PORT}`)
