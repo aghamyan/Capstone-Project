@@ -20,6 +20,7 @@ import smartSchedulerRoutes from "./routes/smartSchedulerRoutes.js";
 import libraryRoutes from "./routes/libraryRoutes.js";
 import assistantRoutes from "./routes/assistantRoutes.js";
 import calendarRoutes from "./routes/calendarRoutes.js";
+import messageRoutes from "./routes/messageRoutes.js";
 
 // === Node path handling for ES modules ===
 import path from "path";
@@ -60,6 +61,7 @@ app.use("/api/smart-scheduler", smartSchedulerRoutes);
 app.use("/api/library", libraryRoutes);
 app.use("/api/assistant", assistantRoutes);
 app.use("/api/calendar", calendarRoutes);
+app.use("/api/messages", messageRoutes);
 
 // === Global Error Handler ===
 app.use((err, req, res, next) => {

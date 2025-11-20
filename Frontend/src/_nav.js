@@ -115,6 +115,12 @@ const _nav = [
   },
   {
     component: CNavItem,
+    name: 'Messages',
+    to: '/messages',
+    icon: <CIcon icon={cilChatBubble} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
     name: 'Leaderboard',
     to: '/leaderboard',
     icon: <CIcon icon={cilGroup} customClassName="nav-icon" />,

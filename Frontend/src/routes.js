@@ -28,6 +28,7 @@ const Settings = React.lazy(() => import("./views/profile/Settings"));
 
 // ===== Community =====
 const Friends = React.lazy(() => import("./views/community/Friends"));
+const Messages = React.lazy(() => import("./views/community/Messages"));
 const GroupChallenges = React.lazy(() => import("./views/community/GroupChallenges"));
 const Leaderboard = React.lazy(() => import("./views/community/Leaderboard"));
 
@@ -64,6 +65,7 @@ const routes = [
 
   // ===== Community =====
   { path: "/friends", name: "Friends", element: Friends },
+  { path: "/messages", name: "Messages", element: Messages },
   { path: "/leaderboard", name: "Leaderboard", element: Leaderboard },
   { path: "/group-challenges", name: "Group Challenges", element: GroupChallenges },
 

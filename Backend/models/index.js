@@ -17,6 +17,7 @@ import UserSetting from "./UserSetting.js";
 import AssistantMemory from "./AssistantMemory.js";
 import CalendarIntegration from "./CalendarIntegration.js";
 import CalendarEvent from "./CalendarEvent.js";
+import ChatMessage from "./ChatMessage.js";
 
 // === Habit scheduling ===
 User.hasMany(Habit, { foreignKey: "user_id", as: "habits" });
@@ -112,6 +113,12 @@ CalendarEvent.belongsTo(User, {
   as: "owner",
 });
 
+// === Direct messaging ===
+User.hasMany(ChatMessage, { foreignKey: "sender_id", as: "sentMessages" });
+User.hasMany(ChatMessage, { foreignKey: "receiver_id", as: "receivedMessages" });
+ChatMessage.belongsTo(User, { foreignKey: "sender_id", as: "sender" });
+ChatMessage.belongsTo(User, { foreignKey: "receiver_id", as: "recipient" });
+
 export {
   User,
   Habit,
@@ -127,4 +134,5 @@ export {
   AssistantMemory,
   CalendarIntegration,
   CalendarEvent,
+  ChatMessage,
 };
