@@ -26,8 +26,45 @@ export const createHabit = async (req, res, next) => {
       return res.status(400).json({ error: "title and user_id are required" });
     }
 
-    const habit = await Habit.create(req.body);
+    const habit = await Habit.create({
+      ...req.body,
+      is_public: Boolean(req.body.is_public),
+    });
     res.status(201).json(habit);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateHabit = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const habit = await Habit.findByPk(id);
+
+    if (!habit) {
+      return res.status(404).json({ error: "Habit not found" });
+    }
+
+    const allowedFields = [
+      "title",
+      "description",
+      "category",
+      "target_reps",
+      "is_daily_goal",
+      "is_public",
+    ];
+
+    const updates = {};
+    allowedFields.forEach((field) => {
+      if (field in req.body) {
+        updates[field] =
+          field === "is_public" ? Boolean(req.body[field]) : req.body[field];
+      }
+    });
+
+    await habit.update(updates);
+
+    res.json(habit);
   } catch (error) {
     next(error);
   }

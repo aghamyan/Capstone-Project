@@ -20,6 +20,7 @@ import {
   CAlert,
   CRow,
   CSpinner,
+  CFormSwitch,
 } from "@coreui/react"
 import CIcon from "@coreui/icons-react"
 import {
@@ -32,7 +33,7 @@ import {
   cilTrash,
   cilSpeedometer,
 } from "@coreui/icons"
-import { getHabits, createHabit, deleteHabit } from "../../services/habits"
+import { getHabits, createHabit, deleteHabit, updateHabit } from "../../services/habits"
 
 const createBlankHabit = () => ({
   title: "",
@@ -40,6 +41,7 @@ const createBlankHabit = () => ({
   category: "",
   target_reps: "",
   is_daily_goal: false,
+  is_public: false,
 })
 
 const AddHabit = () => {
@@ -49,6 +51,7 @@ const AddHabit = () => {
   const [err, setErr] = useState("")
   const [success, setSuccess] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [updatingHabitIds, setUpdatingHabitIds] = useState([])
 
   const user = JSON.parse(localStorage.getItem("user"))
   const userId = user?.id
@@ -102,6 +105,7 @@ const AddHabit = () => {
           newHabit.target_reps !== "" && newHabit.target_reps !== null
             ? Number(newHabit.target_reps)
             : null,
+        is_public: Boolean(newHabit.is_public),
       }
 
       const created = await createHabit(payload)
@@ -112,6 +116,22 @@ const AddHabit = () => {
       setErr("Failed to create habit")
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleVisibilityToggle = async (id, isPublic) => {
+    setUpdatingHabitIds((prev) => [...prev, id])
+    setErr("")
+    setSuccess("")
+
+    try {
+      const updated = await updateHabit(id, { is_public: !isPublic })
+      setHabits((prev) => prev.map((h) => (h.id === id ? { ...h, ...updated } : h)))
+      setSuccess(!isPublic ? "Habit shared with friends" : "Habit hidden from friends")
+    } catch {
+      setErr("Could not update sharing preference")
+    } finally {
+      setUpdatingHabitIds((prev) => prev.filter((hid) => hid !== id))
     }
   }
 
@@ -241,6 +261,17 @@ const AddHabit = () => {
                 </CFormText>
               </div>
 
+              <div className="d-flex align-items-center justify-content-between flex-wrap">
+                <CFormCheck
+                  label="Share this habit with friends"
+                  checked={newHabit.is_public}
+                  onChange={(e) => updateHabit("is_public", e.target.checked)}
+                />
+                <CFormText className="text-muted">
+                  Public habits show up on your friends list with your completion rate.
+                </CFormText>
+              </div>
+
               <div className="d-flex justify-content-end">
                 <CButton
                   color="primary"
@@ -282,7 +313,7 @@ const AddHabit = () => {
                   "Describe your habit to remember the intention behind it."}
               </CFormText>
               <div className="d-flex flex-wrap gap-2 mt-2">
-                {(newHabit.category || newHabit.target_reps || newHabit.is_daily_goal) ? (
+                {(newHabit.category || newHabit.target_reps || newHabit.is_daily_goal || newHabit.is_public) ? (
                   <>
                     {newHabit.category && (
                       <CBadge color="info" className="text-uppercase small">
@@ -295,6 +326,7 @@ const AddHabit = () => {
                       </CBadge>
                     )}
                     {newHabit.is_daily_goal && <CBadge color="success">Daily goal</CBadge>}
+                    {newHabit.is_public && <CBadge color="secondary">Shared with friends</CBadge>}
                   </>
                 ) : (
                   <CFormText className="text-muted">
@@ -349,6 +381,15 @@ const AddHabit = () => {
                           </CBadge>
                         )}
                         {h.is_daily_goal && <CBadge color="success">Daily</CBadge>}
+                        <div className="d-flex align-items-center gap-2">
+                          <CFormSwitch
+                            size="sm"
+                            checked={Boolean(h.is_public)}
+                            disabled={updatingHabitIds.includes(h.id)}
+                            onChange={() => handleVisibilityToggle(h.id, Boolean(h.is_public))}
+                            label={h.is_public ? "Shared" : "Private"}
+                          />
+                        </div>
                         <CButton
                           color="danger"
                           variant="ghost"
