@@ -1,11 +1,4 @@
-import React, {
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  useCallback,
-  useRef,
-} from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import {
   CAlert,
   CAvatar,
@@ -23,35 +16,19 @@ import {
   CListGroupItem,
   CRow,
   CSpinner,
-} from "@coreui/react";
-import CIcon from "@coreui/icons-react";
-import {
-  cilChatBubble,
-  cilLightbulb,
-  cilSend,
-  cilStar,
-  cilCalendar,
-  cilChartLine,
-} from "@coreui/icons";
-import { AuthContext } from "../../context/AuthContext";
-import {
-  fetchAssistantHistory,
-  sendAssistantMessage,
-} from "../../services/assistant";
+} from "@coreui/react"
+import CIcon from "@coreui/icons-react"
+import { cilCalendar, cilChatBubble, cilLightbulb, cilSend, cilStar, cilChartLine } from "@coreui/icons"
+import { AuthContext } from "../../context/AuthContext"
+import { fetchAssistantHistory, sendAssistantMessage } from "../../services/assistant"
 
-const avatarColors = {
-  user: "primary",
-  assistant: "info",
-};
+const avatarColors = { user: "primary", assistant: "info" }
 
 const formatTime = (value) => {
-  if (!value) return "";
-  const date = new Date(value);
-  return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  })}`;
-};
+  if (!value) return ""
+  const date = new Date(value)
+  return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+}
 
 const InsightSection = ({ title, icon, description, items, empty }) => (
   <CCard className="mb-4 shadow-sm">
@@ -59,9 +36,7 @@ const InsightSection = ({ title, icon, description, items, empty }) => (
       <CIcon icon={icon} size="lg" className="text-primary" />
       <div>
         <h6 className="mb-0 fw-semibold">{title}</h6>
-        {description && (
-          <small className="text-medium-emphasis">{description}</small>
-        )}
+        {description && <small className="text-medium-emphasis">{description}</small>}
       </div>
     </CCardHeader>
     <CCardBody>
@@ -70,9 +45,7 @@ const InsightSection = ({ title, icon, description, items, empty }) => (
           {items.map((item, index) => (
             <li key={index} className="mb-3">
               <div className="fw-semibold">{item.title}</div>
-              {item.subtitle && (
-                <div className="text-medium-emphasis small">{item.subtitle}</div>
-              )}
+              {item.subtitle && <div className="text-medium-emphasis small">{item.subtitle}</div>}
               {item.badges && (
                 <div className="mt-2 d-flex flex-wrap gap-2">
                   {item.badges.map((badge) => (
@@ -90,75 +63,69 @@ const InsightSection = ({ title, icon, description, items, empty }) => (
       )}
     </CCardBody>
   </CCard>
-);
+)
 
-const AICompanion = () => {
-  const { user } = useContext(AuthContext);
-  const [history, setHistory] = useState([]);
-  const [summary, setSummary] = useState(null);
-  const [agent, setAgent] = useState(null);
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const bottomRef = useRef(null);
+const AICoach = () => {
+  const { user } = useContext(AuthContext)
+  const [history, setHistory] = useState([])
+  const [summary, setSummary] = useState(null)
+  const [agent, setAgent] = useState(null)
+  const [message, setMessage] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const bottomRef = useRef(null)
 
   const loadHistory = useCallback(async () => {
-    if (!user?.id) return;
-    setError(null);
-    setInitialLoading(true);
+    if (!user?.id) return
+    setError(null)
+    setInitialLoading(true)
     try {
-      const data = await fetchAssistantHistory(user.id);
-      setHistory(data.history || []);
-      setSummary(data.summary || null);
-      setAgent(data.agent || null);
+      const data = await fetchAssistantHistory(user.id)
+      setHistory(data.history || [])
+      setSummary(data.summary || null)
+      setAgent(data.agent || null)
     } catch (err) {
-      console.error("Failed to load assistant history", err);
-      setError("Unable to load your AI companion right now. Please retry.");
+      console.error("Failed to load assistant history", err)
+      setError("Unable to load your AI coach right now. Please retry.")
     } finally {
-      setInitialLoading(false);
+      setInitialLoading(false)
     }
-  }, [user?.id]);
+  }, [user?.id])
 
   useEffect(() => {
-    loadHistory();
-  }, [loadHistory]);
+    loadHistory()
+  }, [loadHistory])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [history]);
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [history])
 
   const quickPrompts = useMemo(() => {
-    const prompts = [
-      "Help me prioritise my habits today",
-      "Share a motivational boost",
-      "Suggest a reflection for my journey",
-    ];
+    const prompts = ["Plan my next steps", "Give me a motivational boost", "Help me reflect on today"]
 
     if (summary?.profile?.goal) {
-      prompts.unshift(`What can I do today for ${summary.profile.goal}?`);
+      prompts.unshift(`What should I do today for ${summary.profile.goal}?`)
     }
 
     if (summary?.topKeywords?.length) {
-      prompts.push(
-        `Any ideas about ${summary.topKeywords[0].keyword} this week?`
-      );
+      prompts.push(`Any ideas about ${summary.topKeywords[0].keyword} this week?`)
     }
 
     if (summary?.upcoming?.length) {
-      const next = summary.upcoming[0];
-      prompts.push(`How do I prepare for ${next.habitTitle}?`);
+      const next = summary.upcoming[0]
+      prompts.push(`How do I prepare for ${next.habitTitle}?`)
     }
 
-    return Array.from(new Set(prompts)).slice(0, 5);
-  }, [summary]);
+    return Array.from(new Set(prompts)).slice(0, 5)
+  }, [summary])
 
   const handleSubmit = async (event) => {
-    event.preventDefault();
-    if (!user?.id || !message.trim()) return;
+    event.preventDefault()
+    if (!user?.id || !message.trim()) return
 
-    setError(null);
-    setLoading(true);
+    setError(null)
+    setLoading(true)
     const optimisticHistory = [
       ...history,
       {
@@ -167,38 +134,36 @@ const AICompanion = () => {
         content: message,
         createdAt: new Date().toISOString(),
       },
-    ];
-    setHistory(optimisticHistory);
-    setMessage("");
+    ]
+    setHistory(optimisticHistory)
+    setMessage("")
 
     try {
-      const data = await sendAssistantMessage(user.id, message.trim());
-      setHistory(data.history || []);
-      setSummary(data.summary || null);
-      setAgent(data.agent || null);
+      const data = await sendAssistantMessage(user.id, message.trim())
+      setHistory(data.history || [])
+      setSummary(data.summary || null)
+      setAgent(data.agent || null)
     } catch (err) {
-      console.error("Assistant reply failed", err);
-      setError("I couldn't reach the assistant. Try again in a moment.");
-      setHistory(history);
+      console.error("Assistant reply failed", err)
+      setError("I couldn't reach the coach. Try again in a moment.")
+      setHistory(history)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const applyPrompt = (prompt) => {
-    setMessage(prompt);
-  };
+    setMessage(prompt)
+  }
 
   const renderMessage = (entry) => {
-    const isAssistant = entry.role === "assistant";
-    const avatarColor = avatarColors[isAssistant ? "assistant" : "user"];
+    const isAssistant = entry.role === "assistant"
+    const avatarColor = avatarColors[isAssistant ? "assistant" : "user"]
 
     return (
       <CListGroupItem
         key={entry.id}
-        className={`border-0 px-3 py-3 ${
-          isAssistant ? "bg-body-secondary" : "bg-transparent"
-        }`}
+        className={`border-0 px-3 py-3 ${isAssistant ? "bg-body-secondary" : "bg-transparent"}`}
       >
         <div className="d-flex gap-3">
           <CAvatar color={avatarColor} textColor="white">
@@ -209,9 +174,7 @@ const AICompanion = () => {
               <span className="fw-semibold text-capitalize">
                 {isAssistant ? "StepHabit Coach" : summary?.profile?.name || "You"}
               </span>
-              <small className="text-medium-emphasis">
-                {formatTime(entry.createdAt)}
-              </small>
+              <small className="text-medium-emphasis">{formatTime(entry.createdAt)}</small>
             </div>
             <div className="mt-2 text-break" style={{ whiteSpace: "pre-wrap" }}>
               {entry.content}
@@ -228,19 +191,17 @@ const AICompanion = () => {
           </div>
         </div>
       </CListGroupItem>
-    );
-  };
+    )
+  }
 
   if (!user?.id) {
     return (
       <CRow>
         <CCol>
-          <CAlert color="info">
-            Sign in to meet your personal AI companion.
-          </CAlert>
+          <CAlert color="info">Sign in to meet your personal AI coach.</CAlert>
         </CCol>
       </CRow>
-    );
+    )
   }
 
   return (
@@ -249,29 +210,19 @@ const AICompanion = () => {
         <CCard className="shadow-sm h-100">
           <CCardHeader className="d-flex justify-content-between align-items-center">
             <div>
-              <h5 className="mb-0">AI Companion</h5>
+              <h5 className="mb-0">AI Coach</h5>
               <small className="text-medium-emphasis">
-                A coach that learns from your journey and adapts every day.
+                One place for habit coaching and a responsive companion.
               </small>
             </div>
             {initialLoading && <CSpinner size="sm" color="primary" />}
           </CCardHeader>
           <CCardBody className="d-flex flex-column">
             {agent && (
-              <CAlert
-                color={agent.ready ? "primary" : "warning"}
-                className="mb-3"
-              >
-                {agent.ready ? (
-                  <>
-                    Powered by {agent.provider || "our AI"}
-                    {agent.model ? ` (${agent.model})` : ""}. I analyse your
-                    journey before every reply.
-                  </>
-                ) : (
-                  agent.reason ||
-                  "Advanced AI mode is offline. You're seeing our smart fallback coaching."
-                )}
+              <CAlert color={agent.ready ? "primary" : "warning"} className="mb-3">
+                {agent.ready
+                  ? `Powered by ${agent.provider || "our AI"}${agent.model ? ` (${agent.model})` : ""}.`
+                  : agent.reason || "AI mode is offline. You're seeing smart fallback guidance."}
               </CAlert>
             )}
             {error && (
@@ -310,10 +261,7 @@ const AICompanion = () => {
                 <div className="text-center text-medium-emphasis py-5">
                   <CIcon icon={cilLightbulb} size="2xl" className="mb-3" />
                   <h6 className="fw-semibold">Start the conversation</h6>
-                  <p className="mb-0">
-                    Share what you need help with today and I will guide your next
-                    steps.
-                  </p>
+                  <p className="mb-0">Share what you need help with today and I'll guide your next steps.</p>
                 </div>
               )}
             </div>
@@ -336,11 +284,7 @@ const AICompanion = () => {
                   disabled={loading || !message.trim()}
                   className="d-flex align-items-center gap-2"
                 >
-                  {loading ? (
-                    <CSpinner size="sm" />
-                  ) : (
-                    <CIcon icon={cilSend} />
-                  )}
+                  {loading ? <CSpinner size="sm" /> : <CIcon icon={cilSend} />}
                   <span>{loading ? "Thinking" : "Send"}</span>
                 </CButton>
               </CInputGroup>
@@ -353,24 +297,26 @@ const AICompanion = () => {
         <InsightSection
           title="Personal Snapshot"
           icon={cilChartLine}
-          description="Updated every time you chat so the assistant keeps learning."
-          items={summary ? [
-            {
-              title: summary.profile?.goal || "Set your primary goal to tailor support",
-              subtitle: `Focus area: ${summary.profile?.focusArea || "Not specified"}`,
-              badges: [
-                summary.profile?.commitment
-                  ? `${summary.profile.commitment} daily`
-                  : "Set a commitment",
-                summary.profile?.supportPreference || "Choose support style",
-              ],
-            },
-            {
-              title: `Completion rate: ${summary.progress?.completionRate || 0}%`,
-              subtitle: `${summary.progress?.completed || 0} wins · ${summary.progress?.missed || 0} misses recently`,
-              badges: summary.topKeywords?.slice(0, 3).map((item) => `#${item.keyword}`),
-            },
-          ] : []}
+          description="Updated every time you chat so guidance stays fresh."
+          items={
+            summary
+              ? [
+                  {
+                    title: summary.profile?.goal || "Set your primary goal to tailor support",
+                    subtitle: `Focus area: ${summary.profile?.focusArea || "Not specified"}`,
+                    badges: [
+                      summary.profile?.commitment ? `${summary.profile.commitment} daily` : "Set a commitment",
+                      summary.profile?.supportPreference || "Choose support style",
+                    ],
+                  },
+                  {
+                    title: `Completion rate: ${summary.progress?.completionRate || 0}%`,
+                    subtitle: `${summary.progress?.completed || 0} wins · ${summary.progress?.missed || 0} misses recently`,
+                    badges: summary.topKeywords?.slice(0, 3).map((item) => `#${item.keyword}`),
+                  },
+                ]
+              : []
+          }
           empty="Share a few thoughts to begin building your personal profile."
         />
 
@@ -381,10 +327,7 @@ const AICompanion = () => {
           items={summary?.progress?.habitSummaries?.slice(0, 3).map((habit) => ({
             title: habit.title,
             subtitle: `${habit.completionRate}% success · ${habit.completed} wins · ${habit.missed} misses`,
-            badges: [
-              `${habit.activeDays} active days`,
-              habit.category || "Habit",
-            ],
+            badges: [`${habit.activeDays} active days`, habit.category || "Habit"],
           }))}
           empty="Log progress to unlock habit-specific coaching."
         />
@@ -395,16 +338,14 @@ const AICompanion = () => {
           description="We'll nudge you ahead of key moments."
           items={summary?.upcoming?.map((item) => ({
             title: item.habitTitle,
-            subtitle: `${item.day} · ${item.starttime}${
-              item.endtime ? ` — ${item.endtime}` : ""
-            } (${item.repeat})`,
+            subtitle: `${item.day} · ${item.starttime}${item.endtime ? ` — ${item.endtime}` : ""} (${item.repeat})`,
             badges: item.notes ? [item.notes] : undefined,
           }))}
           empty="No upcoming sessions planned. Ask for scheduling tips!"
         />
       </CCol>
     </CRow>
-  );
-};
+  )
+}
 
-export default AICompanion;
+export default AICoach

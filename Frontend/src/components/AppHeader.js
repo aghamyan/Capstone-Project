@@ -92,18 +92,18 @@ const AppHeader = () => {
                   </CNavLink>
                 </CNavItem>
                 <CNavItem>
-                  <CNavLink to="/progress-tracker" as={NavLink} className="pill-link">
-                    Progress
+                  <CNavLink to="/schedules" as={NavLink} className="pill-link">
+                    Planner
                   </CNavLink>
                 </CNavItem>
                 <CNavItem>
-                  <CNavLink to="/habit-library" as={NavLink} className="pill-link">
-                    Library
+                  <CNavLink to="/progress" as={NavLink} className="pill-link">
+                    Insights
                   </CNavLink>
                 </CNavItem>
                 <CNavItem>
-                  <CNavLink to="/messages" as={NavLink} className="pill-link">
-                    Messages
+                  <CNavLink to="/ai-coach" as={NavLink} className="pill-link">
+                    AI Coach
                   </CNavLink>
                 </CNavItem>
               </CHeaderNav>
