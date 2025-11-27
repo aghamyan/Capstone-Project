@@ -1,9 +1,11 @@
 import express from "express";
-import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import { Op } from "sequelize";
+import User from "../models/User.js";
 import { UserSetting } from "../models/index.js";
+import sequelize from "../sequelize.js";
 import { sendVerificationEmail } from "../utils/email.js";
+import asyncHandler from "../utils/asyncHandler.js";
 
 const defaultSettings = {
   timezone: "UTC",
@@ -61,33 +63,49 @@ const serializeUser = (user) => ({
   supportPreference: user.support_preference,
   motivation: user.motivation_statement,
   isVerified: Boolean(user.is_verified),
-  createdAt: user.createdAt,
-  updatedAt: user.updatedAt,
+  createdAt: user.createdAt || user.created_at,
+  updatedAt: user.updatedAt || user.updated_at,
   settings: formatSettings(user.settings),
 });
 
-const ensureUserSettings = async (userId) => {
+const ensureUserSettings = async (userId, transaction) => {
   const [settings] = await UserSetting.findOrCreate({
     where: { user_id: userId },
     defaults: { ...defaultSettings, user_id: userId },
+    transaction,
   });
   return settings;
 };
 
+const generateVerification = () => ({
+  code: Math.floor(100000 + Math.random() * 900000).toString(),
+  expires: new Date(Date.now() + 15 * 60 * 1000),
+});
+
+const deliverVerification = async (user, code) => {
+  try {
+    await sendVerificationEmail(user.email, code);
+  } catch (emailErr) {
+    console.error("Failed to send verification email", emailErr);
+  }
+};
+
 const router = express.Router();
 
-// Register
-router.post("/register", async (req, res) => {
-  try {
+router.post(
+  "/register",
+  asyncHandler(async (req, res) => {
     const { name, email, password, onboarding = {} } = req.body;
-    if (!name || !email || !password) return res.status(400).json({ error: "All fields required" });
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "All fields required" });
+    }
 
     const existing = await User.findOne({ where: { email } });
     if (existing) return res.status(400).json({ error: "Email already exists" });
 
     const hashed = await bcrypt.hash(password, 10);
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const verificationExpires = new Date(Date.now() + 15 * 60 * 1000);
+    const verification = generateVerification();
     const onboardingPayload = {
       primaryGoal: onboarding.primaryGoal ?? req.body.primaryGoal ?? null,
       focusArea: onboarding.focusArea ?? req.body.focusArea ?? null,
@@ -97,23 +115,33 @@ router.post("/register", async (req, res) => {
       motivation: onboarding.motivation ?? req.body.motivation ?? null,
     };
 
-    const newUser = await User.create({
-      name,
-      email,
-      password: hashed,
-      primary_goal: sanitizeString(onboardingPayload.primaryGoal),
-      focus_area: sanitizeString(onboardingPayload.focusArea),
-      experience_level: sanitizeString(onboardingPayload.experienceLevel),
-      daily_commitment: sanitizeString(onboardingPayload.dailyCommitment),
-      support_preference: sanitizeString(onboardingPayload.supportPreference),
-      motivation_statement: sanitizeString(onboardingPayload.motivation),
-      is_verified: false,
-      verification_code: verificationCode,
-      verification_expires: verificationExpires,
+    const newUser = await sequelize.transaction(async (transaction) => {
+      const user = await User.create(
+        {
+          name,
+          email,
+          password: hashed,
+          primary_goal: sanitizeString(onboardingPayload.primaryGoal),
+          focus_area: sanitizeString(onboardingPayload.focusArea),
+          experience_level: sanitizeString(onboardingPayload.experienceLevel),
+          daily_commitment: sanitizeString(onboardingPayload.dailyCommitment),
+          support_preference: sanitizeString(onboardingPayload.supportPreference),
+          motivation_statement: sanitizeString(onboardingPayload.motivation),
+          is_verified: false,
+          verification_code: verification.code,
+          verification_expires: verification.expires,
+        },
+        { transaction }
+      );
+
+      await ensureUserSettings(user.id, transaction);
+      return user;
     });
-    await UserSetting.findOrCreate({
-      where: { user_id: newUser.id },
-      defaults: { ...defaultSettings, user_id: newUser.id },
+
+    await deliverVerification(newUser, verification.code);
+
+    const userWithSettings = await User.findByPk(newUser.id, {
+      include: [{ model: UserSetting, as: "settings" }],
     });
 
     try {
@@ -124,17 +152,14 @@ router.post("/register", async (req, res) => {
 
     res.status(201).json({
       message: "Verification code sent to email. Please verify to activate your account.",
-      user: serializeUser({ ...newUser.get({ plain: true }), settings: await ensureUserSettings(newUser.id) }),
+      user: serializeUser(userWithSettings),
     });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Registration failed" });
-  }
-});
+  })
+);
 
-// Login
-router.post("/login", async (req, res) => {
-  try {
+router.post(
+  "/login",
+  asyncHandler(async (req, res) => {
     const { email, password } = req.body;
     const user = await User.findOne({
       where: { email },
@@ -152,15 +177,12 @@ router.post("/login", async (req, res) => {
     await ensureUserSettings(user.id);
 
     res.json({ message: "Login successful", user: serializeUser(user) });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+  })
+);
 
-// Verify email
-router.post("/verify-email", async (req, res) => {
-  try {
+router.post(
+  "/verify-email",
+  asyncHandler(async (req, res) => {
     const { email, code } = req.body;
     if (!email || !code) {
       return res.status(400).json({ error: "email and code are required" });
@@ -176,11 +198,8 @@ router.post("/verify-email", async (req, res) => {
       return res.json({ message: "Email already verified", user: serializeUser(user) });
     }
 
-    if (
-      !user.verification_code ||
-      user.verification_code !== code ||
-      (user.verification_expires && new Date(user.verification_expires) < new Date())
-    ) {
+    const expired = user.verification_expires && new Date(user.verification_expires) < new Date();
+    if (!user.verification_code || user.verification_code !== code || expired) {
       return res.status(400).json({ error: "Invalid or expired verification code" });
     }
 
@@ -192,15 +211,12 @@ router.post("/verify-email", async (req, res) => {
     await ensureUserSettings(user.id);
 
     res.json({ message: "Email verified", user: serializeUser(user) });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to verify email" });
-  }
-});
+  })
+);
 
-// Resend verification code
-router.post("/resend-verification", async (req, res) => {
-  try {
+router.post(
+  "/resend-verification",
+  asyncHandler(async (req, res) => {
     const { email } = req.body;
     if (!email) {
       return res.status(400).json({ error: "email is required" });
@@ -215,27 +231,21 @@ router.post("/resend-verification", async (req, res) => {
       return res.status(400).json({ error: "Email already verified" });
     }
 
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    user.verification_code = verificationCode;
-    user.verification_expires = new Date(Date.now() + 15 * 60 * 1000);
-    await user.save();
+    const verification = generateVerification();
+    await user.update({
+      verification_code: verification.code,
+      verification_expires: verification.expires,
+    });
 
-    try {
-      await sendVerificationEmail(user.email, verificationCode);
-    } catch (emailErr) {
-      console.error("Failed to send verification email", emailErr);
-    }
+    await deliverVerification(user, verification.code);
 
     res.json({ message: "Verification code resent" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to resend verification" });
-  }
-});
+  })
+);
 
-// Fetch profile + settings
-router.get("/profile/:id", async (req, res) => {
-  try {
+router.get(
+  "/profile/:id",
+  asyncHandler(async (req, res) => {
     const user = await User.findByPk(req.params.id, {
       include: [{ model: UserSetting, as: "settings" }],
     });
@@ -244,15 +254,12 @@ router.get("/profile/:id", async (req, res) => {
     await ensureUserSettings(user.id);
 
     res.json({ user: serializeUser(user) });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to load profile" });
-  }
-});
+  })
+);
 
-// Update profile + settings
-router.put("/profile/:id", async (req, res) => {
-  try {
+router.put(
+  "/profile/:id",
+  asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { name, email, age, gender, bio, settings = {} } = req.body;
 
@@ -338,10 +345,7 @@ router.put("/profile/:id", async (req, res) => {
     });
 
     res.json({ message: "Profile updated", user: serializeUser(refreshedUser) });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to update profile" });
-  }
-});
+  })
+);
 
 export default router;
