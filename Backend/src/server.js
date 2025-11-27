@@ -13,10 +13,9 @@ const start = async () => {
     await sequelize.authenticate();
     console.log("✅ Database connection established successfully.");
 
-    // IMPORTANT:
-    // Do NOT alter or force sync if you're using a manual SQL schema.
-    // Just sync models without touching existing tables.
-    await sequelize.sync({ alter: false, force: false });
+    // Keep the database schema in sync with the models to avoid missing column errors
+    // when the table definitions evolve (e.g., new `avatar` column on users).
+    await sequelize.sync({ alter: true, force: false });
 
     // Start server
     app.listen(PORT, () => {

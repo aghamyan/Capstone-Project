@@ -147,12 +147,6 @@ router.post(
       include: [{ model: UserSetting, as: "settings" }],
     });
 
-    try {
-      await sendVerificationEmail(newUser.email, verificationCode);
-    } catch (emailErr) {
-      console.error("Failed to send verification email", emailErr);
-    }
-
     res.status(201).json({
       message: requiresVerification
         ? "Verification code sent to email. Please verify to activate your account."
