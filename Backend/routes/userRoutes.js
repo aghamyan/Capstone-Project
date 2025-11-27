@@ -168,10 +168,7 @@ router.post(
 
     if (!user.is_verified) {
       if (!requiresVerification) {
-        user.is_verified = true;
-        user.verification_code = null;
-        user.verification_expires = null;
-        await user.save();
+        // Defer auto-verification until after password validation
       } else if (!user.verification_code) {
         const verification = generateVerification();
         await user.update({
@@ -189,6 +186,13 @@ router.post(
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(400).json({ error: "Invalid password" });
+
+    if (!user.is_verified && !requiresVerification) {
+      user.is_verified = true;
+      user.verification_code = null;
+      user.verification_expires = null;
+      await user.save();
+    }
 
     await ensureUserSettings(user.id);
 
