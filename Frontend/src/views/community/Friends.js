@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from "react"
 import {
   CAlert,
+  CBadge,
   CButton,
   CCard,
   CCardBody,
@@ -197,14 +198,31 @@ const Friends = () => {
 
                     {Array.isArray(friend.habits) && friend.habits.length > 0 ? (
                       <div className="mt-3">
-                        <div className="fw-semibold mb-2">Habits</div>
+                        <div className="fw-semibold mb-2">Public habits</div>
                         <ul className="mb-0 ps-3">
-                          {friend.habits.map((habit) => (
-                            <li key={habit.id}>
-                              <span className="fw-semibold">{habit.title}</span>
-                              {habit.category && <span className="text-muted"> · {habit.category}</span>}
-                            </li>
-                          ))}
+                          {friend.habits.map((habit) => {
+                            const rate = habit.completionRate
+                            return (
+                              <li key={habit.id} className="mb-1">
+                                <div className="d-flex align-items-center gap-2 flex-wrap">
+                                  <span className="fw-semibold">{habit.title}</span>
+                                  {habit.category && (
+                                    <CBadge color="info" className="text-uppercase small">
+                                      {habit.category}
+                                    </CBadge>
+                                  )}
+                                  {Number.isFinite(rate) && (
+                                    <CBadge color={rate >= 70 ? "success" : rate >= 40 ? "warning" : "danger"}>
+                                      {rate}% complete
+                                    </CBadge>
+                                  )}
+                                </div>
+                                {habit.description && (
+                                  <small className="text-muted d-block">{habit.description}</small>
+                                )}
+                              </li>
+                            )
+                          })}
                         </ul>
                       </div>
                     ) : (

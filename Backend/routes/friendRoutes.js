@@ -1,10 +1,11 @@
 import express from "express";
 import { Op } from "sequelize";
-import { Friend, Habit, User } from "../models/index.js";
+import { Friend, Habit, Progress, User } from "../models/index.js";
+import sequelize from "../sequelize.js";
 
 const router = express.Router();
 
-const serializeFriend = (friendUser, overrides = {}) => ({
+const serializeFriend = (friendUser, habitStats, overrides = {}) => ({
   id: friendUser.id,
   name: friendUser.name,
   email: friendUser.email,
@@ -12,12 +13,19 @@ const serializeFriend = (friendUser, overrides = {}) => ({
   status: friendUser.Friend?.status ?? "accepted",
   created_at: overrides.created_at ?? friendUser.Friend?.created_at ?? null,
   habits: Array.isArray(friendUser.habits)
-    ? friendUser.habits.map((habit) => ({
-        id: habit.id,
-        title: habit.title,
-        category: habit.category,
-        description: habit.description,
-      }))
+    ? friendUser.habits.map((habit) => {
+        const counts = habitStats[habit.id] ?? { done: 0, missed: 0 };
+        const total = counts.done + counts.missed;
+
+        return {
+          id: habit.id,
+          title: habit.title,
+          category: habit.category,
+          description: habit.description,
+          completionRate: total > 0 ? Math.round((counts.done / total) * 100) : null,
+          stats: counts,
+        };
+      })
     : [],
 });
 
@@ -40,7 +48,9 @@ router.get("/:userId", async (req, res, next) => {
             {
               model: Habit,
               as: "habits",
-              attributes: ["id", "title", "category", "description"],
+              attributes: ["id", "title", "category", "description", "is_public"],
+              where: { is_public: true },
+              required: false,
             },
           ],
         },
@@ -51,7 +61,40 @@ router.get("/:userId", async (req, res, next) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const friends = user.friends?.map(serializeFriend) ?? [];
+    const publicHabitIds = user.friends?.flatMap((f) =>
+      (f.habits || []).map((h) => h.id)
+    );
+
+    let habitStats = {};
+
+    if (publicHabitIds && publicHabitIds.length > 0) {
+      const rows = await Progress.findAll({
+        attributes: [
+          "habit_id",
+          "status",
+          [sequelize.fn("COUNT", sequelize.col("id")), "count"],
+        ],
+        where: { habit_id: publicHabitIds },
+        group: ["habit_id", "status"],
+      });
+
+      habitStats = rows.reduce((acc, row) => {
+        const hid = Number(row.habit_id);
+        const status = row.status;
+        const count = Number(row.get("count"));
+
+        if (!acc[hid]) {
+          acc[hid] = { done: 0, missed: 0 };
+        }
+
+        if (status === "done") acc[hid].done += count;
+        if (status === "missed") acc[hid].missed += count;
+
+        return acc;
+      }, {});
+    }
+
+    const friends = user.friends?.map((friend) => serializeFriend(friend, habitStats)) ?? [];
     res.json(friends);
   } catch (err) {
     next(err);
@@ -127,7 +170,15 @@ router.post("/:userId", async (req, res, next) => {
           {
             model: Habit,
             as: "habits",
-            attributes: ["id", "title", "category", "description"],
+            attributes: [
+              "id",
+              "title",
+              "category",
+              "description",
+              "is_public",
+            ],
+            where: { is_public: true },
+            required: false,
           },
         ],
       }),
@@ -162,7 +213,9 @@ router.post("/:userId", async (req, res, next) => {
       attributes: ["created_at"],
     });
 
-    res.status(201).json(serializeFriend(friend, { created_at: relation?.created_at ?? null }));
+    res
+      .status(201)
+      .json(serializeFriend(friend, {}, { created_at: relation?.created_at ?? null }));
   } catch (err) {
     next(err);
   }
