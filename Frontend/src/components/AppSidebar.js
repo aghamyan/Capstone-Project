@@ -52,17 +52,17 @@ const AppSidebar = () => {
       </CSidebarHeader>
       <div className="px-3 pb-3">
         <div className="sidebar-callout">
-          <div className="fw-semibold">Plan smarter</div>
-          <div className="small text-muted">Tap Planner to map your day.</div>
+          <div className="fw-semibold">Stay on track</div>
+          <div className="small text-muted">
+            Jump between Dashboard, Planner, and AI Coach without losing focus.
+          </div>
         </div>
       </div>
       <AppSidebarNav items={navigation} />
       <CSidebarFooter className="border-top-0 d-none d-lg-flex px-3 pb-3">
         <div className="w-100 sidebar-footer-card">
-          <div className="fw-semibold mb-1">Need a quick reset?</div>
-          <div className="small text-muted mb-2">
-            Jump to the dashboard for a concise overview of today.
-          </div>
+          <div className="fw-semibold mb-1">Compact view</div>
+          <div className="small text-muted mb-2">Toggle to collapse the navigation labels.</div>
           <CSidebarToggler
             className="mt-1"
             onClick={() => dispatch({ type: 'set', sidebarUnfoldable: !unfoldable })}
