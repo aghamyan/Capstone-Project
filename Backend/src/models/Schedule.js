@@ -13,16 +13,24 @@ const Schedule = sequelize.define(
     customdays: { type: DataTypes.STRING(100), allowNull: true },
     notes: { type: DataTypes.TEXT, allowNull: true },
     day: {
-      type: DataTypes.VIRTUAL,
+      type: DataTypes.DATEONLY,
+      allowNull: true,
       get() {
+        const explicit = this.getDataValue("day");
+        if (explicit) return explicit;
+
         const scheduledFor = this.getDataValue("scheduled_for");
         if (!scheduledFor) return null;
         return new Date(scheduledFor).toISOString().slice(0, 10);
       },
     },
     starttime: {
-      type: DataTypes.VIRTUAL,
+      type: DataTypes.STRING(5),
+      allowNull: true,
       get() {
+        const explicit = this.getDataValue("starttime");
+        if (explicit) return explicit;
+
         const scheduledFor = this.getDataValue("scheduled_for");
         if (!scheduledFor) return null;
         return new Date(scheduledFor).toISOString().substring(11, 16);
@@ -39,7 +47,31 @@ const Schedule = sequelize.define(
       { fields: ["userid"] },
       { fields: ["habit_id"] },
       { fields: ["scheduled_for"] },
+      { fields: ["day"] },
+      { fields: ["starttime"] },
     ],
+    hooks: {
+      beforeValidate(schedule) {
+        const scheduledFor = schedule.getDataValue("scheduled_for");
+
+        if (scheduledFor) {
+          const date = new Date(scheduledFor);
+          if (!Number.isNaN(date.getTime())) {
+            if (!schedule.getDataValue("day")) {
+              schedule.setDataValue("day", date.toISOString().slice(0, 10));
+            }
+            if (!schedule.getDataValue("starttime")) {
+              schedule.setDataValue("starttime", date.toISOString().substring(11, 16));
+            }
+          }
+        } else if (schedule.getDataValue("day") && schedule.getDataValue("starttime")) {
+          const combined = new Date(`${schedule.getDataValue("day")}T${schedule.getDataValue("starttime")}`);
+          if (!Number.isNaN(combined.getTime())) {
+            schedule.setDataValue("scheduled_for", combined);
+          }
+        }
+      },
+    },
   }
 );
 
