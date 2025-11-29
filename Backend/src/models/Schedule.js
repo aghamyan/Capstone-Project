@@ -13,18 +13,26 @@ const Schedule = sequelize.define(
     customdays: { type: DataTypes.STRING(100), allowNull: true },
     notes: { type: DataTypes.TEXT, allowNull: true },
     day: {
-      type: DataTypes.VIRTUAL,
+      // Stored as a string column to keep Sequelize from trying to change the
+      // database type to a non-existent "VIRTUAL" type during sync. We still
+      // derive the value from `scheduled_for` when possible, falling back to
+      // any persisted value for backwards compatibility.
+      type: DataTypes.STRING(10),
+      allowNull: true,
       get() {
         const scheduledFor = this.getDataValue("scheduled_for");
-        if (!scheduledFor) return null;
+        if (!scheduledFor) return this.getDataValue("day");
         return new Date(scheduledFor).toISOString().slice(0, 10);
       },
     },
     starttime: {
-      type: DataTypes.VIRTUAL,
+      // Same approach as `day` to avoid altering the column to an unsupported
+      // type while still exposing the derived value when available.
+      type: DataTypes.STRING(5),
+      allowNull: true,
       get() {
         const scheduledFor = this.getDataValue("scheduled_for");
-        if (!scheduledFor) return null;
+        if (!scheduledFor) return this.getDataValue("starttime");
         return new Date(scheduledFor).toISOString().substring(11, 16);
       },
     },
