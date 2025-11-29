@@ -9,6 +9,8 @@ const DAY_START_MINUTES = 6 * 60;
 const DAY_END_MINUTES = 22 * 60;
 
 const toISODate = (date) => date.toISOString().split("T")[0];
+const toStartOfDay = (isoDate) => new Date(`${isoDate}T00:00:00.000Z`);
+const toEndOfDay = (isoDate) => new Date(`${isoDate}T23:59:59.999Z`);
 
 const parseMinutes = (time) => {
   if (!time) return null;
@@ -228,7 +230,9 @@ router.get("/insights", async (req, res) => {
       Schedule.findAll({
         where: {
           userid: userId,
-          day: { [Op.between]: [startISO, endISO] },
+          scheduled_for: {
+            [Op.between]: [toStartOfDay(startISO), toEndOfDay(endISO)],
+          },
         },
         include: [
           {
@@ -237,7 +241,7 @@ router.get("/insights", async (req, res) => {
             attributes: ["id", "title", "category"],
           },
         ],
-        order: [["day", "ASC"], ["starttime", "ASC"]],
+        order: [["scheduled_for", "ASC"]],
       }),
     ]);
 
