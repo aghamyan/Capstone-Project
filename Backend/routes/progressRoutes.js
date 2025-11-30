@@ -12,10 +12,14 @@ const router = express.Router();
 router.post("/:habitId/log", async (req, res) => {
   try {
     const { habitId } = req.params;
-    const { userId, status } = req.body;
+    const { userId, status, reason } = req.body;
 
     if (!userId || !["done", "missed"].includes(status)) {
       return res.status(400).json({ error: "userId and valid status required" });
+    }
+
+    if (status === "missed" && !reason?.trim()) {
+      return res.status(400).json({ error: "Please share a short reflection for missed check-ins" });
     }
 
     const habit = await Habit.findByPk(habitId);
@@ -25,6 +29,7 @@ router.post("/:habitId/log", async (req, res) => {
       user_id: userId,
       habit_id: habitId,
       status,                // 'done' or 'missed'
+      reflection_reason: status === "missed" ? reason.trim() : null,
       progress_date: new Date(), // stored as DATE; time ignored by PG
     });
 

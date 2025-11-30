@@ -20,6 +20,11 @@ import {
   CAlert,
   CRow,
   CSpinner,
+  CModal,
+  CModalBody,
+  CModalFooter,
+  CModalHeader,
+  CModalTitle,
 } from "@coreui/react"
 import CIcon from "@coreui/icons-react"
 import {
@@ -49,6 +54,8 @@ const AddHabit = () => {
   const [err, setErr] = useState("")
   const [success, setSuccess] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showReflection, setShowReflection] = useState(false)
+  const [reflectionDraft, setReflectionDraft] = useState("")
 
   const user = JSON.parse(localStorage.getItem("user"))
   const userId = user?.id
@@ -243,6 +250,14 @@ const AddHabit = () => {
 
               <div className="d-flex justify-content-end">
                 <CButton
+                  color="secondary"
+                  variant="outline"
+                  className="me-2"
+                  onClick={() => setShowReflection(true)}
+                >
+                  Missed-day reflection
+                </CButton>
+                <CButton
                   color="primary"
                   className="px-4"
                   onClick={handleAddHabit}
@@ -385,6 +400,41 @@ const AddHabit = () => {
         </div>
       </CCol>
     </CRow>
+
+    <CModal
+      alignment="center"
+      visible={showReflection}
+      onClose={() => setShowReflection(false)}
+    >
+      <CModalHeader closeButton>
+        <CModalTitle>Journaling for missed days</CModalTitle>
+      </CModalHeader>
+      <CModalBody>
+        <p className="text-muted mb-3">
+          When you click "missed" in the dashboard or progress tracker, we'll ask
+          for a quick note like this so you can recognize patterns and reset with
+          intention.
+        </p>
+        <CFormTextarea
+          rows={4}
+          value={reflectionDraft}
+          placeholder="What got in the way today?"
+          onChange={(e) => setReflectionDraft(e.target.value)}
+        />
+        <CFormText className="mt-2 text-muted">
+          Nothing here is saved yet—it's a space to practice the reflection you'll
+          capture each time you log a missed habit.
+        </CFormText>
+      </CModalBody>
+      <CModalFooter>
+        <CButton color="secondary" variant="ghost" onClick={() => setShowReflection(false)}>
+          Close
+        </CButton>
+        <CButton color="primary" onClick={() => setShowReflection(false)}>
+          Ready for check-ins
+        </CButton>
+      </CModalFooter>
+    </CModal>
   )
 }
 
