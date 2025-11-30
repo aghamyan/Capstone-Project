@@ -98,8 +98,12 @@ const MyRoutine = () => {
           : null;
         return {
           id: `schedule-${schedule.id}`,
-          type: "habit",
-          title: schedule.habit?.title || schedule.custom_title || schedule.notes || "Planned habit",
+          type: "timeblock",
+          title:
+            schedule.custom_title ||
+            schedule.habit?.title ||
+            schedule.notes ||
+            "Planned time block",
           start,
           end,
           allDay: false,
@@ -136,7 +140,7 @@ const MyRoutine = () => {
   }, [entriesByDate, selectedDate]);
 
   const summary = {
-    scheduledHabits: routineEntries.length,
+    timeBlocks: routineEntries.length,
     importedEvents: calendarEvents.length,
     integrationCount: calendarOverview?.summary?.integrationCount || 0,
     hoursScheduled: calendarOverview?.summary?.hoursScheduled || 0,
@@ -159,11 +163,11 @@ const MyRoutine = () => {
     const key = toDateKey(date);
     const entries = entriesByDate[key] || [];
     if (entries.length === 0) return null;
-    const hasHabit = entries.some((entry) => entry.type === "habit");
+    const hasTimeblock = entries.some((entry) => entry.type === "timeblock");
     const hasCalendar = entries.some((entry) => entry.type === "calendar");
     return (
       <div className="d-flex justify-content-center gap-1 mt-1">
-        {hasHabit && <span className="calendar-dot habit" />}
+        {hasTimeblock && <span className="calendar-dot timeblock" />}
         {hasCalendar && <span className="calendar-dot calendar" />}
       </div>
     );
@@ -187,7 +191,8 @@ const MyRoutine = () => {
         <div>
           <h2 className="fw-bold mb-1">My Routine Planner</h2>
           <p className="text-body-secondary mb-0">
-            Review your habits alongside imported calendar events to plan each day with confidence.
+            Review your time blocks alongside imported calendar events to plan each day with
+            confidence.
           </p>
         </div>
         <CButton
@@ -206,11 +211,11 @@ const MyRoutine = () => {
           <CCard className="h-100 border-success border-2">
             <CCardBody>
               <div className="text-uppercase small text-body-secondary mb-2">
-                Habits scheduled
+                Time blocks saved
               </div>
-              <div className="display-6 fw-semibold text-success">{summary.scheduledHabits}</div>
+              <div className="display-6 fw-semibold text-success">{summary.timeBlocks}</div>
               <div className="small text-body-secondary">
-                Recurring routines planned through My Schedule.
+                Busy times and focus blocks recorded in My Schedule.
               </div>
             </CCardBody>
           </CCard>
@@ -275,7 +280,7 @@ const MyRoutine = () => {
               />
               <div className="d-flex justify-content-center gap-3 mt-3 small text-body-secondary">
                 <span className="d-flex align-items-center gap-1">
-                  <span className="legend-dot habit" /> Habit routine
+                  <span className="legend-dot timeblock" /> Saved time block
                 </span>
                 <span className="d-flex align-items-center gap-1">
                   <span className="legend-dot calendar" /> Calendar event
@@ -323,7 +328,7 @@ const MyRoutine = () => {
                   <CIcon icon={cilPeople} size="lg" className="mb-2 text-muted" />
                   <div className="fw-semibold">No plans on this day</div>
                   <div className="small">
-                    Add a habit from My Schedule or import events to fill your routine.
+                    Add a time block in My Schedule or import events to fill your routine.
                   </div>
                 </div>
               ) : (
@@ -337,7 +342,7 @@ const MyRoutine = () => {
                             <div className="fw-semibold">{entry.title}</div>
                             <div className="small text-body-secondary">
                               {formatTimeRange(entry)}
-                              {entry.type === "habit" && entry.repeat
+                              {entry.type === "timeblock" && entry.repeat
                                 ? ` · ${entry.repeat.toLowerCase()}`
                                 : ""}
                               {entry.type === "calendar" && entry.provider
@@ -345,8 +350,8 @@ const MyRoutine = () => {
                                 : ""}
                             </div>
                           </div>
-                          <CBadge color={entry.type === "habit" ? "success" : "info"}>
-                            {entry.type === "habit" ? "Habit" : "Calendar"}
+                          <CBadge color={entry.type === "calendar" ? "info" : "success"}>
+                            {entry.type === "calendar" ? "Calendar" : "Time block"}
                           </CBadge>
                         </div>
                         {entry.notes && (
@@ -400,7 +405,7 @@ const MyRoutine = () => {
           border-radius: 999px;
           display: inline-block;
         }
-        .calendar-dot.habit {
+        .calendar-dot.timeblock {
           background-color: #2eb85c;
         }
         .calendar-dot.calendar {
@@ -412,7 +417,7 @@ const MyRoutine = () => {
           border-radius: 999px;
           display: inline-block;
         }
-        .legend-dot.habit {
+        .legend-dot.timeblock {
           background-color: #2eb85c;
         }
         .legend-dot.calendar {
@@ -448,7 +453,7 @@ const MyRoutine = () => {
           border: 2px solid #fff;
           box-shadow: 0 0 0 2px rgba(46, 184, 92, 0.15);
         }
-        .timeline-dot.habit {
+        .timeline-dot.timeblock {
           background-color: #2eb85c;
         }
         .timeline-dot.calendar {

@@ -190,7 +190,7 @@ const Dashboard = () => {
           endDate,
           repeat: schedule.repeat,
           notes: schedule.notes,
-          type: "habit",
+          type: "timeblock",
         };
       })
       .filter(
@@ -574,13 +574,11 @@ const Dashboard = () => {
 
             <CCol xs={12} lg={6}>
               <CCard className="h-100">
-                <CCardHeader className="fw-semibold">
-                  Upcoming Schedule
-                </CCardHeader>
+                <CCardHeader className="fw-semibold">Busy times & plans</CCardHeader>
                 <CCardBody>
                   {upcomingPlans.length === 0 ? (
                     <div className="text-body-secondary">
-                      No plans on the calendar. Add routines from My Schedule or
+                      No saved time blocks yet. Add your busy times in My Schedule or
                       sync a calendar to see them here.
                     </div>
                   ) : (
@@ -592,7 +590,7 @@ const Dashboard = () => {
                               <div className="fw-semibold">{plan.title}</div>
                               <div className="small text-body-secondary">
                                 {formatDateTime(plan.startDate)}
-                                {plan.type === "habit" && plan.repeat
+                                {plan.type === "timeblock" && plan.repeat
                                   ? ` · ${plan.repeat.toLowerCase()}`
                                   : ""}
                                 {plan.type === "calendar" && plan.provider
@@ -601,8 +599,8 @@ const Dashboard = () => {
                                 {plan.allDay ? " · All day" : ""}
                               </div>
                             </div>
-                            <CBadge color={plan.type === "habit" ? "success" : "info"}>
-                              {plan.type === "habit" ? "Habit" : "Calendar"}
+                            <CBadge color={plan.type === "calendar" ? "info" : "success"}>
+                              {plan.type === "calendar" ? "Calendar" : "Time block"}
                             </CBadge>
                           </div>
                           {plan.notes && (

@@ -31,7 +31,7 @@ const MySchedule = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [newSchedule, setNewSchedule] = useState({
-    type: "habit", // "habit" or "custom"
+    type: "habit", // link to a habit or keep it as a custom busy time
     habit_id: "",
     custom_title: "",
     day: "",
@@ -176,13 +176,19 @@ const MySchedule = () => {
         <CCard className="shadow-sm border-0 h-100">
           <CCardHeader className="bg-primary text-white d-flex align-items-center">
             <CIcon icon={cilCalendar} className="me-2" />
-            Plan a New Schedule
+            Save when you're busy
           </CCardHeader>
           <CCardBody>
+            <div className="text-body-secondary small mb-3">
+              These entries are informational. They tell the assistant when you're busy
+              or focused so it can suggest habits around your day—nothing to mark as done
+              or missed.
+            </div>
+
             <CForm className="d-flex flex-column gap-3">
               <div>
                 <CFormLabel className="text-uppercase text-muted fw-semibold small">
-                  What do you want to plan?
+                  What kind of time block?
                 </CFormLabel>
                 <CButtonGroup className="w-100">
                   <CButton
@@ -197,7 +203,7 @@ const MySchedule = () => {
                       })
                     }
                   >
-                    Habit
+                    Link to a habit
                   </CButton>
                   <CButton
                     type="button"
@@ -211,7 +217,7 @@ const MySchedule = () => {
                       })
                     }
                   >
-                    Custom Event
+                    Busy event
                   </CButton>
                 </CButtonGroup>
               </div>
@@ -219,7 +225,7 @@ const MySchedule = () => {
               {newSchedule.type === "habit" && (
                 <div>
                   <CFormLabel className="text-uppercase text-muted fw-semibold small">
-                    Choose a habit
+                    Link a habit (optional)
                   </CFormLabel>
                   <CFormSelect
                     value={newSchedule.habit_id}
@@ -234,14 +240,16 @@ const MySchedule = () => {
                       </option>
                     ))}
                   </CFormSelect>
-                  <CFormText>Select an existing habit to keep everything in sync.</CFormText>
+                  <CFormText>
+                    Connect a habit so the assistant knows which routine fits this time block.
+                  </CFormText>
                 </div>
               )}
 
               {newSchedule.type === "custom" && (
                 <div>
                   <CFormLabel className="text-uppercase text-muted fw-semibold small">
-                    Give it a title
+                    What's happening?
                   </CFormLabel>
                   <CFormInput
                     placeholder="e.g. Doctor Appointment, Gym Session"
@@ -256,7 +264,7 @@ const MySchedule = () => {
 
               <div>
                 <CFormLabel className="text-uppercase text-muted fw-semibold small">
-                  Schedule details
+                  When does it happen?
                 </CFormLabel>
                 <CRow className="g-3">
                   <CCol sm={6}>
@@ -401,7 +409,7 @@ const MySchedule = () => {
 
       <CCol lg={7}>
         <CCard className="shadow-sm border-0 h-100">
-          <CCardHeader className="bg-white fw-semibold">Upcoming Schedules</CCardHeader>
+          <CCardHeader className="bg-white fw-semibold">Saved busy times</CCardHeader>
           <CCardBody className="p-0">
             {loading ? (
               <div className="d-flex justify-content-center my-4">
@@ -409,7 +417,7 @@ const MySchedule = () => {
               </div>
             ) : schedules.length === 0 ? (
               <div className="text-center text-muted py-5">
-                Start planning to see your routine populate here.
+                Add time blocks so the assistant understands when you're occupied or focused.
               </div>
             ) : (
               <CListGroup flush>
@@ -418,7 +426,7 @@ const MySchedule = () => {
                     <div className="d-flex justify-content-between align-items-start flex-wrap gap-2">
                       <div>
                         <div className="fw-semibold">
-                          {s.habit?.title || s.custom_title || s.notes || "Custom Event"}
+                          {s.custom_title || s.habit?.title || s.notes || "Custom Event"}
                         </div>
                         <div className="text-muted small">
                           {s.day} • {s.starttime} – {s.endtime || "—"}
