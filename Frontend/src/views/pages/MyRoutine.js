@@ -36,7 +36,7 @@ const formatTimeRange = (entry) => {
   return `${start} – ${end}`;
 };
 
-const MyRoutine = () => {
+const MyRoutine = ({ onSyncClick }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -198,9 +198,10 @@ const MyRoutine = () => {
         <CButton
           color="info"
           variant="outline"
-          component={Link}
-          to="/calendar-sync"
           className="text-nowrap"
+          {...(onSyncClick
+            ? { onClick: onSyncClick }
+            : { component: Link, to: "/calendar-sync" })}
         >
           <CIcon icon={cilSync} className="me-2" /> Manage calendar connections
         </CButton>

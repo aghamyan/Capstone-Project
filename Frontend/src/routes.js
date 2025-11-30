@@ -11,8 +11,7 @@ const Dashboard = React.lazy(() => import("./views/dashboard/Dashboard"));
 const Habits = React.lazy(() => import("./views/dashboard/Habits"));
 const Notifications = React.lazy(() => import("./views/dashboard/Notifications"));
 const ReportsAnalytics = React.lazy(() => import("./views/dashboard/ReportsAnalytics"));
-const Schedules = React.lazy(() => import("./views/dashboard/Schedules"));
-const SmartScheduler = React.lazy(() => import("./views/dashboard/SmartScheduler"));
+const Planner = React.lazy(() => import("./views/dashboard/Planner"));
 
 // ===== Profile =====
 const UserProfile = React.lazy(() => import("./views/profile/UserProfile"));
@@ -26,7 +25,6 @@ const GroupChallenges = React.lazy(() => import("./views/community/GroupChalleng
 const Leaderboard = React.lazy(() => import("./views/community/Leaderboard"));
 
 // ===== Sync =====
-const CalendarSync = React.lazy(() => import("./views/sync/CalendarSync"));
 const FitnessSync = React.lazy(() => import("./views/sync/FitnessSync"));
 
 // ===== Support =====
@@ -43,8 +41,9 @@ const routes = [
   { path: "/habit-library", name: "Habits", element: Habits },
   { path: "/notifications", name: "Notifications", element: Notifications },
   { path: "/reportsanalytics", name: "Reports & Analytics", element: ReportsAnalytics },
-  { path: "/schedules", name: "Schedules", element: Schedules },
-  { path: "/smart-scheduler", name: "Smart Scheduler", element: SmartScheduler },
+  { path: "/planner", name: "Planner", element: Planner },
+  { path: "/schedules", name: "Planner", element: Planner },
+  { path: "/smart-scheduler", name: "Planner", element: Planner },
   { path: "/progress-tracker", name: "Habits", element: Habits },
   { path: "/dailychallenge", name: "Habits", element: Habits },
   { path: "/habit-coach", name: "Habits", element: Habits },
@@ -64,7 +63,7 @@ const routes = [
   { path: "/group-challenges", name: "Group Challenges", element: GroupChallenges },
 
   // ===== Sync =====
-  { path: "/calendar-sync", name: "Calendar Sync", element: CalendarSync },
+  { path: "/calendar-sync", name: "Planner", element: Planner },
   { path: "/fitness-sync", name: "Fitness Sync", element: FitnessSync },
 
   // ===== Support =====
