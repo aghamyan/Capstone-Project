@@ -135,7 +135,8 @@ const AddHabit = () => {
   }
 
   return (
-    <CRow className="mt-4 g-4">
+    <>
+      <CRow className="mt-4 g-4">
       <CCol xl={7}>
         <CCard className="shadow-sm border-0 h-100">
           <CCardHeader className="bg-primary text-white">
@@ -435,6 +436,7 @@ const AddHabit = () => {
         </CButton>
       </CModalFooter>
     </CModal>
+    </>
   )
 }
 
