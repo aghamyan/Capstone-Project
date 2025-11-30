@@ -168,26 +168,26 @@ const AppHeaderDropdown = () => {
         <CDropdownItem
           component="button"
           type="button"
-          onClick={() => navigate("/profile")}
+          onClick={() => navigate("/profile", { state: { tab: "account" } })}
           className="d-flex align-items-center"
         >
-          <CIcon icon={cilUser} className="me-2" /> View profile
+          <CIcon icon={cilUser} className="me-2" /> Profile & account
         </CDropdownItem>
         <CDropdownItem
           component="button"
           type="button"
-          onClick={() => navigate("/settings")}
+          onClick={() => navigate("/profile", { state: { tab: "notifications" } })}
           className="d-flex align-items-center"
         >
-          <CIcon icon={cilSettings} className="me-2" /> Account settings
+          <CIcon icon={cilSettings} className="me-2" /> Notifications
         </CDropdownItem>
         <CDropdownItem
           component="button"
           type="button"
-          onClick={() => navigate("/preferences")}
+          onClick={() => navigate("/profile", { state: { tab: "connected-apps" } })}
           className="d-flex align-items-center"
         >
-          <CIcon icon={cilSpeedometer} className="me-2" /> Preferences
+          <CIcon icon={cilSpeedometer} className="me-2" /> Connected apps
         </CDropdownItem>
         <CDropdownDivider />
         <CDropdownItem
