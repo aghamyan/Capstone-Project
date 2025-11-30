@@ -1,8 +1,7 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react"
 import {
   CAlert,
   CAvatar,
-  CBadge,
   CButton,
   CCard,
   CCardBody,
@@ -13,930 +12,666 @@ import {
   CFormInput,
   CFormLabel,
   CFormSelect,
-  CFormTextarea,
+  CFormSwitch,
   CListGroup,
   CListGroupItem,
+  CNav,
+  CNavItem,
+  CNavLink,
   CProgress,
   CProgressBar,
   CRow,
   CSpinner,
-} from "@coreui/react";
-import CIcon from "@coreui/icons-react";
+} from "@coreui/react"
+import CIcon from "@coreui/icons-react"
 import {
   cilBell,
-  cilCalendar,
-  cilClock,
   cilCloudUpload,
-  cilCompass,
-  cilEnvelopeOpen,
-  cilFlagAlt,
-  cilHeart,
-  cilListRich,
-  cilPen,
-  cilPeople,
+  cilContact,
+  cilInfo,
+  cilLifeRing,
+  cilLink,
+  cilLockLocked,
   cilSettings,
-  cilSpeedometer,
   cilStar,
-  cilTask,
   cilUser,
-} from "@coreui/icons";
-import { Link, useNavigate } from "react-router-dom";
-import { AuthContext } from "../../context/AuthContext";
-import { HabitContext } from "../../context/HabitContext";
-import { getProgressAnalytics } from "../../services/analytics";
-
-const numberFormatter = new Intl.NumberFormat();
-const formatCount = (value) => numberFormatter.format(value ?? 0);
-
-const genderOptions = [
-  { label: "Select gender", value: "" },
-  { label: "Female", value: "female" },
-  { label: "Male", value: "male" },
-  { label: "Non-binary", value: "non-binary" },
-  { label: "Prefer not to say", value: "prefer_not_to_say" },
-];
-
-const goalOptions = [
-  { label: "Select a primary goal", value: "" },
-  { label: "Build consistency", value: "Build consistency" },
-  { label: "Boost energy", value: "Boost energy" },
-  { label: "Focus & clarity", value: "Focus & clarity" },
-  { label: "Balance & wellbeing", value: "Balance & wellbeing" },
-];
-
-const focusOptions = [
-  { label: "Select a focus area", value: "" },
-  { label: "Mindfulness", value: "Mindfulness" },
-  { label: "Fitness", value: "Fitness" },
-  { label: "Productivity", value: "Productivity" },
-  { label: "Self-care", value: "Self-care" },
-];
-
-const experienceOptions = [
-  { label: "Select experience level", value: "" },
-  { label: "Just getting started", value: "Just getting started" },
-  { label: "Finding my rhythm", value: "Finding my rhythm" },
-  { label: "Leveling up", value: "Leveling up" },
-  { label: "Habit pro", value: "Habit pro" },
-];
-
-const commitmentOptions = [
-  { label: "Select daily commitment", value: "" },
-  { label: "5 minutes", value: "5 minutes" },
-  { label: "15 minutes", value: "15 minutes" },
-  { label: "30 minutes", value: "30 minutes" },
-  { label: "Flexible", value: "Flexible" },
-];
-
-const supportOptions = [
-  { label: "Select support preference", value: "" },
-  { label: "Gentle nudges", value: "Gentle nudges" },
-  { label: "Focused reminders", value: "Focused reminders" },
-  { label: "Deep insights", value: "Deep insights" },
-  { label: "Celebrate my wins", value: "Celebrate my wins" },
-];
-
-const formatDate = (value) => {
-  if (!value) return "–";
-  try {
-    return new Date(value).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch (err) {
-    return "–";
-  }
-};
+} from "@coreui/icons"
+import axios from "axios"
+import { useLocation, useNavigate } from "react-router-dom"
+import { AuthContext } from "../../context/AuthContext"
+import { HabitContext } from "../../context/HabitContext"
+import { fetchUserSettings, saveUserSettings } from "../../services/settings"
+import { getProgressAnalytics } from "../../services/analytics"
 
 const UserProfile = () => {
-  const navigate = useNavigate();
-  const { user: authUser, login } = useContext(AuthContext);
-  const habitContext = useContext(HabitContext);
-  const habits = habitContext?.habits || [];
-  const habitsLoading = habitContext?.loading;
+  const { user, login } = useContext(AuthContext)
+  const habitContext = useContext(HabitContext)
+  const habits = habitContext?.habits || []
+  const location = useLocation()
+  const navigate = useNavigate()
 
-  const [profile, setProfile] = useState(null);
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    age: "",
-    gender: "",
-    bio: "",
-    primaryGoal: "",
-    focusArea: "",
-    experienceLevel: "",
-    dailyCommitment: "",
-    supportPreference: "",
-    motivation: "",
-  });
-  const [settingsSnapshot, setSettingsSnapshot] = useState(null);
-  const [avatarUrl, setAvatarUrl] = useState("/uploads/default-avatar.png");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [avatarUploading, setAvatarUploading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [analytics, setAnalytics] = useState(null);
-  const [analyticsLoading, setAnalyticsLoading] = useState(false);
-  const [analyticsError, setAnalyticsError] = useState("");
-  const fileInputRef = useRef(null);
+  const [activeTab, setActiveTab] = useState(location.state?.tab || "account")
+  const [profile, setProfile] = useState({ name: "", email: "", gender: "" })
+  const [preferences, setPreferences] = useState({
+    theme: "light",
+    aiTone: "balanced",
+    supportStyle: "celebrate",
+  })
+  const [notificationPrefs, setNotificationPrefs] = useState({
+    emailAlerts: true,
+    pushReminders: true,
+  })
+  const [connectedApps, setConnectedApps] = useState({
+    googleCalendar: false,
+    appleCalendar: false,
+    fitnessSync: false,
+  })
+  const [avatarUrl, setAvatarUrl] = useState("/uploads/default-avatar.png")
+  const [analytics, setAnalytics] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [status, setStatus] = useState("")
+  const [error, setError] = useState("")
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [settingsBaseline, setSettingsBaseline] = useState({})
+  const fileInputRef = useRef(null)
+
+  useEffect(() => {
+    if (location.state?.tab) {
+      setActiveTab(location.state.tab)
+    }
+  }, [location.state?.tab])
 
   useEffect(() => {
     const loadProfile = async () => {
-      if (!authUser?.id) {
-        setLoading(false);
-        setError("No profile found. Please login again.");
-        return;
+      if (!user?.id) {
+        setLoading(false)
+        return
       }
 
       try {
-        setLoading(true);
-        const res = await fetch(`http://localhost:5001/api/users/profile/${authUser.id}`);
-        if (!res.ok) {
-          throw new Error("Failed to load profile");
-        }
-
-        const data = await res.json();
-        const payload = data.user || data;
-        setProfile(payload);
-        setForm({
+        setLoading(true)
+        const { user: payload } = await fetchUserSettings(user.id)
+        setProfile({
           name: payload.name || "",
           email: payload.email || "",
-          age: payload.age ?? "",
           gender: payload.gender || "",
-          bio: payload.bio || "",
-          primaryGoal: payload.primaryGoal || "",
-          focusArea: payload.focusArea || "",
-          experienceLevel: payload.experienceLevel || "",
-          dailyCommitment: payload.dailyCommitment || "",
-          supportPreference: payload.supportPreference || "",
-          motivation: payload.motivation || "",
-        });
-        setSettingsSnapshot(payload.settings || {});
+        })
+        const settings = payload.settings || {}
+        setSettingsBaseline(settings)
+        setPreferences({
+          theme: settings.theme || "light",
+          aiTone: settings.aiTone || "balanced",
+          supportStyle: settings.supportStyle || "celebrate",
+        })
+        setNotificationPrefs({
+          emailAlerts: Boolean(settings.emailAlerts ?? true),
+          pushReminders: Boolean(settings.pushReminders ?? false),
+        })
+        setConnectedApps({
+          googleCalendar: Boolean(settings.googleCalendar ?? false),
+          appleCalendar: Boolean(settings.appleCalendar ?? false),
+          fitnessSync: Boolean(settings.fitnessSync ?? false),
+        })
         setAvatarUrl(
           payload.avatar
             ? `http://localhost:5001${payload.avatar}`
             : "/uploads/default-avatar.png"
-        );
+        )
+        setError("")
         if (typeof login === "function") {
-          login(payload);
+          login(payload)
         }
-        setError("");
       } catch (err) {
-        console.error(err);
-        setError("Unable to load your profile. Please try again.");
+        console.error(err)
+        setError("We couldn't load your profile details. Please try again.")
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    loadProfile();
-  }, [authUser?.id]);
+    loadProfile()
+  }, [user?.id, login])
 
   useEffect(() => {
     const loadAnalytics = async () => {
-      if (!authUser?.id) return;
-
+      if (!user?.id) return
       try {
-        setAnalyticsLoading(true);
-        setAnalyticsError("");
-        const data = await getProgressAnalytics(authUser.id);
-        setAnalytics(data);
+        const data = await getProgressAnalytics(user.id)
+        setAnalytics(data)
       } catch (err) {
-        console.error(err);
-        setAnalyticsError("We couldn't load your activity insights just yet.");
-      } finally {
-        setAnalyticsLoading(false);
+        console.error(err)
       }
-    };
-
-    loadAnalytics();
-  }, [authUser?.id]);
-
-  const profileCompletion = useMemo(() => {
-    const requirements = [
-      form.name,
-      form.email,
-      form.bio,
-      form.age,
-      form.gender,
-      form.primaryGoal,
-      form.focusArea,
-      form.dailyCommitment,
-      form.experienceLevel,
-      form.supportPreference,
-      form.motivation,
-      settingsSnapshot?.timezone,
-      settingsSnapshot?.dailyReminderTime,
-      settingsSnapshot?.theme,
-    ];
-    const filled = requirements.filter((value) => value !== null && value !== undefined && value !== "").length;
-    return Math.round((filled / requirements.length) * 100);
-  }, [form, settingsSnapshot]);
-
-  const insights = useMemo(() => {
-    if (!settingsSnapshot) return [];
-
-    return [
-      {
-        icon: cilCalendar,
-        label: "Timezone",
-        value: settingsSnapshot.timezone || "UTC",
-      },
-      {
-        icon: cilBell,
-        label: "Daily reminder",
-        value: settingsSnapshot.dailyReminderTime
-          ? `Scheduled for ${settingsSnapshot.dailyReminderTime}`
-          : "Disabled",
-      },
-      {
-        icon: cilSettings,
-        label: "Theme",
-        value:
-          settingsSnapshot.theme === "dark"
-            ? "Dark mode"
-            : settingsSnapshot.theme === "light"
-            ? "Light mode"
-            : "System default",
-      },
-      {
-        icon: cilTask,
-        label: "Activity sharing",
-        value: settingsSnapshot.shareActivity ? "Sharing with friends" : "Private",
-      },
-      {
-        icon: cilCalendar,
-        label: "Weekly summary",
-        value: settingsSnapshot.weeklySummaryDay || "Sunday",
-      },
-      {
-        icon: cilEnvelopeOpen,
-        label: "Email updates",
-        value: settingsSnapshot.emailNotifications ? "Enabled" : "Disabled",
-      },
-      {
-        icon: cilBell,
-        label: "Push alerts",
-        value: settingsSnapshot.pushNotifications ? "Enabled" : "Disabled",
-      },
-    ];
-  }, [settingsSnapshot]);
-
-  const journeyHighlights = useMemo(
-    () => [
-      {
-        icon: cilFlagAlt,
-        label: "Primary goal",
-        value: form.primaryGoal || "Set a guiding goal to personalise your recommendations.",
-      },
-      {
-        icon: cilCompass,
-        label: "Focus area",
-        value: form.focusArea || "Choose where you’d like to focus first.",
-      },
-      {
-        icon: cilClock,
-        label: "Daily commitment",
-        value: form.dailyCommitment || "Decide how much time you can give each day.",
-      },
-      {
-        icon: cilSpeedometer,
-        label: "Experience level",
-        value: form.experienceLevel || "Share how established your habits feel today.",
-      },
-      {
-        icon: cilPeople,
-        label: "Support style",
-        value: form.supportPreference || "Tell us how you’d like encouragement to show up.",
-      },
-      {
-        icon: cilHeart,
-        label: "Motivation",
-        value: form.motivation
-          ? `“${form.motivation}”`
-          : "Add a spark of motivation to revisit on quiet days.",
-      },
-    ],
-    [form]
-  );
-
-  const topHabits = useMemo(() => habits.slice(0, 5), [habits]);
-
-  const activityHighlights = useMemo(() => {
-    if (!analytics?.summary) return [];
-
-    const { summary } = analytics;
-    return [
-      {
-        icon: cilListRich,
-        label: "Habits tracked",
-        value: formatCount(summary.totalHabits || 0),
-        tone: "primary",
-      },
-      {
-        icon: cilTask,
-        label: "Total check-ins",
-        value: formatCount(summary.totalCheckIns || 0),
-        tone: "success",
-      },
-      {
-        icon: cilSpeedometer,
-        label: "Completion rate",
-        value: `${summary.completionRate ?? 0}%`,
-        tone: "info",
-      },
-      {
-        icon: cilStar,
-        label: "Best streak",
-        value: summary.streakLeader
-          ? `${summary.streakLeader.bestStreak}-day run`
-          : "Build your streak",
-        tone: "warning",
-      },
-    ];
-  }, [analytics]);
-
-  const leaderboard = useMemo(
-    () => analytics?.summary?.habitLeaderboard || [],
-    [analytics]
-  );
-
-  const momentumHabits = useMemo(() => {
-    if (!analytics?.habits?.length) return [];
-
-    return [...analytics.habits]
-      .sort((a, b) => (b.recent?.completionRate || 0) - (a.recent?.completionRate || 0))
-      .slice(0, 3);
-  }, [analytics]);
-
-  const handleInputChange = (event) => {
-    const { id, value } = event.target;
-    setForm((prev) => ({ ...prev, [id]: value }));
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    if (!authUser?.id) return;
-
-    try {
-      setSaving(true);
-      setSuccess("");
-      setError("");
-      const res = await fetch(`http://localhost:5001/api/users/profile/${authUser.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, settings: settingsSnapshot || {} }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || "Failed to update profile");
-      }
-
-      const payload = data.user || data;
-      setProfile(payload);
-      setForm({
-        name: payload.name || "",
-        email: payload.email || "",
-        age: payload.age ?? "",
-        gender: payload.gender || "",
-        bio: payload.bio || "",
-        primaryGoal: payload.primaryGoal || "",
-        focusArea: payload.focusArea || "",
-        experienceLevel: payload.experienceLevel || "",
-        dailyCommitment: payload.dailyCommitment || "",
-        supportPreference: payload.supportPreference || "",
-        motivation: payload.motivation || "",
-      });
-      setSettingsSnapshot(payload.settings || settingsSnapshot);
-      setAvatarUrl(
-        payload.avatar
-          ? `http://localhost:5001${payload.avatar}`
-          : "/uploads/default-avatar.png"
-      );
-      setSuccess("Profile updated successfully!");
-      if (typeof login === "function") {
-        login(payload);
-      }
-    } catch (err) {
-      console.error(err);
-      setError(err.message || "Failed to update profile");
-    } finally {
-      setSaving(false);
     }
-  };
+
+    loadAnalytics()
+  }, [user?.id])
+
+  const completionScore = useMemo(() => {
+    const pieces = [profile.name, profile.email, profile.gender, preferences.theme]
+    const filled = pieces.filter((value) => Boolean(value && value !== "")).length
+    return Math.round((filled / pieces.length) * 100)
+  }, [profile, preferences])
 
   const handleAvatarChange = async (event) => {
-    const file = event.target.files[0];
-    if (!file || !authUser?.id) return;
+    const file = event.target.files?.[0]
+    if (!file || !user?.id) return
 
-    const formData = new FormData();
-    formData.append("avatar", file);
+    const formData = new FormData()
+    formData.append("avatar", file)
 
     try {
-      setAvatarUploading(true);
-      setSuccess("");
-      setError("");
+      setAvatarUploading(true)
+      const res = await axios.post(
+        `http://localhost:5001/api/avatar/${user.id}`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      )
 
-      const res = await fetch(`http://localhost:5001/api/avatar/${authUser.id}`, {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data?.error || "Failed to upload avatar");
-      }
-
-      const newAvatarPath = data.imagePath;
-      const newProfile = {
-        ...(profile || {}),
-        avatar: newAvatarPath,
-      };
-      setProfile(newProfile);
-      setAvatarUrl(`http://localhost:5001${newAvatarPath}`);
-      setSuccess("Profile photo updated!");
-      if (typeof login === "function") {
-        login({ ...newProfile, settings: newProfile.settings || settingsSnapshot || {} });
+      if (res.data.success) {
+        const newAvatar = `http://localhost:5001${res.data.imagePath}`
+        setAvatarUrl(newAvatar)
+        const updatedUser = { ...user, avatar: res.data.imagePath }
+        localStorage.setItem("user", JSON.stringify(updatedUser))
+        if (typeof login === "function") {
+          login(updatedUser)
+        }
+        setStatus("Avatar updated successfully")
+      } else {
+        setError("Avatar upload failed. Please try again.")
       }
     } catch (err) {
-      console.error(err);
-      setError(err.message || "Failed to upload avatar");
+      console.error(err)
+      setError("Avatar upload failed. Please try again.")
     } finally {
-      setAvatarUploading(false);
+      setAvatarUploading(false)
       if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+        fileInputRef.current.value = ""
       }
     }
-  };
+  }
+
+  const handleSave = async (event) => {
+    event?.preventDefault()
+    if (!user?.id) return
+
+    setSaving(true)
+    setStatus("")
+    setError("")
+
+    try {
+      const mergedSettings = {
+        ...settingsBaseline,
+        theme: preferences.theme,
+        aiTone: preferences.aiTone,
+        supportStyle: preferences.supportStyle,
+        emailAlerts: notificationPrefs.emailAlerts,
+        pushReminders: notificationPrefs.pushReminders,
+        googleCalendar: connectedApps.googleCalendar,
+        appleCalendar: connectedApps.appleCalendar,
+        fitnessSync: connectedApps.fitnessSync,
+      }
+
+      const payload = {
+        ...profile,
+        settings: mergedSettings,
+      }
+
+      const { user: updated } = await saveUserSettings(user.id, payload)
+      setSettingsBaseline(updated.settings || {})
+      setStatus("Profile saved")
+      if (typeof login === "function") {
+        login(updated)
+      }
+    } catch (err) {
+      console.error(err)
+      const message = err?.response?.data?.error || "Unable to save your updates."
+      setError(message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handlePasswordReset = () => {
+    setStatus("Password reset instructions will be sent to your email.")
+  }
+
+  const achievementsSummary = useMemo(
+    () => ({
+      totalHabits: habits.length,
+      streak: analytics?.streak ?? analytics?.longestStreak ?? 0,
+      badges: analytics?.badges || analytics?.milestones || [],
+    }),
+    [habits.length, analytics]
+  )
+
+  const renderAccountTab = () => (
+    <CRow className="g-4">
+      <CCol md={4}>
+        <CCard className="h-100 shadow-sm border-0">
+          <CCardHeader className="bg-white border-0">
+            <h5 className="mb-1">Avatar</h5>
+            <small className="text-body-secondary">Keep your profile recognizable across the app.</small>
+          </CCardHeader>
+          <CCardBody className="text-center">
+            <CAvatar src={avatarUrl} size="xl" className="mb-3" />
+            <div className="text-body-secondary small mb-3">Completion {completionScore}%</div>
+            <CProgress thin className="mb-3">
+              <CProgressBar color="primary" value={completionScore} />
+            </CProgress>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="d-none"
+              onChange={handleAvatarChange}
+            />
+            <CButton
+              color="secondary"
+              variant="outline"
+              className="w-100"
+              disabled={avatarUploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <CIcon icon={cilCloudUpload} className="me-2" />
+              {avatarUploading ? "Uploading..." : "Upload new avatar"}
+            </CButton>
+          </CCardBody>
+        </CCard>
+      </CCol>
+      <CCol md={8}>
+        <CCard className="h-100 shadow-sm border-0">
+          <CCardHeader className="bg-white border-0 d-flex justify-content-between align-items-center">
+            <div>
+              <h5 className="mb-1">Account</h5>
+              <small className="text-body-secondary">
+                Update your core details and keep your login secure.
+              </small>
+            </div>
+            <CButton color="link" className="text-decoration-none" onClick={handlePasswordReset}>
+              <CIcon icon={cilLockLocked} className="me-2" /> Reset password
+            </CButton>
+          </CCardHeader>
+          <CCardBody>
+            <CRow className="g-3">
+              <CCol md={6}>
+                <CFormLabel className="fw-semibold">Full name</CFormLabel>
+                <CFormInput
+                  value={profile.name}
+                  onChange={(event) => setProfile((prev) => ({ ...prev, name: event.target.value }))}
+                  placeholder="How should we address you?"
+                  required
+                />
+              </CCol>
+              <CCol md={6}>
+                <CFormLabel className="fw-semibold">Email</CFormLabel>
+                <CFormInput
+                  type="email"
+                  value={profile.email}
+                  onChange={(event) => setProfile((prev) => ({ ...prev, email: event.target.value }))}
+                  placeholder="your@email.com"
+                  required
+                />
+              </CCol>
+              <CCol md={6}>
+                <CFormLabel className="fw-semibold">Gender</CFormLabel>
+                <CFormSelect
+                  value={profile.gender}
+                  onChange={(event) => setProfile((prev) => ({ ...prev, gender: event.target.value }))}
+                >
+                  <option value="">Select gender</option>
+                  <option value="female">Female</option>
+                  <option value="male">Male</option>
+                  <option value="non-binary">Non-binary</option>
+                  <option value="prefer_not_to_say">Prefer not to say</option>
+                </CFormSelect>
+              </CCol>
+            </CRow>
+          </CCardBody>
+        </CCard>
+      </CCol>
+    </CRow>
+  )
+
+  const renderPreferencesTab = () => (
+    <CCard className="shadow-sm border-0">
+      <CCardHeader className="bg-white border-0">
+        <h5 className="mb-1">Preferences</h5>
+        <small className="text-body-secondary">Shape how StepHabit feels and sounds.</small>
+      </CCardHeader>
+      <CCardBody>
+        <CRow className="g-4">
+          <CCol md={4}>
+            <CFormLabel className="fw-semibold">Theme</CFormLabel>
+            <CFormSelect
+              value={preferences.theme}
+              onChange={(event) => setPreferences((prev) => ({ ...prev, theme: event.target.value }))}
+            >
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+              <option value="system">Match system</option>
+            </CFormSelect>
+          </CCol>
+          <CCol md={4}>
+            <CFormLabel className="fw-semibold">AI tone</CFormLabel>
+            <CFormSelect
+              value={preferences.aiTone}
+              onChange={(event) => setPreferences((prev) => ({ ...prev, aiTone: event.target.value }))}
+            >
+              <option value="balanced">Balanced coach</option>
+              <option value="gentle">Gentle encourager</option>
+              <option value="direct">Direct accountability</option>
+            </CFormSelect>
+          </CCol>
+          <CCol md={4}>
+            <CFormLabel className="fw-semibold">Support style</CFormLabel>
+            <CFormSelect
+              value={preferences.supportStyle}
+              onChange={(event) =>
+                setPreferences((prev) => ({ ...prev, supportStyle: event.target.value }))
+              }
+            >
+              <option value="celebrate">Celebrate my wins</option>
+              <option value="insights">Deep insights</option>
+              <option value="nudges">Gentle nudges</option>
+            </CFormSelect>
+          </CCol>
+        </CRow>
+      </CCardBody>
+    </CCard>
+  )
+
+  const renderNotificationsTab = () => (
+    <CCard className="shadow-sm border-0">
+      <CCardHeader className="bg-white border-0">
+        <h5 className="mb-1">Notifications</h5>
+        <small className="text-body-secondary">Choose how you want to stay on track.</small>
+      </CCardHeader>
+      <CCardBody>
+        <CFormSwitch
+          label="Email alerts for reminders and recaps"
+          checked={notificationPrefs.emailAlerts}
+          onChange={(event) =>
+            setNotificationPrefs((prev) => ({ ...prev, emailAlerts: event.target.checked }))
+          }
+          className="mb-3"
+        />
+        <CFormSwitch
+          label="Push reminders for upcoming habits"
+          checked={notificationPrefs.pushReminders}
+          onChange={(event) =>
+            setNotificationPrefs((prev) => ({ ...prev, pushReminders: event.target.checked }))
+          }
+        />
+      </CCardBody>
+    </CCard>
+  )
+
+  const renderConnectedAppsTab = () => (
+    <CCard className="shadow-sm border-0">
+      <CCardHeader className="bg-white border-0">
+        <h5 className="mb-1">Connected Apps</h5>
+        <small className="text-body-secondary">
+          Sync calendars and fitness data so StepHabit can plan around your real life.
+        </small>
+      </CCardHeader>
+      <CCardBody>
+        <CListGroup flush>
+          <CListGroupItem className="d-flex justify-content-between align-items-center">
+            <div>
+              <div className="fw-semibold">Google Calendar</div>
+              <small className="text-body-secondary">Block time for routines alongside events.</small>
+            </div>
+            <CFormSwitch
+              checked={connectedApps.googleCalendar}
+              onChange={(event) =>
+                setConnectedApps((prev) => ({ ...prev, googleCalendar: event.target.checked }))
+              }
+            />
+          </CListGroupItem>
+          <CListGroupItem className="d-flex justify-content-between align-items-center">
+            <div>
+              <div className="fw-semibold">Apple Calendar</div>
+              <small className="text-body-secondary">See habits next to your schedule.</small>
+            </div>
+            <CFormSwitch
+              checked={connectedApps.appleCalendar}
+              onChange={(event) =>
+                setConnectedApps((prev) => ({ ...prev, appleCalendar: event.target.checked }))
+              }
+            />
+          </CListGroupItem>
+          <CListGroupItem className="d-flex justify-content-between align-items-center">
+            <div>
+              <div className="fw-semibold">Fitness Sync</div>
+              <small className="text-body-secondary">Import steps and workouts to fuel streaks.</small>
+            </div>
+            <CFormSwitch
+              checked={connectedApps.fitnessSync}
+              onChange={(event) =>
+                setConnectedApps((prev) => ({ ...prev, fitnessSync: event.target.checked }))
+              }
+            />
+          </CListGroupItem>
+        </CListGroup>
+      </CCardBody>
+    </CCard>
+  )
+
+  const renderAchievementsTab = () => (
+    <CRow className="g-4">
+      <CCol md={4}>
+        <CCard className="shadow-sm border-0 h-100">
+          <CCardBody>
+            <div className="d-flex align-items-center mb-3">
+              <div className="rounded-circle bg-primary-subtle p-2 me-3">
+                <CIcon icon={cilStar} className="text-primary" />
+              </div>
+              <div>
+                <div className="fw-semibold">Badges</div>
+                <small className="text-body-secondary">Celebrations for consistent wins.</small>
+              </div>
+            </div>
+            <h2 className="fw-bold mb-1">{achievementsSummary.badges.length}</h2>
+            <div className="text-body-secondary small">Earned so far</div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+      <CCol md={4}>
+        <CCard className="shadow-sm border-0 h-100">
+          <CCardBody>
+            <div className="d-flex align-items-center mb-3">
+              <div className="rounded-circle bg-success-subtle p-2 me-3">
+                <CIcon icon={cilSettings} className="text-success" />
+              </div>
+              <div>
+                <div className="fw-semibold">Active streak</div>
+                <small className="text-body-secondary">Stay consistent to keep it climbing.</small>
+              </div>
+            </div>
+            <h2 className="fw-bold mb-1">{achievementsSummary.streak} days</h2>
+            <div className="text-body-secondary small">Current streak</div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+      <CCol md={4}>
+        <CCard className="shadow-sm border-0 h-100">
+          <CCardBody>
+            <div className="d-flex align-items-center mb-3">
+              <div className="rounded-circle bg-warning-subtle p-2 me-3">
+                <CIcon icon={cilBell} className="text-warning" />
+              </div>
+              <div>
+                <div className="fw-semibold">Milestones</div>
+                <small className="text-body-secondary">Habit completions logged in StepHabit.</small>
+              </div>
+            </div>
+            <h2 className="fw-bold mb-1">{achievementsSummary.totalHabits}</h2>
+            <div className="text-body-secondary small">Habits tracked</div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+    </CRow>
+  )
+
+  const renderHelpTab = () => (
+    <CRow className="g-4">
+      <CCol md={4}>
+        <CCard className="shadow-sm border-0 h-100">
+          <CCardBody>
+            <div className="d-flex align-items-center mb-3">
+              <div className="rounded-circle bg-info-subtle p-2 me-3">
+                <CIcon icon={cilInfo} className="text-info" />
+              </div>
+              <div>
+                <div className="fw-semibold">About StepHabit</div>
+                <small className="text-body-secondary">Learn how the app keeps you on track.</small>
+              </div>
+            </div>
+            <CButton color="info" variant="outline" onClick={() => navigate("/dashboard")}> 
+              Explore the dashboard
+            </CButton>
+          </CCardBody>
+        </CCard>
+      </CCol>
+      <CCol md={4}>
+        <CCard className="shadow-sm border-0 h-100">
+          <CCardBody>
+            <div className="d-flex align-items-center mb-3">
+              <div className="rounded-circle bg-primary-subtle p-2 me-3">
+                <CIcon icon={cilLifeRing} className="text-primary" />
+              </div>
+              <div>
+                <div className="fw-semibold">Help Center</div>
+                <small className="text-body-secondary">Browse FAQs and quick tips.</small>
+              </div>
+            </div>
+            <CButton color="primary" variant="outline" onClick={() => navigate("/help")}>Open help</CButton>
+          </CCardBody>
+        </CCard>
+      </CCol>
+      <CCol md={4}>
+        <CCard className="shadow-sm border-0 h-100">
+          <CCardBody>
+            <div className="d-flex align-items-center mb-3">
+              <div className="rounded-circle bg-warning-subtle p-2 me-3">
+                <CIcon icon={cilContact} className="text-warning" />
+              </div>
+              <div>
+                <div className="fw-semibold">Contact</div>
+                <small className="text-body-secondary">Get support from the StepHabit team.</small>
+              </div>
+            </div>
+            <CButton color="warning" variant="outline" onClick={() => navigate("/contact")}>Contact us</CButton>
+          </CCardBody>
+        </CCard>
+      </CCol>
+    </CRow>
+  )
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "account":
+        return renderAccountTab()
+      case "preferences":
+        return renderPreferencesTab()
+      case "notifications":
+        return renderNotificationsTab()
+      case "connected-apps":
+        return renderConnectedAppsTab()
+      case "achievements":
+        return renderAchievementsTab()
+      case "help":
+        return renderHelpTab()
+      default:
+        return renderAccountTab()
+    }
+  }
+
+  if (!user) {
+    return (
+      <CAlert color="warning" className="border-0 shadow-sm">
+        Please log in to manage your profile.
+      </CAlert>
+    )
+  }
 
   if (loading) {
     return (
-      <div className="py-5 text-center">
-        <CSpinner color="primary" />
-        <p className="text-body-secondary mt-2">Loading your profile…</p>
+      <div className="text-center py-5">
+        <CSpinner color="primary" size="lg" />
+        <p className="mt-3 text-body-secondary">Loading your profile…</p>
       </div>
-    );
+    )
   }
 
   return (
     <CContainer fluid className="py-4">
-      {error && (
-        <CAlert color="danger" className="mb-4">
-          {error}
-        </CAlert>
-      )}
-      {success && (
-        <CAlert color="success" className="mb-4">
-          {success}
-        </CAlert>
-      )}
+      <div className="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+        <div>
+          <div className="d-flex align-items-center gap-3 mb-2">
+            <CAvatar src={avatarUrl} size="lg" />
+            <div>
+              <h2 className="fw-bold mb-0">Profile</h2>
+              <div className="text-body-secondary">One hub for account, preferences, and support.</div>
+            </div>
+          </div>
+          {status && (
+            <CAlert color="success" className="py-2 px-3 mb-0 d-inline-flex align-items-center">
+              <CIcon icon={cilLink} className="me-2" /> {status}
+            </CAlert>
+          )}
+          {error && (
+            <CAlert color="danger" className="py-2 px-3 mb-0 d-inline-flex align-items-center">
+              <CIcon icon={cilLink} className="me-2" /> {error}
+            </CAlert>
+          )}
+        </div>
+        <CButton color="primary" size="lg" onClick={handleSave} disabled={saving}>
+          {saving ? <CSpinner size="sm" className="me-2" /> : <CIcon icon={cilSettings} className="me-2" />}
+          {saving ? "Saving" : "Save changes"}
+        </CButton>
+      </div>
 
-      <CRow className="g-4">
-        <CCol xl={4} lg={5}>
-          <CCard className="h-100">
-            <CCardBody className="text-center d-flex flex-column">
-              <CAvatar src={avatarUrl} size="xl" className="mx-auto mb-3" />
-              <h4 className="mb-0">{form.name || "Your profile"}</h4>
-              {form.email && (
-                <div className="text-body-secondary small mb-3 d-flex align-items-center justify-content-center gap-1">
-                  <CIcon icon={cilEnvelopeOpen} />
-                  {form.email}
-                </div>
-              )}
-              <div className="d-flex flex-wrap justify-content-center gap-2 mb-3">
-                <CBadge color="info" className="px-3 py-2">
-                  <CIcon icon={cilTask} className="me-2" />
-                  {habits.length} habits
-                </CBadge>
-                <CBadge color="secondary" className="px-3 py-2">
-                  <CIcon icon={cilSettings} className="me-2" />
-                  {profileCompletion}% complete
-                </CBadge>
-              </div>
-              <CProgress thin className="mb-3">
-                <CProgressBar value={profileCompletion} color="primary" />
-              </CProgress>
-              <div className="text-body-secondary small mb-4">
-                Member since {formatDate(profile?.createdAt)} · Updated {formatDate(profile?.updatedAt)}
-              </div>
-              <CButton
-                color="secondary"
-                variant="outline"
-                className="mb-2"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={avatarUploading}
-              >
-                <CIcon icon={cilCloudUpload} className="me-2" />
-                {avatarUploading ? "Uploading…" : "Update photo"}
-              </CButton>
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="d-none"
-                accept="image/*"
-                onChange={handleAvatarChange}
-              />
-              <CButton
-                color="primary"
-                variant="outline"
-                className="mt-auto"
-                onClick={() => navigate("/settings")}
-              >
-                <CIcon icon={cilSettings} className="me-2" />
-                Open account settings
-              </CButton>
-            </CCardBody>
-          </CCard>
+      <CNav variant="tabs" role="tablist" className="mb-4">
+        <CNavItem>
+          <CNavLink active={activeTab === "account"} onClick={() => setActiveTab("account")}>
+            <CIcon icon={cilUser} className="me-2" /> Account
+          </CNavLink>
+        </CNavItem>
+        <CNavItem>
+          <CNavLink active={activeTab === "preferences"} onClick={() => setActiveTab("preferences")}>
+            <CIcon icon={cilSettings} className="me-2" /> Preferences
+          </CNavLink>
+        </CNavItem>
+        <CNavItem>
+          <CNavLink active={activeTab === "notifications"} onClick={() => setActiveTab("notifications")}>
+            <CIcon icon={cilBell} className="me-2" /> Notifications
+          </CNavLink>
+        </CNavItem>
+        <CNavItem>
+          <CNavLink
+            active={activeTab === "connected-apps"}
+            onClick={() => setActiveTab("connected-apps")}
+          >
+            <CIcon icon={cilLink} className="me-2" /> Connected Apps
+          </CNavLink>
+        </CNavItem>
+        <CNavItem>
+          <CNavLink active={activeTab === "achievements"} onClick={() => setActiveTab("achievements")}>
+            <CIcon icon={cilStar} className="me-2" /> Achievements
+          </CNavLink>
+        </CNavItem>
+        <CNavItem>
+          <CNavLink active={activeTab === "help"} onClick={() => setActiveTab("help")}>
+            <CIcon icon={cilLifeRing} className="me-2" /> Help & Support
+          </CNavLink>
+        </CNavItem>
+      </CNav>
 
-          <CCard className="mt-4">
-            <CCardHeader>Personal insights</CCardHeader>
-            <CCardBody>
-              <CListGroup flush>
-                {insights.length > 0 ? (
-                  insights.map((item) => (
-                    <CListGroupItem
-                      key={item.label}
-                      className="d-flex align-items-center justify-content-between"
-                    >
-                      <span className="d-flex align-items-center gap-2">
-                        <CIcon icon={item.icon} className="text-primary" />
-                        {item.label}
-                      </span>
-                      <span className="fw-semibold">{item.value}</span>
-                    </CListGroupItem>
-                  ))
-                ) : (
-                  <CListGroupItem className="text-center text-body-secondary">
-                    Personal preferences aren&apos;t set yet. Visit settings to customise your experience.
-                  </CListGroupItem>
-                )}
-              </CListGroup>
-            </CCardBody>
-          </CCard>
-
-          <CCard className="mt-4">
-            <CCardHeader>Your journey focus</CCardHeader>
-            <CCardBody>
-              <CListGroup flush>
-                {journeyHighlights.map((item) => (
-                  <CListGroupItem
-                    key={item.label}
-                    className="d-flex align-items-start justify-content-between gap-3"
-                  >
-                    <span className="d-flex align-items-center gap-2">
-                      <CIcon icon={item.icon} className="text-primary" />
-                      {item.label}
-                    </span>
-                    <span className="fw-semibold text-end text-wrap text-break">{item.value}</span>
-                  </CListGroupItem>
-                ))}
-              </CListGroup>
-            </CCardBody>
-          </CCard>
-        </CCol>
-
-        <CCol xl={8} lg={7}>
-          <CCard className="mb-4">
-            <CCardHeader>Account details</CCardHeader>
-            <CCardBody>
-              <CForm onSubmit={handleSubmit} className="mt-2">
-                <CRow className="g-3">
-                  <CCol md={6}>
-                    <CFormLabel htmlFor="name">Full name</CFormLabel>
-                    <CFormInput
-                      id="name"
-                      value={form.name}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </CCol>
-                  <CCol md={6}>
-                    <CFormLabel htmlFor="email">Email</CFormLabel>
-                    <CFormInput
-                      id="email"
-                      type="email"
-                      value={form.email}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </CCol>
-                  <CCol md={4}>
-                    <CFormLabel htmlFor="age">Age</CFormLabel>
-                    <CFormInput
-                      id="age"
-                      type="number"
-                      min="0"
-                      value={form.age}
-                      onChange={handleInputChange}
-                    />
-                  </CCol>
-                  <CCol md={4}>
-                    <CFormLabel htmlFor="gender">Gender</CFormLabel>
-                    <CFormSelect
-                      id="gender"
-                      value={form.gender}
-                      onChange={handleInputChange}
-                      options={genderOptions}
-                    />
-                  </CCol>
-                  <CCol md={4}>
-                    <CFormLabel>Reminder summary</CFormLabel>
-                    <CFormInput
-                      disabled
-                      value={settingsSnapshot?.dailyReminderTime ? `Daily at ${settingsSnapshot.dailyReminderTime}` : "No reminders"}
-                    />
-                  </CCol>
-                  <CCol xs={12}>
-                    <CFormLabel htmlFor="bio">About you</CFormLabel>
-                    <CFormTextarea
-                      id="bio"
-                      rows={4}
-                      value={form.bio}
-                      onChange={handleInputChange}
-                      placeholder="Share what keeps you motivated, your goals, or anything your friends should know."
-                    />
-                  </CCol>
-                  <CCol md={6}>
-                    <CFormLabel htmlFor="primaryGoal">Primary goal</CFormLabel>
-                    <CFormSelect
-                      id="primaryGoal"
-                      value={form.primaryGoal}
-                      onChange={handleInputChange}
-                      options={goalOptions}
-                    />
-                  </CCol>
-                  <CCol md={6}>
-                    <CFormLabel htmlFor="focusArea">Focus area</CFormLabel>
-                    <CFormSelect
-                      id="focusArea"
-                      value={form.focusArea}
-                      onChange={handleInputChange}
-                      options={focusOptions}
-                    />
-                  </CCol>
-                  <CCol md={6}>
-                    <CFormLabel htmlFor="dailyCommitment">Daily commitment</CFormLabel>
-                    <CFormSelect
-                      id="dailyCommitment"
-                      value={form.dailyCommitment}
-                      onChange={handleInputChange}
-                      options={commitmentOptions}
-                    />
-                  </CCol>
-                  <CCol md={6}>
-                    <CFormLabel htmlFor="experienceLevel">Experience level</CFormLabel>
-                    <CFormSelect
-                      id="experienceLevel"
-                      value={form.experienceLevel}
-                      onChange={handleInputChange}
-                      options={experienceOptions}
-                    />
-                  </CCol>
-                  <CCol md={6}>
-                    <CFormLabel htmlFor="supportPreference">Support style</CFormLabel>
-                    <CFormSelect
-                      id="supportPreference"
-                      value={form.supportPreference}
-                      onChange={handleInputChange}
-                      options={supportOptions}
-                    />
-                  </CCol>
-                  <CCol xs={12}>
-                    <CFormLabel htmlFor="motivation">Motivation mantra</CFormLabel>
-                    <CFormTextarea
-                      id="motivation"
-                      rows={3}
-                      value={form.motivation}
-                      onChange={handleInputChange}
-                      placeholder="Write a short message to future you for days when energy dips."
-                    />
-                  </CCol>
-                </CRow>
-                <div className="d-flex justify-content-end mt-4">
-                  <CButton color="primary" type="submit" disabled={saving}>
-                    <CIcon icon={cilPen} className="me-2" />
-                    {saving ? "Saving…" : "Save profile"}
-                  </CButton>
-                </div>
-              </CForm>
-            </CCardBody>
-          </CCard>
-
-          <CCard className="mb-4">
-            <CCardHeader>Performance snapshot</CCardHeader>
-            <CCardBody>
-              {analyticsError && (
-                <CAlert color="warning" className="mb-3">
-                  {analyticsError}
-                </CAlert>
-              )}
-              {analyticsLoading ? (
-                <div className="text-center py-4">
-                  <CSpinner color="primary" />
-                  <div className="text-body-secondary small mt-2">
-                    Gathering your progress…
-                  </div>
-                </div>
-              ) : analytics ? (
-                <>
-                  <CRow className="g-3">
-                    {activityHighlights.map((item) => (
-                      <CCol md={6} key={item.label}>
-                        <CCard className="border-0 shadow-sm h-100">
-                          <CCardBody className="d-flex align-items-center justify-content-between">
-                            <div>
-                              <div className="text-uppercase text-body-secondary small mb-1">
-                                {item.label}
-                              </div>
-                              <div className="fw-bold fs-4">{item.value}</div>
-                            </div>
-                            <div className={`bg-${item.tone}-subtle text-${item.tone} rounded-circle p-3`}>
-                              <CIcon icon={item.icon} size="lg" />
-                            </div>
-                          </CCardBody>
-                        </CCard>
-                      </CCol>
-                    ))}
-                  </CRow>
-
-                  <CRow className="g-4 mt-1">
-                    <CCol md={6}>
-                      <CCard className="h-100 border-0 shadow-sm">
-                        <CCardHeader>Peak day</CCardHeader>
-                        <CCardBody>
-                          {analytics.summary?.peakDay ? (
-                            <>
-                              <div className="fw-bold fs-5 mb-2">
-                                {formatDate(analytics.summary.peakDay.date)}
-                              </div>
-                              <p className="mb-1">
-                                <span className="fw-semibold">{analytics.summary.peakDay.completed}</span>{" "}
-                                completed · {" "}
-                                <span className="fw-semibold">{analytics.summary.peakDay.missed}</span>{" "}
-                                missed
-                              </p>
-                              <p className="text-body-secondary mb-0">
-                                Keep the momentum going by planning your next check-ins.
-                              </p>
-                            </>
-                          ) : (
-                            <p className="text-body-secondary mb-0">
-                              Complete a few habits to discover your standout day.
-                            </p>
-                          )}
-                        </CCardBody>
-                      </CCard>
-                    </CCol>
-                    <CCol md={6}>
-                      <CCard className="h-100 border-0 shadow-sm">
-                        <CCardHeader>Streak leader</CCardHeader>
-                        <CCardBody>
-                          {analytics.summary?.streakLeader ? (
-                            <>
-                              <div className="fw-bold fs-5 mb-1">
-                                {analytics.summary.streakLeader.habitName}
-                              </div>
-                              <p className="mb-1">
-                                <span className="fw-semibold">{analytics.summary.streakLeader.currentStreak}</span>{" "}
-                                day current streak · best run {" "}
-                                <span className="fw-semibold">{analytics.summary.streakLeader.bestStreak}</span>{" "}
-                                days
-                              </p>
-                              <p className="text-body-secondary mb-0">
-                                Try logging this habit today to keep the streak alive!
-                              </p>
-                            </>
-                          ) : (
-                            <p className="text-body-secondary mb-0">
-                              Build consistent check-ins to unlock your first streak badge.
-                            </p>
-                          )}
-                        </CCardBody>
-                      </CCard>
-                    </CCol>
-                  </CRow>
-
-                  <CRow className="g-4 mt-1">
-                    <CCol xl={6}>
-                      <CCard className="h-100 border-0 shadow-sm">
-                        <CCardHeader>Top habits</CCardHeader>
-                        <CCardBody>
-                          {leaderboard.length > 0 ? (
-                            <CListGroup flush>
-                              {leaderboard.map((item) => (
-                                <CListGroupItem
-                                  key={item.habitId}
-                                  className="d-flex justify-content-between align-items-center"
-                                >
-                                  <div>
-                                    <div className="fw-semibold">{item.habitName}</div>
-                                    <div className="text-body-secondary small">
-                                      {item.totalCheckIns} total check-ins · {item.successRate}% success
-                                    </div>
-                                  </div>
-                                  <CBadge color="success" className="px-3 py-2">
-                                    <CIcon icon={cilStar} className="me-2" />
-                                    {item.currentStreak} day streak
-                                  </CBadge>
-                                </CListGroupItem>
-                              ))}
-                            </CListGroup>
-                          ) : (
-                            <p className="text-body-secondary mb-0 text-center">
-                              Your leaderboard will appear once you start tracking habits regularly.
-                            </p>
-                          )}
-                        </CCardBody>
-                      </CCard>
-                    </CCol>
-                    <CCol xl={6}>
-                      <CCard className="h-100 border-0 shadow-sm">
-                        <CCardHeader>Recent momentum</CCardHeader>
-                        <CCardBody>
-                          {momentumHabits.length > 0 ? (
-                            <CListGroup flush>
-                              {momentumHabits.map((habit) => (
-                                <CListGroupItem
-                                  key={habit.habitId}
-                                  className="d-flex justify-content-between align-items-center"
-                                >
-                                  <div>
-                                    <div className="fw-semibold">{habit.habitName}</div>
-                                    <div className="text-body-secondary small">
-                                      Last 7 days · {habit.recent?.done ?? 0} done / {habit.recent?.missed ?? 0} missed
-                                    </div>
-                                  </div>
-                                  <CBadge color={(habit.recent?.completionRate || 0) >= 70 ? "success" : "info"}>
-                                    {habit.recent?.completionRate ?? 0}%
-                                  </CBadge>
-                                </CListGroupItem>
-                              ))}
-                            </CListGroup>
-                          ) : (
-                            <p className="text-body-secondary mb-0 text-center">
-                              Track a habit for a week to see your rising trends here.
-                            </p>
-                          )}
-                        </CCardBody>
-                      </CCard>
-                    </CCol>
-                  </CRow>
-                </>
-              ) : (
-                <p className="text-body-secondary mb-0">
-                  Start checking in your habits to unlock personalised insights.
-                </p>
-              )}
-            </CCardBody>
-          </CCard>
-
-          <CCard>
-            <CCardHeader>Habit highlights</CCardHeader>
-            <CCardBody>
-              {habitsLoading ? (
-                <div className="text-center py-4">
-                  <CSpinner color="primary" size="sm" />
-                  <span className="ms-2 text-body-secondary">Loading habits…</span>
-                </div>
-              ) : topHabits.length > 0 ? (
-                <CListGroup flush>
-                  {topHabits.map((habit) => (
-                    <CListGroupItem
-                      key={habit.id}
-                      className="d-flex justify-content-between align-items-center"
-                    >
-                      <span className="d-flex flex-column">
-                        <span className="fw-semibold">
-                          <CIcon icon={cilListRich} className="me-2 text-primary" />
-                          {habit.title || habit.name || "Untitled habit"}
-                        </span>
-                        {habit.description && (
-                          <span className="text-body-secondary small mt-1">
-                            {habit.description}
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-body-secondary small">
-                        Created {formatDate(habit.created_at || habit.createdAt)}
-                      </span>
-                    </CListGroupItem>
-                  ))}
-                </CListGroup>
-              ) : (
-                <div className="text-center text-body-secondary py-4">
-                  <CIcon icon={cilUser} className="display-6 text-primary mb-3 d-block" />
-                  You haven&apos;t added any habits yet. Head to the
-                  <Link to="/addhabit" className="ms-1">Add Habit</Link> planner to get started.
-                </div>
-              )}
-            </CCardBody>
-          </CCard>
-        </CCol>
-      </CRow>
+      <CForm onSubmit={handleSave}>{renderTabContent()}</CForm>
     </CContainer>
-  );
-};
+  )
+}
 
-export default UserProfile;
+export default UserProfile
