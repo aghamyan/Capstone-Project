@@ -8,6 +8,10 @@ const Progress = sequelize.define(
     user_id: { type: DataTypes.INTEGER, allowNull: false },
     habit_id: { type: DataTypes.INTEGER, allowNull: false },
     status: { type: DataTypes.STRING(50), allowNull: false }, // completed, missed, skipped
+    reflection_reason: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     progress_date: {
       type: DataTypes.DATEONLY,
       allowNull: false,

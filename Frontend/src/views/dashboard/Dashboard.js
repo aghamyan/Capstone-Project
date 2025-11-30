@@ -38,6 +38,7 @@ import {
 } from "../../services/progress";
 import { formatPercent, getProgressAnalytics } from "../../services/analytics";
 import { fetchCalendarOverview } from "../../services/calendar";
+import { promptMissedReflection } from "../../utils/reflection";
 
 const Dashboard = () => {
   const [habits, setHabits] = useState([]);
@@ -256,10 +257,16 @@ const Dashboard = () => {
     }
   };
 
-  const handleQuickLog = async (habitId, status) => {
+  const handleQuickLog = async (habitId, status, habitTitle) => {
     if (!user?.id) return;
     try {
-      await logHabitProgress(habitId, { userId: user.id, status });
+      const payload = { userId: user.id, status };
+      if (status === "missed") {
+        const reason = promptMissedReflection(habitTitle);
+        if (!reason) return;
+        payload.reason = reason;
+      }
+      await logHabitProgress(habitId, payload);
       await loadTodayProgress();
       cancelEdit();
     } catch (err) {
@@ -398,7 +405,13 @@ const Dashboard = () => {
                             <CButtonGroup size="sm">
                               <CButton
                                 color="danger"
-                                onClick={() => handleQuickLog(habit.id, "missed")}
+                                onClick={() =>
+                                  handleQuickLog(
+                                    habit.id,
+                                    "missed",
+                                    habit.title || habit.name
+                                  )
+                                }
                               >
                                 Missed
                               </CButton>

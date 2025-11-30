@@ -35,6 +35,7 @@ import {
   logHabitProgress,
   updateHabitProgressCount,
 } from "../../services/progress";
+import { promptMissedReflection } from "../../utils/reflection";
 
 const CountAdjuster = ({
   label,
@@ -204,11 +205,20 @@ const ProgressTracker = () => {
   );
   const leaderboard = summary?.habitLeaderboard ?? [];
 
-  const markStatus = async (habitId, status) => {
+  const markStatus = async (habitId, status, habitTitle) => {
     if (!userId) return;
     try {
       setSaving(true);
-      const data = await logHabitProgress(habitId, { userId, status });
+      const payload = { userId, status };
+      if (status === "missed") {
+        const reason = promptMissedReflection(habitTitle);
+        if (!reason) {
+          setSaving(false);
+          return;
+        }
+        payload.reason = reason;
+      }
+      const data = await logHabitProgress(habitId, payload);
       setProgress((prev) => ({ ...prev, [habitId]: data.row?.status || status }));
       await Promise.all([
         loadAnalytics({ showSpinner: false }),
@@ -562,7 +572,13 @@ const ProgressTracker = () => {
                                 color="danger"
                                 size="sm"
                                 disabled={saving}
-                                onClick={() => markStatus(habit.id, "missed")}
+                                onClick={() =>
+                                  markStatus(
+                                    habit.id,
+                                    "missed",
+                                    habit.title || habit.name
+                                  )
+                                }
                               >
                                 Mark missed
                               </CButton>
@@ -570,7 +586,7 @@ const ProgressTracker = () => {
                                 color="success"
                                 size="sm"
                                 disabled={saving}
-                                onClick={() => markStatus(habit.id, "done")}
+                                onClick={() => markStatus(habit.id, "done", habit.title)}
                               >
                                 Mark done
                               </CButton>

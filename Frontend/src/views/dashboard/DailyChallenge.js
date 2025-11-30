@@ -37,6 +37,7 @@ import {
 
 import { getDailyChallengeSummary } from "../../services/dailyChallenge";
 import { logHabitProgress } from "../../services/progress";
+import { promptMissedReflection } from "../../utils/reflection";
 
 const formatPercent = (value) => `${Math.min(100, Math.max(0, value))}%`;
 
@@ -86,7 +87,16 @@ const DailyChallenge = () => {
 
     try {
       setLoggingState(`${targetHabitId}-${status}`);
-      await logHabitProgress(targetHabitId, { userId: user.id, status });
+      const payload = { userId: user.id, status };
+      if (status === "missed") {
+        const reason = promptMissedReflection(focusHabit?.title);
+        if (!reason) {
+          setLoggingState(null);
+          return;
+        }
+        payload.reason = reason;
+      }
+      await logHabitProgress(targetHabitId, payload);
       await loadSummary();
     } catch (err) {
       console.error("❌ Failed to log progress", err);
