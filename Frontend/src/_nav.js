@@ -30,8 +30,8 @@ const _nav = [
   },
   {
     component: CNavItem,
-    name: 'My Schedule',
-    to: '/schedules',
+    name: 'Planner',
+    to: '/planner',
     icon: <CIcon icon={cilCalendar} customClassName="nav-icon" />,
   },
 
@@ -125,12 +125,6 @@ const _nav = [
   {
     component: CNavTitle,
     name: 'Sync',
-  },
-  {
-    component: CNavItem,
-    name: 'Calendar Sync',
-    to: '/calendar-sync',
-    icon: <CIcon icon={cilSync} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,
