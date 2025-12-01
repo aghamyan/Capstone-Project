@@ -308,7 +308,7 @@ const AICompanion = () => {
                 </CListGroup>
               ) : (
                 <div className="text-center text-medium-emphasis py-5">
-                  <CIcon icon={cilLightbulb} size="2xl" className="mb-3" />
+                  <CIcon icon={cilLightbulb} size="xxl" className="mb-3" />
                   <h6 className="fw-semibold">Start the conversation</h6>
                   <p className="mb-0">
                     Share what you need help with today and I will guide your next
