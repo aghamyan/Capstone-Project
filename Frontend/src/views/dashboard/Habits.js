@@ -29,11 +29,17 @@ import {
   CSpinner,
   CTabContent,
   CTabPane,
+  CProgress,
+  CProgressBar,
+  CFormSwitch,
 } from "@coreui/react"
 import CIcon from "@coreui/icons-react"
 import {
   cilBolt,
   cilChatBubble,
+  cilClock,
+  cilChartLine,
+  cilBadge,
   cilList,
   cilPencil,
   cilPlus,
@@ -398,6 +404,425 @@ const MyHabitsTab = ({ onAddClick }) => {
   )
 }
 
+const InsightsTab = () => {
+  const insightData = useMemo(
+    () => ({
+      topHabits: [
+        { name: "Morning run", rate: 92, streak: 12 },
+        { name: "Hydration", rate: 88, streak: 9 },
+        { name: "Reading", rate: 84, streak: 7 },
+      ],
+      strugglingHabits: [
+        { name: "Sleep by 11pm", rate: 56 },
+        { name: "Inbox zero", rate: 61 },
+        { name: "Deep work", rate: 64 },
+      ],
+      winRatesByCategory: [
+        { name: "Health", value: 82 },
+        { name: "Focus", value: 74 },
+        { name: "Learning", value: 68 },
+        { name: "Wellness", value: 71 },
+      ],
+      forecast: [
+        { label: "Mon", chance: 92 },
+        { label: "Tue", chance: 89 },
+        { label: "Wed", chance: 85 },
+        { label: "Thu", chance: 87 },
+        { label: "Fri", chance: 81 },
+        { label: "Sat", chance: 78 },
+        { label: "Sun", chance: 76 },
+      ],
+      bestTime: {
+        window: "7:00 - 9:00 AM",
+        detail: "Highest completion before meetings begin.",
+        lift: "+14% vs average",
+      },
+    }),
+    [],
+  )
+
+  return (
+    <div className="mt-3">
+      <CRow className="g-4">
+        <CCol lg={6}>
+          <CCard className="shadow-sm border-0 h-100">
+            <CCardHeader className="bg-gradient-primary text-white">
+              <div className="d-flex align-items-center gap-2">
+                <CIcon icon={cilChartLine} />
+                <span className="fw-semibold">Highest performing habits</span>
+              </div>
+            </CCardHeader>
+            <CCardBody className="d-flex flex-column gap-3">
+              <CFormLabel className="text-uppercase small text-muted mb-1">Consistency rate</CFormLabel>
+              <div className="d-flex flex-column gap-2">
+                {insightData.topHabits.map((habit) => (
+                  <div key={habit.name} className="d-flex align-items-center gap-3">
+                    <div className="flex-grow-1">
+                      <div className="d-flex justify-content-between align-items-center">
+                        <span className="fw-semibold">{habit.name}</span>
+                        <CBadge color="success">{habit.rate}%</CBadge>
+                      </div>
+                      <CProgress className="mt-2" thin color="success" value={habit.rate} />
+                    </div>
+                    <CBadge color="light" className="text-dark">
+                      {habit.streak} day streak
+                    </CBadge>
+                  </div>
+                ))}
+              </div>
+            </CCardBody>
+          </CCard>
+        </CCol>
+        <CCol lg={6}>
+          <CCard className="shadow-sm border-0 h-100">
+            <CCardHeader className="bg-white">
+              <div className="d-flex align-items-center gap-2">
+                <CIcon icon={cilList} className="text-warning" />
+                <span className="fw-semibold">Most struggling habits</span>
+              </div>
+            </CCardHeader>
+            <CCardBody className="d-flex flex-column gap-3">
+              <CFormLabel className="text-uppercase small text-muted mb-1">Win rate</CFormLabel>
+              {insightData.strugglingHabits.map((habit) => (
+                <div key={habit.name} className="bg-body-tertiary rounded-3 p-3">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <span className="fw-semibold">{habit.name}</span>
+                    <CBadge color="warning" className="text-dark">{habit.rate}%</CBadge>
+                  </div>
+                  <CProgress color="warning" value={habit.rate} />
+                  <small className="text-muted">Add a lighter variant or pair with a reminder.</small>
+                </div>
+              ))}
+            </CCardBody>
+          </CCard>
+        </CCol>
+      </CRow>
+
+      <CRow className="g-4 mt-1">
+        <CCol lg={5}>
+          <CCard className="shadow-sm border-0 h-100">
+            <CCardHeader className="bg-white">
+              <div className="d-flex align-items-center gap-2">
+                <CIcon icon={cilClock} className="text-primary" />
+                <span className="fw-semibold">Best completion time</span>
+              </div>
+            </CCardHeader>
+            <CCardBody>
+              <div className="p-3 rounded-4" style={{ background: "linear-gradient(120deg, #e0ecff, #f3f8ff)" }}>
+                <div className="text-uppercase small text-muted">Time of day</div>
+                <h4 className="fw-bold mb-1">{insightData.bestTime.window}</h4>
+                <p className="text-body-secondary mb-2">{insightData.bestTime.detail}</p>
+                <CBadge color="info" className="text-dark">{insightData.bestTime.lift}</CBadge>
+              </div>
+            </CCardBody>
+          </CCard>
+        </CCol>
+        <CCol lg={4}>
+          <CCard className="shadow-sm border-0 h-100">
+            <CCardHeader className="bg-white">
+              <div className="d-flex align-items-center gap-2">
+                <CIcon icon={cilBadge} className="text-success" />
+                <span className="fw-semibold">Win rate by category</span>
+              </div>
+            </CCardHeader>
+            <CCardBody className="d-flex flex-column gap-3">
+              {insightData.winRatesByCategory.map((category) => (
+                <div key={category.name}>
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <span>{category.name}</span>
+                    <CBadge color="light" className="text-dark">
+                      {category.value}%
+                    </CBadge>
+                  </div>
+                  <CProgress color="primary" value={category.value} />
+                </div>
+              ))}
+            </CCardBody>
+          </CCard>
+        </CCol>
+        <CCol lg={3}>
+          <CCard className="shadow-sm border-0 h-100">
+            <CCardHeader className="bg-white">
+              <div className="d-flex align-items-center gap-2">
+                <CIcon icon={cilBolt} className="text-info" />
+                <span className="fw-semibold">Weekly success forecast</span>
+              </div>
+            </CCardHeader>
+            <CCardBody className="d-flex flex-column gap-3">
+              {insightData.forecast.map((day) => (
+                <div key={day.label}>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <span className="text-muted">{day.label}</span>
+                    <span className="fw-semibold">{day.chance}%</span>
+                  </div>
+                  <CProgressBar color="info" value={day.chance} className="rounded-pill" />
+                </div>
+              ))}
+            </CCardBody>
+          </CCard>
+        </CCol>
+      </CRow>
+    </div>
+  )
+}
+
+const HistoryTab = () => {
+  const heatmap = useMemo(() => Array.from({ length: 30 }, (_, i) => (i % 7 === 0 ? "missed" : "done")), [])
+  const streak = { longest: 21, current: 8, goal: 30 }
+
+  const exportCsv = () => {
+    const header = "day,status\n"
+    const rows = heatmap
+      .map((value, index) => `Day ${index + 1},${value}`)
+      .join("\n")
+    const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = "habit-history.csv"
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div className="mt-3">
+      <CRow className="g-4">
+        <CCol lg={7}>
+          <CCard className="shadow-sm border-0 h-100">
+            <CCardHeader className="bg-white d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2">
+                <CIcon icon={cilChartLine} className="text-primary" />
+                <span className="fw-semibold">Habit history</span>
+              </div>
+              <CButton color="primary" size="sm" variant="outline" onClick={exportCsv}>
+                Export CSV
+              </CButton>
+            </CCardHeader>
+            <CCardBody className="d-flex flex-column gap-3">
+              <div>
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <span className="fw-semibold">Calendar heatmap</span>
+                  <CBadge color="light" className="text-dark">Last 30 days</CBadge>
+                </div>
+                <div className="d-flex flex-wrap gap-2">
+                  {heatmap.map((value, index) => (
+                    <div
+                      key={index}
+                      className="rounded-2"
+                      style={{
+                        width: "26px",
+                        height: "26px",
+                        background:
+                          value === "done"
+                            ? "linear-gradient(135deg, #74d680, #3bb78f)"
+                            : "linear-gradient(135deg, #ffd166, #ff6b6b)",
+                        opacity: value === "done" ? 0.95 : 0.8,
+                      }}
+                      title={`${value === "done" ? "Completed" : "Missed"} on day ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-3 bg-body-tertiary">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <span className="fw-semibold">Monthly view</span>
+                  <CBadge color="info" className="text-dark">June snapshot</CBadge>
+                </div>
+                <div className="d-flex flex-wrap gap-3">
+                  <div>
+                    <div className="text-muted small">Completion</div>
+                    <h4 className="fw-bold mb-0">82%</h4>
+                  </div>
+                  <div>
+                    <div className="text-muted small">Missed</div>
+                    <h4 className="fw-bold mb-0">6 days</h4>
+                  </div>
+                  <div>
+                    <div className="text-muted small">Perfect days</div>
+                    <h4 className="fw-bold mb-0">12</h4>
+                  </div>
+                </div>
+              </div>
+            </CCardBody>
+          </CCard>
+        </CCol>
+        <CCol lg={5}>
+          <CCard className="shadow-sm border-0 h-100">
+            <CCardHeader className="bg-white">
+              <div className="d-flex align-items-center gap-2">
+                <CIcon icon={cilBolt} className="text-success" />
+                <span className="fw-semibold">Longest streak</span>
+              </div>
+            </CCardHeader>
+            <CCardBody className="d-flex flex-column gap-3">
+              <div className="p-3 rounded-4" style={{ background: "linear-gradient(135deg, #e1f3e3, #f2fff6)" }}>
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <span className="text-muted">Personal best</span>
+                  <CBadge color="success">{streak.longest} days</CBadge>
+                </div>
+                <CProgress value={(streak.longest / streak.goal) * 100} color="success" className="mb-2" />
+                <small className="text-body-secondary">Goal: {streak.goal}-day streak</small>
+              </div>
+              <div className="bg-body-tertiary p-3 rounded-3">
+                <div className="d-flex justify-content-between">
+                  <span>Current streak</span>
+                  <span className="fw-semibold">{streak.current} days</span>
+                </div>
+                <CProgress color="info" value={(streak.current / streak.goal) * 100} className="mt-2" />
+                <small className="text-muted">Keep the run alive this week.</small>
+              </div>
+            </CCardBody>
+          </CCard>
+        </CCol>
+      </CRow>
+    </div>
+  )
+}
+
+const AutomationTab = () => {
+  const [rules, setRules] = useState([
+    {
+      id: 1,
+      title: "If habit missed 2 days → prompt reflection",
+      description: "Trigger a short note so you can capture what got in the way.",
+      active: true,
+      tone: "info",
+    },
+    {
+      id: 2,
+      title: "If streak reaches 5 → award badge",
+      description: "Celebrate momentum with a subtle badge and XP boost.",
+      active: true,
+      tone: "success",
+    },
+    {
+      id: 3,
+      title: "Notify if scheduled habit window passes without completion",
+      description: "Send a quiet nudge to reschedule or log a reason.",
+      active: false,
+      tone: "warning",
+    },
+  ])
+
+  const toggleRule = (ruleId) => {
+    setRules((prev) => prev.map((rule) => (rule.id === ruleId ? { ...rule, active: !rule.active } : rule)))
+  }
+
+  return (
+    <div className="mt-3">
+      <CRow className="g-4">
+        {rules.map((rule) => (
+          <CCol key={rule.id} lg={4}>
+            <CCard className="shadow-sm border-0 h-100">
+              <CCardHeader className="bg-white d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-2">
+                  <CIcon icon={cilBolt} className={`text-${rule.tone}`} />
+                  <span className="fw-semibold">Automation</span>
+                </div>
+                <CFormSwitch checked={rule.active} onChange={() => toggleRule(rule.id)} />
+              </CCardHeader>
+              <CCardBody className="d-flex flex-column gap-2">
+                <h6 className="mb-1">{rule.title}</h6>
+                <p className="text-body-secondary mb-0">{rule.description}</p>
+                <div className="d-flex align-items-center gap-2 mt-auto">
+                  <CBadge color={rule.tone}>{rule.active ? "Enabled" : "Disabled"}</CBadge>
+                  <small className="text-muted">Automation keeps habits on autopilot.</small>
+                </div>
+              </CCardBody>
+            </CCard>
+          </CCol>
+        ))}
+      </CRow>
+    </div>
+  )
+}
+
+const RewardsTab = () => {
+  const rewards = {
+    xp: 1280,
+    level: 6,
+    nextLevel: 7,
+    progressToNext: 65,
+    badges: [
+      { name: "Momentum", note: "5-day streak", color: "success" },
+      { name: "Consistency", note: "20 completions", color: "info" },
+      { name: "Night owl reset", note: "3 evening wins", color: "warning" },
+    ],
+  }
+
+  return (
+    <div className="mt-3">
+      <CRow className="g-4">
+        <CCol lg={5}>
+          <CCard className="shadow-sm border-0 h-100">
+            <CCardHeader className="bg-gradient-primary text-white">
+              <div className="d-flex align-items-center gap-2">
+                <CIcon icon={cilBadge} />
+                <span className="fw-semibold">Rewards</span>
+              </div>
+            </CCardHeader>
+            <CCardBody className="d-flex flex-column gap-3">
+              <div className="d-flex justify-content-between align-items-center">
+                <div>
+                  <div className="text-uppercase small text-muted">Current level</div>
+                  <h3 className="fw-bold mb-0">Level {rewards.level}</h3>
+                  <small className="text-body-secondary">Next: Level {rewards.nextLevel}</small>
+                </div>
+                <CBadge color="light" className="text-dark">
+                  {rewards.xp} XP
+                </CBadge>
+              </div>
+              <div>
+                <div className="d-flex justify-content-between mb-1">
+                  <span className="text-muted">Progress to next level</span>
+                  <span className="fw-semibold">{rewards.progressToNext}%</span>
+                </div>
+                <CProgress value={rewards.progressToNext} color="success" />
+              </div>
+              <div className="p-3 rounded-3 bg-body-tertiary">
+                <div className="text-muted small mb-1">How XP works</div>
+                <p className="mb-0 text-body-secondary">
+                  Earn XP for completions, streak milestones, and automations that keep you consistent.
+                </p>
+              </div>
+            </CCardBody>
+          </CCard>
+        </CCol>
+        <CCol lg={7}>
+          <CCard className="shadow-sm border-0 h-100">
+            <CCardHeader className="bg-white">
+              <div className="d-flex align-items-center gap-2">
+                <CIcon icon={cilChartLine} className="text-success" />
+                <span className="fw-semibold">Badges & levels</span>
+              </div>
+            </CCardHeader>
+            <CCardBody className="d-flex flex-column gap-3">
+              <div className="d-flex flex-wrap gap-2">
+                {rewards.badges.map((badge) => (
+                  <CBadge key={badge.name} color={badge.color} className="px-3 py-2">
+                    <span className="fw-semibold">{badge.name}</span>
+                    <div className="small text-white-50">{badge.note}</div>
+                  </CBadge>
+                ))}
+              </div>
+              <div className="bg-body-tertiary p-3 rounded-3">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <span className="fw-semibold">Minimal gamification</span>
+                  <CBadge color="primary" className="text-uppercase small">Focused</CBadge>
+                </div>
+                <p className="mb-0 text-body-secondary">
+                  Stay motivated without distraction—rewards stay subtle and purposeful so the habit stays center stage.
+                </p>
+              </div>
+            </CCardBody>
+          </CCard>
+        </CCol>
+      </CRow>
+    </div>
+  )
+}
+
 const HabitCoachBubble = () => {
   const [visible, setVisible] = useState(false)
 
@@ -465,6 +890,26 @@ const Habits = () => {
             Progress
           </CNavLink>
         </CNavItem>
+        <CNavItem>
+          <CNavLink active={activeTab === "insights"} onClick={() => setActiveTab("insights")}>
+            Insights
+          </CNavLink>
+        </CNavItem>
+        <CNavItem>
+          <CNavLink active={activeTab === "history"} onClick={() => setActiveTab("history")}>
+            History
+          </CNavLink>
+        </CNavItem>
+        <CNavItem>
+          <CNavLink active={activeTab === "automation"} onClick={() => setActiveTab("automation")}>
+            Automation
+          </CNavLink>
+        </CNavItem>
+        <CNavItem>
+          <CNavLink active={activeTab === "rewards"} onClick={() => setActiveTab("rewards")}>
+            Rewards
+          </CNavLink>
+        </CNavItem>
       </CNav>
 
       <CTabContent>
@@ -485,6 +930,18 @@ const Habits = () => {
           <div className="mt-3">
             <ProgressTracker />
           </div>
+        </CTabPane>
+        <CTabPane visible={activeTab === "insights"}>
+          <InsightsTab />
+        </CTabPane>
+        <CTabPane visible={activeTab === "history"}>
+          <HistoryTab />
+        </CTabPane>
+        <CTabPane visible={activeTab === "automation"}>
+          <AutomationTab />
+        </CTabPane>
+        <CTabPane visible={activeTab === "rewards"}>
+          <RewardsTab />
         </CTabPane>
       </CTabContent>
 
