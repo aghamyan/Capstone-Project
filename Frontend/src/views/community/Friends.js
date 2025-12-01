@@ -7,6 +7,7 @@ import {
   CCard,
   CCardBody,
   CCardHeader,
+  CCollapse,
   CCol,
   CForm,
   CFormInput,
@@ -44,6 +45,7 @@ const Friends = () => {
   const [updatingVisibility, setUpdatingVisibility] = useState([])
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [expandedFriendId, setExpandedFriendId] = useState(null)
 
   useEffect(() => {
     if (!user?.id) return
@@ -175,6 +177,10 @@ const Friends = () => {
 
   const hasSearchResults = searchResults.length > 0
   const hasRequests = requests.length > 0
+
+  const toggleFriendDetails = (friendId) => {
+    setExpandedFriendId((previous) => (previous === friendId ? null : friendId))
+  }
 
   return (
     <CRow className="justify-content-center mt-4">
@@ -334,9 +340,10 @@ const Friends = () => {
               <CListGroup className="rounded-4 overflow-hidden">
                 {friends.map((friend) => {
                   const isUpdating = updatingVisibility.includes(friend.id)
+                  const isExpanded = expandedFriendId === friend.id
                   return (
                     <CListGroupItem key={friend.id} className="p-3">
-                      <div className="d-flex justify-content-between flex-wrap">
+                      <div className="d-flex justify-content-between flex-wrap align-items-start gap-2">
                         <div className="d-flex align-items-center gap-3">
                           <CAvatar color="light" text={friend.name?.[0] || "?"}>
                             <CIcon icon={cilUser} />
@@ -346,50 +353,62 @@ const Friends = () => {
                             {friend.email && <small className="text-muted">{friend.email}</small>}
                           </div>
                         </div>
-                        {friend.created_at && (
-                          <small className="text-muted">
-                            Joined {new Date(friend.created_at).toLocaleDateString()}
-                          </small>
-                        )}
-                      </div>
-
-                      <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 mt-3">
-                        <div>
-                          <div className="fw-semibold mb-1">Sharing preferences</div>
-                          <small className="text-muted d-block">
-                            {friend.shares_habits_with_me
-                              ? `${friend.name} shares their habits with you.`
-                              : `${friend.name} has hidden their habits.`}
-                          </small>
-                        </div>
                         <div className="d-flex align-items-center gap-2">
-                          <small className="text-muted">Share my habits</small>
-                          <CFormSwitch
-                            id={`share-${friend.id}`}
-                            checked={!!friend.can_view_my_habits}
-                            disabled={isUpdating}
-                            onChange={(event) =>
-                              handleUpdateVisibility(friend.id, event.target.checked)
-                            }
-                          />
+                          {friend.created_at && (
+                            <small className="text-muted">
+                              Joined {new Date(friend.created_at).toLocaleDateString()}
+                            </small>
+                          )}
+                          <CButton
+                            color="light"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => toggleFriendDetails(friend.id)}
+                          >
+                            {isExpanded ? "Hide details" : "View details"}
+                          </CButton>
                         </div>
                       </div>
 
-                      {Array.isArray(friend.habits) && friend.habits.length > 0 ? (
-                        <div className="mt-3">
-                          <div className="fw-semibold mb-2">Habits</div>
-                          <ul className="mb-0 ps-3">
-                            {friend.habits.map((habit) => (
-                              <li key={habit.id} className="mb-1">
-                                <span className="fw-semibold">{habit.title}</span>
-                                {habit.category && <span className="text-muted"> · {habit.category}</span>}
-                              </li>
-                            ))}
-                          </ul>
+                      <CCollapse visible={isExpanded} className="mt-3">
+                        <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2">
+                          <div>
+                            <div className="fw-semibold mb-1">Sharing preferences</div>
+                            <small className="text-muted d-block">
+                              {friend.shares_habits_with_me
+                                ? `${friend.name} shares their habits with you.`
+                                : `${friend.name} has hidden their habits.`}
+                            </small>
+                          </div>
+                          <div className="d-flex align-items-center gap-2">
+                            <small className="text-muted">Share my habits</small>
+                            <CFormSwitch
+                              id={`share-${friend.id}`}
+                              checked={!!friend.can_view_my_habits}
+                              disabled={isUpdating}
+                              onChange={(event) =>
+                                handleUpdateVisibility(friend.id, event.target.checked)
+                              }
+                            />
+                          </div>
                         </div>
-                      ) : (
-                        <p className="text-muted mb-0 mt-3">No habits shared yet.</p>
-                      )}
+
+                        {Array.isArray(friend.habits) && friend.habits.length > 0 ? (
+                          <div className="mt-3">
+                            <div className="fw-semibold mb-2">Habits</div>
+                            <ul className="mb-0 ps-3">
+                              {friend.habits.map((habit) => (
+                                <li key={habit.id} className="mb-1">
+                                  <span className="fw-semibold">{habit.title}</span>
+                                  {habit.category && <span className="text-muted"> · {habit.category}</span>}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : (
+                          <p className="text-muted mb-0 mt-3">No habits shared yet.</p>
+                        )}
+                      </CCollapse>
                     </CListGroupItem>
                   )
                 })}
