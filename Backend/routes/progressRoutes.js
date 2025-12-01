@@ -154,6 +154,48 @@ router.get("/today/:userId", async (req, res) => {
   }
 });
 
+// Recent history for a user (used by Habits → History tab)
+router.get("/history/:userId", async (req, res) => {
+  try {
+    const userId = Number(req.params.userId);
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    const entries = await Progress.findAll({
+      where: { user_id: userId },
+      include: [
+        {
+          model: Habit,
+          as: "habit",
+          attributes: ["id", "title", "category"],
+        },
+      ],
+      order: [
+        ["progress_date", "DESC"],
+        ["created_at", "DESC"],
+      ],
+      limit: 50,
+    });
+
+    const mapped = entries.map((row) => ({
+      id: row.id,
+      habitId: row.habit_id,
+      habitTitle: row.habit?.title || `Habit ${row.habit_id}`,
+      category: row.habit?.category || null,
+      status: row.status,
+      reason: row.reflection_reason,
+      progressDate: row.progress_date,
+      createdAt: row.created_at,
+    }));
+
+    res.json(mapped);
+  } catch (err) {
+    console.error("❌ /history error:", err);
+    res.status(500).json({ error: "Failed to load progress history" });
+  }
+});
+
 /* (Optional) keep the old "done" route if you still use it elsewhere */
 router.post("/:habitId/done", async (req, res) => {
   try {
