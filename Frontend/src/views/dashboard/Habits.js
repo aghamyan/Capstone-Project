@@ -72,7 +72,7 @@ const DailyChallengeHighlight = ({ challenge, onLog }) => {
     : 0
 
   return (
-    <CCard className="h-100 shadow-sm border-0">
+    <CCard className="h-100 shadow-sm border-0 habits-panel challenge-card">
       <CCardHeader className="bg-gradient-primary text-white">
         <div className="d-flex align-items-center gap-3">
           <CIcon icon={cilBolt} size="lg" />
@@ -258,26 +258,26 @@ const MyHabitsTab = ({ onAddClick }) => {
   )
 
   return (
-    <div className="mt-3">
+    <div className="mt-3 habits-section">
       <CRow className="g-4">
         <CCol lg={4}>
           {challengeError && <CAlert color="warning">{challengeError}</CAlert>}
           <DailyChallengeHighlight challenge={challenge} onLog={handleLog} />
         </CCol>
         <CCol lg={8}>
-          <CCard className="shadow-sm border-0 h-100">
-            <CCardHeader className="d-flex align-items-center justify-content-between bg-white">
+          <CCard className="shadow-sm border-0 h-100 habits-panel">
+            <CCardHeader className="d-flex align-items-center justify-content-between bg-white border-0">
               <div className="d-flex align-items-center gap-2">
                 <CIcon icon={cilList} className="text-primary" />
                 <span className="fw-semibold">My habits</span>
               </div>
               <div className="d-flex gap-2">
-                <CButton color="primary" size="sm" variant="outline" onClick={onAddClick}>
+                <CButton color="primary" size="sm" variant="outline" className="rounded-pill" onClick={onAddClick}>
                   <CIcon icon={cilPlus} className="me-1" /> Add habit
                 </CButton>
               </div>
             </CCardHeader>
-            <CCardBody>
+            <CCardBody className="d-flex flex-column gap-3">
               {feedback && <CAlert color={feedback.type}>{feedback.message}</CAlert>}
               {loading ? (
                 <div className="d-flex justify-content-center py-4">
@@ -286,15 +286,15 @@ const MyHabitsTab = ({ onAddClick }) => {
               ) : habits.length === 0 ? (
                 emptyState
               ) : (
-                <CListGroup flush>
+                <CListGroup flush className="habits-list">
                   {habits.map((habit) => (
-                    <CListGroupItem key={habit.id} className="py-3">
+                    <CListGroupItem key={habit.id} className="py-3 habit-item">
                       <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-                        <div>
+                        <div className="d-flex flex-column gap-1">
                           <div className="d-flex align-items-center gap-2 mb-1">
-                            <span className="fw-semibold">{habit.title}</span>
+                            <span className="fw-semibold habit-title">{habit.title}</span>
                             {habit.category && (
-                              <CBadge color="info" className="text-uppercase small">
+                              <CBadge color="info" className="text-uppercase small subtle-badge">
                                 {habit.category}
                               </CBadge>
                             )}
@@ -309,10 +309,11 @@ const MyHabitsTab = ({ onAddClick }) => {
                             </div>
                           ) : null}
                         </div>
-                        <div className="d-flex flex-wrap gap-2">
+                        <div className="d-flex flex-wrap gap-2 habit-actions">
                           <CButton
                             size="sm"
                             color="success"
+                            className="rounded-pill"
                             disabled={loggingState === `${habit.id}-done`}
                             onClick={() => handleLog(habit, "done")}
                           >
@@ -322,15 +323,28 @@ const MyHabitsTab = ({ onAddClick }) => {
                             size="sm"
                             color="warning"
                             variant="outline"
+                            className="rounded-pill"
                             disabled={loggingState === `${habit.id}-missed`}
                             onClick={() => handleLog(habit, "missed")}
                           >
                             {loggingState === `${habit.id}-missed` ? "Logging..." : "Log missed"}
                           </CButton>
-                          <CButton size="sm" color="secondary" variant="outline" onClick={() => startEdit(habit)}>
+                          <CButton
+                            size="sm"
+                            color="secondary"
+                            variant="outline"
+                            className="rounded-pill"
+                            onClick={() => startEdit(habit)}
+                          >
                             <CIcon icon={cilPencil} className="me-1" /> Edit
                           </CButton>
-                          <CButton size="sm" color="danger" variant="ghost" onClick={() => handleDelete(habit.id)}>
+                          <CButton
+                            size="sm"
+                            color="danger"
+                            variant="ghost"
+                            className="rounded-pill"
+                            onClick={() => handleDelete(habit.id)}
+                          >
                             <CIcon icon={cilTrash} />
                           </CButton>
                         </div>
@@ -445,7 +459,7 @@ const InsightsTab = () => {
     <div className="mt-3">
       <CRow className="g-4">
         <CCol lg={6}>
-          <CCard className="shadow-sm border-0 h-100">
+          <CCard className="shadow-sm border-0 h-100 habits-panel">
             <CCardHeader className="bg-gradient-primary text-white">
               <div className="d-flex align-items-center gap-2">
                 <CIcon icon={cilChartLine} />
@@ -474,7 +488,7 @@ const InsightsTab = () => {
           </CCard>
         </CCol>
         <CCol lg={6}>
-          <CCard className="shadow-sm border-0 h-100">
+          <CCard className="shadow-sm border-0 h-100 habits-panel">
             <CCardHeader className="bg-white">
               <div className="d-flex align-items-center gap-2">
                 <CIcon icon={cilList} className="text-warning" />
@@ -500,7 +514,7 @@ const InsightsTab = () => {
 
       <CRow className="g-4 mt-1">
         <CCol lg={5}>
-          <CCard className="shadow-sm border-0 h-100">
+          <CCard className="shadow-sm border-0 h-100 habits-panel">
             <CCardHeader className="bg-white">
               <div className="d-flex align-items-center gap-2">
                 <CIcon icon={cilClock} className="text-primary" />
@@ -518,7 +532,7 @@ const InsightsTab = () => {
           </CCard>
         </CCol>
         <CCol lg={4}>
-          <CCard className="shadow-sm border-0 h-100">
+          <CCard className="shadow-sm border-0 h-100 habits-panel">
             <CCardHeader className="bg-white">
               <div className="d-flex align-items-center gap-2">
                 <CIcon icon={cilBadge} className="text-success" />
@@ -541,7 +555,7 @@ const InsightsTab = () => {
           </CCard>
         </CCol>
         <CCol lg={3}>
-          <CCard className="shadow-sm border-0 h-100">
+          <CCard className="shadow-sm border-0 h-100 habits-panel">
             <CCardHeader className="bg-white">
               <div className="d-flex align-items-center gap-2">
                 <CIcon icon={cilBolt} className="text-info" />
@@ -588,7 +602,7 @@ const HistoryTab = () => {
     <div className="mt-3">
       <CRow className="g-4">
         <CCol lg={7}>
-          <CCard className="shadow-sm border-0 h-100">
+          <CCard className="shadow-sm border-0 h-100 habits-panel">
             <CCardHeader className="bg-white d-flex align-items-center justify-content-between">
               <div className="d-flex align-items-center gap-2">
                 <CIcon icon={cilChartLine} className="text-primary" />
@@ -648,7 +662,7 @@ const HistoryTab = () => {
           </CCard>
         </CCol>
         <CCol lg={5}>
-          <CCard className="shadow-sm border-0 h-100">
+          <CCard className="shadow-sm border-0 h-100 habits-panel">
             <CCardHeader className="bg-white">
               <div className="d-flex align-items-center gap-2">
                 <CIcon icon={cilBolt} className="text-success" />
@@ -714,7 +728,7 @@ const AutomationTab = () => {
       <CRow className="g-4">
         {rules.map((rule) => (
           <CCol key={rule.id} lg={4}>
-            <CCard className="shadow-sm border-0 h-100">
+            <CCard className="shadow-sm border-0 h-100 habits-panel">
               <CCardHeader className="bg-white d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2">
                   <CIcon icon={cilBolt} className={`text-${rule.tone}`} />
@@ -755,7 +769,7 @@ const RewardsTab = () => {
     <div className="mt-3">
       <CRow className="g-4">
         <CCol lg={5}>
-          <CCard className="shadow-sm border-0 h-100">
+          <CCard className="shadow-sm border-0 h-100 habits-panel">
             <CCardHeader className="bg-gradient-primary text-white">
               <div className="d-flex align-items-center gap-2">
                 <CIcon icon={cilBadge} />
@@ -790,7 +804,7 @@ const RewardsTab = () => {
           </CCard>
         </CCol>
         <CCol lg={7}>
-          <CCard className="shadow-sm border-0 h-100">
+          <CCard className="shadow-sm border-0 h-100 habits-panel">
             <CCardHeader className="bg-white">
               <div className="d-flex align-items-center gap-2">
                 <CIcon icon={cilChartLine} className="text-success" />
@@ -859,21 +873,51 @@ const HabitCoachBubble = () => {
 const Habits = () => {
   const [activeTab, setActiveTab] = useState("my-habits")
 
+  const heroStats = useMemo(
+    () => [
+      { label: "Weekly win rate", value: "82%", tone: "success" },
+      { label: "Current streak", value: "21 days", tone: "info" },
+      { label: "Active habits", value: "12", tone: "warning" },
+    ],
+    [],
+  )
+
   return (
-    <div className="pt-3 pb-5 position-relative">
-      <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <div>
+    <div className="pt-3 pb-5 position-relative habits-page">
+      <div className="habits-hero mb-4">
+        <div className="d-flex flex-column gap-2">
+          <div className="d-flex align-items-center gap-2">
+            <CBadge color="info" className="text-uppercase fw-semibold mini-badge">Modernized</CBadge>
+            <span className="text-body-secondary small">Smart routines, powerful insights</span>
+          </div>
           <h2 className="fw-bold mb-1">Habits</h2>
           <p className="text-body-secondary mb-0">
-            One home for creating, browsing, tracking, and celebrating your habits.
+            One home for creating, browsing, tracking, and celebrating your habits. Everything feels calm, clear,
+            and ready for momentum.
           </p>
+          <div className="d-flex gap-2 flex-wrap mt-1">
+            <CButton color="primary" size="sm" className="rounded-pill" onClick={() => setActiveTab("add")}>
+              <CIcon icon={cilPlus} className="me-2" /> Add new habit
+            </CButton>
+            <CButton color="light" size="sm" className="rounded-pill">
+              View quick wins
+            </CButton>
+          </div>
         </div>
-        <CBadge color="primary" className="px-3 py-2">
-          Unified workspace
-        </CBadge>
+        <div className="d-flex flex-wrap gap-3 habits-hero-stats">
+          {heroStats.map((stat) => (
+            <div key={stat.label} className="habits-hero-card">
+              <span className="text-uppercase small text-muted">{stat.label}</span>
+              <h4 className="fw-bold mb-0">{stat.value}</h4>
+              <div className={`badge bg-${stat.tone} bg-opacity-10 text-${stat.tone} fw-semibold mt-2`}>
+                Trending
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <CNav variant="tabs" role="tablist" className="mb-3">
+      <CNav variant="tabs" role="tablist" className="mb-3 habits-nav">
         <CNavItem>
           <CNavLink active={activeTab === "my-habits"} onClick={() => setActiveTab("my-habits")}>My Habits</CNavLink>
         </CNavItem>
