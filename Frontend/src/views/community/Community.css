@@ -1,0 +1,46 @@
+.community-shell {
+  background: #f5f7fb;
+}
+
+.compact-hero {
+  background: linear-gradient(180deg, #ffffff, #f7f9fc);
+}
+
+.stat-chip {
+  background: #f1f4fb;
+  border: 1px solid #e2e8f3;
+  border-radius: 12px;
+  min-width: 110px;
+}
+
+.community-tabs .nav-link {
+  color: #53627c;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.community-tabs .nav-link:hover {
+  background: #eef2ff;
+  color: #3b57f5;
+}
+
+.community-tabs .nav-link.active {
+  background: linear-gradient(120deg, #5c6cf6, #6fd9e8);
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(92, 108, 246, 0.25);
+  border-color: transparent;
+}
+
+.community-tabs .nav-link.active .text-primary {
+  color: #fff !important;
+}
+
+.community-section-card {
+  border-radius: 20px;
+  border: 1px solid #eef2ff;
+  box-shadow: 0 10px 25px rgba(83, 98, 124, 0.08);
+}
+
+.subtle-bg {
+  background: linear-gradient(145deg, #f7f9fc, #ffffff);
+}
