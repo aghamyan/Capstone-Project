@@ -1,43 +1,16 @@
 .community-shell {
-  background: radial-gradient(circle at 10% 20%, rgba(91, 144, 255, 0.08), transparent 25%),
-    radial-gradient(circle at 80% 0%, rgba(102, 216, 208, 0.08), transparent 25%),
-    #f7f9fc;
+  background: #f5f7fb;
 }
 
-.community-hero {
-  background: linear-gradient(135deg, #5c6cf6 0%, #6fd9e8 100%);
-  overflow: hidden;
+.compact-hero {
+  background: linear-gradient(180deg, #ffffff, #f7f9fc);
 }
 
-.community-hero::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.18), transparent 40%),
-    radial-gradient(circle at 80% 0%, rgba(255, 255, 255, 0.16), transparent 35%);
-  pointer-events: none;
-}
-
-.community-hero > * {
-  position: relative;
-  z-index: 1;
-}
-
-.hero-highlight {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.08);
-}
-
-.glass-card {
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
-  backdrop-filter: blur(6px);
-}
-
-.floating-card {
-  margin-top: -70px;
+.stat-chip {
+  background: #f1f4fb;
+  border: 1px solid #e2e8f3;
+  border-radius: 12px;
+  min-width: 110px;
 }
 
 .community-tabs .nav-link {
