@@ -18,6 +18,7 @@ import AssistantMemory from "./AssistantMemory.js";
 import CalendarIntegration from "./CalendarIntegration.js";
 import CalendarEvent from "./CalendarEvent.js";
 import ChatMessage from "./ChatMessage.js";
+import GroupChallengeMessage from "./GroupChallengeMessage.js";
 
 // === Habit scheduling ===
 User.hasMany(Habit, { foreignKey: "user_id", as: "habits" });
@@ -68,6 +69,17 @@ GroupChallenge.belongsToMany(User, {
   otherKey: "user_id",
   as: "participants",
 });
+GroupChallenge.belongsTo(User, { foreignKey: "creator_id", as: "creator" });
+User.hasMany(GroupChallenge, { foreignKey: "creator_id", as: "createdChallenges" });
+GroupChallenge.hasMany(GroupChallengeMessage, {
+  foreignKey: "challenge_id",
+  as: "messages",
+});
+GroupChallengeMessage.belongsTo(GroupChallenge, {
+  foreignKey: "challenge_id",
+  as: "challenge",
+});
+GroupChallengeMessage.belongsTo(User, { foreignKey: "sender_id", as: "sender" });
 
 // === Notifications ===
 User.hasMany(Notification, { foreignKey: "user_id", as: "notifications" });
@@ -137,4 +149,5 @@ export {
   CalendarIntegration,
   CalendarEvent,
   ChatMessage,
+  GroupChallengeMessage,
 };
