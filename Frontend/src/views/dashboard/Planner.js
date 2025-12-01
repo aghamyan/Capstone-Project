@@ -1,77 +1,52 @@
-import React, { useState } from "react"
-import { CBadge, CNav, CNavItem, CNavLink, CTabContent, CTabPane } from "@coreui/react"
-
-import CalendarSync from "../sync/CalendarSync"
-import MyRoutine from "../pages/MyRoutine"
-import SmartScheduler from "./SmartScheduler"
-import Schedules from "./Schedules"
+import React from "react"
+import { CAlert, CBadge, CContainer, CSpinner } from "@coreui/react"
+import { usePlannerData } from "../../hooks/usePlannerData"
+import { MyScheduleSection } from "../planner/sections/MyScheduleSection"
+import { AddScheduleSection } from "../planner/sections/AddScheduleSection"
+import { SmartSchedulingSection } from "../planner/sections/SmartSchedulingSection"
+import { RoutineBuilderSection } from "../planner/sections/RoutineBuilderSection"
+import { FocusModeSection } from "../planner/sections/FocusModeSection"
+import { TimeInsightsSection } from "../planner/sections/TimeInsightsSection"
+import { WeeklyReviewSection } from "../planner/sections/WeeklyReviewSection"
+import { SyncSection } from "../planner/sections/SyncSection"
 
 const Planner = () => {
-  const [activeTab, setActiveTab] = useState("schedule")
+  const user = JSON.parse(localStorage.getItem("user"))
+  const userId = user?.id
+  const { loading, error, scheduleStats, calendarOverview, aiData, insights, sessions, draftReview, reviews, schedules } =
+    usePlannerData(userId)
 
-  const handleSyncClick = () => setActiveTab("sync")
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center py-5">
+        <CSpinner color="primary" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return <CAlert color="danger">{error}</CAlert>
+  }
 
   return (
-    <div className="pt-3 pb-5 position-relative">
-      <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <CContainer fluid className="pt-3 pb-5">
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div>
           <h2 className="fw-bold mb-1">Planner</h2>
-          <p className="text-body-secondary mb-0">
-            One unified place for your schedule, smart suggestions, and calendar sync.
-          </p>
+          <p className="text-body-secondary mb-0">Modern, simple, efficient planning across seven sections plus improved sync.</p>
         </div>
-        <CBadge color="primary" className="px-3 py-2 d-flex align-items-center gap-2">
-          <span role="img" aria-label="planner">
-            📅
-          </span>
-          Unified scheduling
-        </CBadge>
+        <CBadge color="primary" className="px-3 py-2">Unified scheduling</CBadge>
       </div>
 
-      <CNav variant="tabs" role="tablist" className="mb-3">
-        <CNavItem>
-          <CNavLink active={activeTab === "schedule"} onClick={() => setActiveTab("schedule")}>
-            My Schedule
-          </CNavLink>
-        </CNavItem>
-        <CNavItem>
-          <CNavLink active={activeTab === "add"} onClick={() => setActiveTab("add")}>
-            Add Schedule
-          </CNavLink>
-        </CNavItem>
-        <CNavItem>
-          <CNavLink active={activeTab === "smart"} onClick={() => setActiveTab("smart")}>
-            Smart Scheduling
-          </CNavLink>
-        </CNavItem>
-        <CNavItem>
-          <CNavLink active={activeTab === "sync"} onClick={() => setActiveTab("sync")}>
-            Sync
-          </CNavLink>
-        </CNavItem>
-      </CNav>
-
-      <CTabContent>
-        <CTabPane visible={activeTab === "schedule"}>
-          <MyRoutine onSyncClick={handleSyncClick} />
-        </CTabPane>
-        <CTabPane visible={activeTab === "add"}>
-          <div className="mt-3">
-            <Schedules />
-          </div>
-        </CTabPane>
-        <CTabPane visible={activeTab === "smart"}>
-          <div className="mt-3">
-            <SmartScheduler />
-          </div>
-        </CTabPane>
-        <CTabPane visible={activeTab === "sync"}>
-          <div className="mt-3">
-            <CalendarSync />
-          </div>
-        </CTabPane>
-      </CTabContent>
-    </div>
+      <MyScheduleSection stats={scheduleStats} calendarOverview={calendarOverview} />
+      <AddScheduleSection schedules={schedules} />
+      <SmartSchedulingSection aiData={aiData} />
+      <RoutineBuilderSection />
+      <FocusModeSection sessions={sessions} />
+      <TimeInsightsSection insights={insights} />
+      <WeeklyReviewSection draftReview={draftReview} reviews={reviews} />
+      <SyncSection calendarOverview={calendarOverview} />
+    </CContainer>
   )
 }
 

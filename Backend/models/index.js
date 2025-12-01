@@ -3,34 +3,36 @@
 // relationships.  This file is imported by the server on startup which ensures
 // all associations are registered exactly once.
 
-import User from "./User.js";
-import Habit from "./Habit.js";
-import Schedule from "./Schedule.js";
-import Progress from "./Progress.js";
-import Notification from "./Notification.js";
-import Achievement from "./Achievement.js";
-import UserAchievement from "./UserAchievement.js";
-import Friend from "./Friend.js";
-import GroupChallenge from "./GroupChallenge.js";
-import UserGroupChallenge from "./UserGroupChallenge.js";
-import UserSetting from "./UserSetting.js";
-import AssistantMemory from "./AssistantMemory.js";
-import CalendarIntegration from "./CalendarIntegration.js";
-import CalendarEvent from "./CalendarEvent.js";
-import ChatMessage from "./ChatMessage.js";
-import GroupChallengeMessage from "./GroupChallengeMessage.js";
+import User from "./User.js"
+import Habit from "./Habit.js"
+import Schedule from "./Schedule.js"
+import Progress from "./Progress.js"
+import Notification from "./Notification.js"
+import Achievement from "./Achievement.js"
+import UserAchievement from "./UserAchievement.js"
+import Friend from "./Friend.js"
+import GroupChallenge from "./GroupChallenge.js"
+import UserGroupChallenge from "./UserGroupChallenge.js"
+import UserSetting from "./UserSetting.js"
+import AssistantMemory from "./AssistantMemory.js"
+import CalendarIntegration from "./CalendarIntegration.js"
+import CalendarEvent from "./CalendarEvent.js"
+import ChatMessage from "./ChatMessage.js"
+import GroupChallengeMessage from "./GroupChallengeMessage.js"
+import TimeLog from "./TimeLog.js"
+import WeeklyReview from "./WeeklyReview.js"
 
 // === Habit scheduling ===
-User.hasMany(Habit, { foreignKey: "user_id", as: "habits" });
-Habit.belongsTo(User, { foreignKey: "user_id", as: "owner" });
-Habit.hasMany(Schedule, { foreignKey: "habit_id", as: "schedules" });
-Schedule.belongsTo(Habit, { foreignKey: "habit_id", as: "habit" });
+User.hasMany(Habit, { foreignKey: "user_id", as: "habits" })
+Habit.belongsTo(User, { foreignKey: "user_id", as: "owner" })
+Habit.hasMany(Schedule, { foreignKey: "habit_id", as: "schedules" })
+Schedule.belongsTo(Habit, { foreignKey: "habit_id", as: "habit" })
 
 // === Habit progress tracking ===
-Habit.hasMany(Progress, { foreignKey: "habit_id", as: "progressLogs" });
-Progress.belongsTo(Habit, { foreignKey: "habit_id", as: "habit" });
-User.hasMany(Progress, { foreignKey: "user_id", as: "progressLogs" });
-Progress.belongsTo(User, { foreignKey: "user_id", as: "user" });
+Habit.hasMany(Progress, { foreignKey: "habit_id", as: "progressLogs" })
+Progress.belongsTo(Habit, { foreignKey: "habit_id", as: "habit" })
+User.hasMany(Progress, { foreignKey: "user_id", as: "progressLogs" })
+Progress.belongsTo(User, { foreignKey: "user_id", as: "user" })
 
 // === Achievements ===
 User.belongsToMany(Achievement, {
@@ -38,13 +40,13 @@ User.belongsToMany(Achievement, {
   foreignKey: "user_id",
   otherKey: "achievement_id",
   as: "achievements",
-});
+})
 Achievement.belongsToMany(User, {
   through: UserAchievement,
   foreignKey: "achievement_id",
   otherKey: "user_id",
   as: "users",
-});
+})
 
 // === Friends (self reference) ===
 User.belongsToMany(User, {
@@ -52,9 +54,9 @@ User.belongsToMany(User, {
   as: "friends",
   foreignKey: "user_id",
   otherKey: "friend_id",
-});
-Friend.belongsTo(User, { foreignKey: "user_id", as: "requester" });
-Friend.belongsTo(User, { foreignKey: "friend_id", as: "recipient" });
+})
+Friend.belongsTo(User, { foreignKey: "user_id", as: "requester" })
+Friend.belongsTo(User, { foreignKey: "friend_id", as: "recipient" })
 
 // === Group challenges ===
 User.belongsToMany(GroupChallenge, {
@@ -62,76 +64,80 @@ User.belongsToMany(GroupChallenge, {
   foreignKey: "user_id",
   otherKey: "challenge_id",
   as: "groupChallenges",
-});
+})
 GroupChallenge.belongsToMany(User, {
   through: UserGroupChallenge,
   foreignKey: "challenge_id",
   otherKey: "user_id",
   as: "participants",
-});
-GroupChallenge.belongsTo(User, { foreignKey: "creator_id", as: "creator" });
-User.hasMany(GroupChallenge, { foreignKey: "creator_id", as: "createdChallenges" });
+})
+GroupChallenge.belongsTo(User, { foreignKey: "creator_id", as: "creator" })
+User.hasMany(GroupChallenge, { foreignKey: "creator_id", as: "createdChallenges" })
 GroupChallenge.hasMany(GroupChallengeMessage, {
   foreignKey: "challenge_id",
   as: "messages",
-});
+})
 GroupChallengeMessage.belongsTo(GroupChallenge, {
   foreignKey: "challenge_id",
   as: "challenge",
-});
-GroupChallengeMessage.belongsTo(User, { foreignKey: "sender_id", as: "sender" });
+})
+GroupChallengeMessage.belongsTo(User, { foreignKey: "sender_id", as: "sender" })
 
 // === Notifications ===
-User.hasMany(Notification, { foreignKey: "user_id", as: "notifications" });
-Notification.belongsTo(User, { foreignKey: "user_id", as: "user" });
+User.hasMany(Notification, { foreignKey: "user_id", as: "notifications" })
+Notification.belongsTo(User, { foreignKey: "user_id", as: "user" })
 
 // === User settings ===
-User.hasOne(UserSetting, { foreignKey: "user_id", as: "settings" });
-UserSetting.belongsTo(User, { foreignKey: "user_id", as: "user" });
+User.hasOne(UserSetting, { foreignKey: "user_id", as: "settings" })
+UserSetting.belongsTo(User, { foreignKey: "user_id", as: "user" })
 
 // === Assistant memories ===
 User.hasMany(AssistantMemory, {
   foreignKey: "user_id",
   as: "assistantMemories",
-});
+})
 AssistantMemory.belongsTo(User, {
   foreignKey: "user_id",
   as: "owner",
-});
+})
 
 // === Calendar sync ===
 User.hasMany(CalendarIntegration, {
   foreignKey: "user_id",
   as: "calendarIntegrations",
-});
+})
 CalendarIntegration.belongsTo(User, {
   foreignKey: "user_id",
   as: "user",
-});
+})
 
 CalendarIntegration.hasMany(CalendarEvent, {
   foreignKey: "integration_id",
   as: "events",
-});
+})
 CalendarEvent.belongsTo(CalendarIntegration, {
   foreignKey: "integration_id",
   as: "integration",
-});
+})
 
 User.hasMany(CalendarEvent, {
   foreignKey: "user_id",
   as: "calendarEvents",
-});
+})
 CalendarEvent.belongsTo(User, {
   foreignKey: "user_id",
   as: "owner",
-});
+})
 
-// === Direct messaging ===
-User.hasMany(ChatMessage, { foreignKey: "sender_id", as: "sentMessages" });
-User.hasMany(ChatMessage, { foreignKey: "receiver_id", as: "receivedMessages" });
-ChatMessage.belongsTo(User, { foreignKey: "sender_id", as: "sender" });
-ChatMessage.belongsTo(User, { foreignKey: "receiver_id", as: "recipient" });
+// === Focus sessions and time insights ===
+User.hasMany(TimeLog, { foreignKey: "user_id", as: "timeLogs" })
+TimeLog.belongsTo(User, { foreignKey: "user_id", as: "owner" })
+Schedule.hasMany(TimeLog, { foreignKey: "schedule_id", as: "timeLogs" })
+TimeLog.belongsTo(Schedule, { foreignKey: "schedule_id", as: "schedule" })
+
+// === Weekly reviews ===
+User.hasMany(WeeklyReview, { foreignKey: "user_id", as: "weeklyReviews" })
+WeeklyReview.belongsTo(User, { foreignKey: "user_id", as: "owner" })
 
 export {
   User,
@@ -150,4 +156,6 @@ export {
   CalendarEvent,
   ChatMessage,
   GroupChallengeMessage,
-};
+  TimeLog,
+  WeeklyReview,
+}
