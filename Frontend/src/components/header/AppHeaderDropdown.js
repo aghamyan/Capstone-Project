@@ -176,6 +176,14 @@ const AppHeaderDropdown = () => {
         <CDropdownItem
           component="button"
           type="button"
+          onClick={() => navigate("/profile", { state: { tab: "preferences" } })}
+          className="d-flex align-items-center"
+        >
+          <CIcon icon={cilSettings} className="me-2" /> Preferences
+        </CDropdownItem>
+        <CDropdownItem
+          component="button"
+          type="button"
           onClick={() => navigate("/profile", { state: { tab: "notifications" } })}
           className="d-flex align-items-center"
         >

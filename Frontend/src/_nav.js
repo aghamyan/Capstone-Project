@@ -5,48 +5,53 @@ import { cilCalendar, cilGroup, cilList, cilSpeedometer, cilUser } from "@coreui
 
 const _nav = [
   {
+    component: CNavTitle,
+    name: "Dashboard",
+  },
+  {
     component: CNavItem,
-    name: 'Dashboard',
-    to: '/dashboard',
+    name: "Overview",
+    to: "/dashboard",
     icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
   },
   {
-    component: CNavItem,
-    name: 'Planner',
-    to: '/planner',
-    icon: <CIcon icon={cilCalendar} customClassName="nav-icon" />,
-  },
-
-  {
     component: CNavTitle,
-    name: 'Habit Tools',
+    name: "Habits",
   },
   {
     component: CNavItem,
-    name: 'Habits',
-    to: '/habits',
+    name: "My Habits",
+    to: "/habits",
     icon: <CIcon icon={cilList} customClassName="nav-icon" />,
   },
-
   {
     component: CNavTitle,
-    name: 'Community',
+    name: "Planner",
   },
   {
     component: CNavItem,
-    name: 'Community',
-    to: '/community',
+    name: "Planner",
+    to: "/planner",
+    icon: <CIcon icon={cilCalendar} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavTitle,
+    name: "Community",
+  },
+  {
+    component: CNavItem,
+    name: "Community",
+    to: "/community",
     icon: <CIcon icon={cilGroup} customClassName="nav-icon" />,
   },
-
   {
     component: CNavTitle,
-    name: 'Profile',
+    name: "Profile",
   },
   {
     component: CNavItem,
-    name: 'Profile',
-    to: '/profile',
+    name: "Profile",
+    to: "/profile",
     icon: <CIcon icon={cilUser} customClassName="nav-icon" />,
   },
 ]
