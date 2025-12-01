@@ -44,7 +44,7 @@ CREATE TABLE habits (
 CREATE TABLE schedules (
     id SERIAL PRIMARY KEY,
     habit_id INT NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
-    userid INT NOT NULL REFERENCES users(id) ON DELETE CASCADE, -- ✅ correct reference to users
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE, -- ✅ correct reference to users
     day DATE NOT NULL,
     starttime TIME NOT NULL,
     endtime TIME,
@@ -52,8 +52,8 @@ CREATE TABLE schedules (
     repeat VARCHAR(50) DEFAULT 'daily',  -- daily, weekly, every3days, custom
     customdays VARCHAR(100),
     notes TEXT,
-    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ======================

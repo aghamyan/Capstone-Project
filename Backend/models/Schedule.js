@@ -8,8 +8,8 @@ const Schedule = sequelize.define(
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
 
     // your actual DB columns
-    habit_id: { type: DataTypes.INTEGER, allowNull: true },
-    userid:   { type: DataTypes.INTEGER, allowNull: false },
+    habit_id: { type: DataTypes.INTEGER, allowNull: false },
+    user_id: { type: DataTypes.INTEGER, allowNull: false },
 
     day:       { type: DataTypes.DATEONLY, allowNull: false },
     starttime: { type: DataTypes.TIME, allowNull: false },
@@ -24,8 +24,8 @@ const Schedule = sequelize.define(
     tableName: "schedules",
     // Map Sequelize's timestamps to your actual lowercase columns
     timestamps: true,
-    createdAt: "createdat",
-    updatedAt: "updatedat",
+    createdAt: "created_at",
+    updatedAt: "updated_at",
     underscored: false,
   }
 );
