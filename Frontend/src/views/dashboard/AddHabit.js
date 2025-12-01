@@ -36,6 +36,9 @@ import {
   cilTags,
   cilTrash,
   cilSpeedometer,
+  cilClock,
+  cilBolt,
+  cilStar,
 } from "@coreui/icons"
 import { getHabits, createHabit, deleteHabit } from "../../services/habits"
 
@@ -56,6 +59,61 @@ const AddHabit = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showReflection, setShowReflection] = useState(false)
   const [reflectionDraft, setReflectionDraft] = useState("")
+  const quickTemplates = [
+    {
+      title: "Hydration reset",
+      description: "Drink 8 glasses of water throughout the day",
+      category: "Health",
+      target_reps: 8,
+      is_daily_goal: true,
+      accent: "info",
+    },
+    {
+      title: "Focused reading",
+      description: "Read 20 pages of a book",
+      category: "Growth",
+      target_reps: 20,
+      is_daily_goal: false,
+      accent: "primary",
+    },
+    {
+      title: "Move with intention",
+      description: "Complete a 30 minute workout",
+      category: "Fitness",
+      target_reps: 30,
+      is_daily_goal: true,
+      accent: "success",
+    },
+    {
+      title: "Digital sunset",
+      description: "No screens 60 minutes before bed",
+      category: "Wellness",
+      target_reps: 60,
+      is_daily_goal: true,
+      accent: "warning",
+    },
+  ]
+
+  const suggestions = [
+    {
+      title: "Batch morning wins",
+      note: "You close most habits before 10am. Try stacking a short journal after your stretch.",
+      category: "Mindfulness",
+      time: "Morning",
+    },
+    {
+      title: "Evening recovery",
+      note: "Movement habits dip after 7pm. Shift workouts to earlier slots and keep evenings for reflection.",
+      category: "Recovery",
+      time: "Evening",
+    },
+    {
+      title: "Deep work block",
+      note: "Focus habits succeed on weekdays. Reserve a 45-minute session Mon-Thu at 9am.",
+      category: "Focus",
+      time: "Weekday",
+    },
+  ]
 
   const user = JSON.parse(localStorage.getItem("user"))
   const userId = user?.id
@@ -64,6 +122,18 @@ const AddHabit = () => {
     setNewHabit((prev) => ({ ...prev, [field]: value }))
     if (err) setErr("")
     if (success) setSuccess("")
+  }
+
+  const applyTemplate = (template) => {
+    setNewHabit({
+      title: template.title,
+      description: template.description,
+      category: template.category,
+      target_reps: template.target_reps,
+      is_daily_goal: template.is_daily_goal,
+    })
+    setSuccess("Template applied—adjust any fields to make it yours.")
+    setErr("")
   }
 
   const loadHabits = async () => {
@@ -321,6 +391,60 @@ const AddHabit = () => {
             </CCardBody>
           </CCard>
 
+          <CCard className="shadow-sm border-0 bg-body-tertiary">
+            <CCardHeader className="bg-white d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2">
+                <CIcon icon={cilBolt} className="text-primary" />
+                <span className="fw-semibold">Quick add templates</span>
+              </div>
+              <CBadge color="primary" className="text-uppercase small">Fast start</CBadge>
+            </CCardHeader>
+            <CCardBody className="d-flex flex-column gap-3">
+              <CFormText className="text-muted">
+                Use a ready-made template and tune the details before saving.
+              </CFormText>
+              <div className="d-flex flex-column gap-3">
+                {quickTemplates.map((template) => (
+                  <div
+                    key={template.title}
+                    className="p-3 rounded-3 shadow-sm"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, rgba(99, 126, 234, 0.08), rgba(61, 199, 239, 0.1))",
+                    }}
+                  >
+                    <div className="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                      <div>
+                        <div className="d-flex align-items-center gap-2 mb-1">
+                          <CIcon icon={cilStar} className="text-warning" />
+                          <span className="fw-semibold">{template.title}</span>
+                        </div>
+                        <small className="text-muted d-block mb-1">{template.description}</small>
+                        <div className="d-flex flex-wrap gap-2">
+                          <CBadge color={template.accent}>{template.category}</CBadge>
+                          {template.target_reps ? (
+                            <CBadge color="light" className="text-dark">
+                              🎯 {template.target_reps}
+                            </CBadge>
+                          ) : null}
+                          {template.is_daily_goal && <CBadge color="success">Daily</CBadge>}
+                        </div>
+                      </div>
+                      <CButton
+                        color="primary"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => applyTemplate(template)}
+                      >
+                        Use template
+                      </CButton>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CCardBody>
+          </CCard>
+
           <CCard className="shadow-sm border-0 h-100">
             <CCardHeader className="bg-light">
               <div className="d-flex align-items-center">
@@ -379,6 +503,40 @@ const AddHabit = () => {
                   ))}
                 </CListGroup>
               )}
+            </CCardBody>
+          </CCard>
+
+          <CCard className="shadow-sm border-0">
+            <CCardHeader className="bg-gradient-primary text-white">
+              <div className="d-flex align-items-center gap-2">
+                <CIcon icon={cilClock} />
+                <span className="fw-semibold">Habit suggestions</span>
+              </div>
+            </CCardHeader>
+            <CCardBody className="d-flex flex-column gap-3">
+              <CFormText className="text-white-50">
+                Recommendations adjust to when and where you typically succeed.
+              </CFormText>
+              {suggestions.map((suggestion) => (
+                <div
+                  key={suggestion.title}
+                  className="p-3 rounded-3"
+                  style={{ background: "rgba(255,255,255,0.1)" }}
+                >
+                  <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                    <div>
+                      <div className="d-flex align-items-center gap-2 mb-1">
+                        <CBadge color="light" className="text-primary">
+                          {suggestion.category}
+                        </CBadge>
+                        <span className="fw-semibold text-white">{suggestion.title}</span>
+                      </div>
+                      <small className="text-white-50">{suggestion.note}</small>
+                    </div>
+                    <CBadge color="info" className="text-dark">{suggestion.time}</CBadge>
+                  </div>
+                </div>
+              ))}
             </CCardBody>
           </CCard>
 
