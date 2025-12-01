@@ -3,6 +3,7 @@ import {
   GroupChallenge,
   User,
   UserGroupChallenge,
+  GroupChallengeMessage,
 } from "../models/index.js";
 
 const router = express.Router();
@@ -146,6 +147,92 @@ router.post("/:challengeId/join", async (req, res) => {
   } catch (err) {
     console.error("Failed to join challenge", err);
     res.status(500).json({ error: "Failed to join challenge" });
+  }
+});
+
+// List chat messages for a challenge (participants only)
+router.get("/:challengeId/messages", async (req, res) => {
+  try {
+    const { challengeId } = req.params;
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    const challenge = await GroupChallenge.findByPk(challengeId);
+    if (!challenge) {
+      return res.status(404).json({ error: "Challenge not found" });
+    }
+
+    const membership = await UserGroupChallenge.findOne({
+      where: {
+        challenge_id: challengeId,
+        user_id: userId,
+        status: "accepted",
+      },
+    });
+
+    if (!membership) {
+      return res.status(403).json({ error: "You must join this challenge to view chat" });
+    }
+
+    const messages = await GroupChallengeMessage.findAll({
+      where: { challenge_id: challengeId },
+      include: [{ model: User, as: "sender", attributes: ["id", "name", "email"] }],
+      order: [["created_at", "ASC"]],
+    });
+
+    res.json(messages);
+  } catch (err) {
+    console.error("Failed to fetch challenge messages", err);
+    res.status(500).json({ error: "Failed to fetch messages" });
+  }
+});
+
+// Post a new chat message to a challenge
+router.post("/:challengeId/messages", async (req, res) => {
+  try {
+    const { challengeId } = req.params;
+    const { userId, content } = req.body;
+
+    if (!userId || !content || !String(content).trim()) {
+      return res
+        .status(400)
+        .json({ error: "userId and non-empty content are required" });
+    }
+
+    const challenge = await GroupChallenge.findByPk(challengeId);
+    if (!challenge) {
+      return res.status(404).json({ error: "Challenge not found" });
+    }
+
+    const membership = await UserGroupChallenge.findOne({
+      where: {
+        challenge_id: challengeId,
+        user_id: userId,
+        status: "accepted",
+      },
+    });
+
+    if (!membership) {
+      return res.status(403).json({ error: "Join this challenge to participate in chat" });
+    }
+
+    const message = await GroupChallengeMessage.create({
+      challenge_id: challengeId,
+      sender_id: userId,
+      content: String(content).trim(),
+    });
+
+    const populated = await GroupChallengeMessage.findByPk(message.id, {
+      include: [{ model: User, as: "sender", attributes: ["id", "name", "email"] }],
+    });
+
+    res.status(201).json(populated);
+  } catch (err) {
+    console.error("Failed to post challenge message", err);
+    res.status(500).json({ error: "Failed to post message" });
   }
 });
 

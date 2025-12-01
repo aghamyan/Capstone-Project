@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   CAlert,
   CBadge,
@@ -12,6 +12,7 @@ import {
   CFormInput,
   CFormSwitch,
   CFormTextarea,
+  CInputGroup,
   CListGroup,
   CListGroupItem,
   CModal,
@@ -23,13 +24,15 @@ import {
   CSpinner,
 } from "@coreui/react";
 import CIcon from "@coreui/icons-react";
-import { cilCheckCircle, cilPlus } from "@coreui/icons";
+import { cilCheckCircle, cilChatBubble, cilPlus, cilSend } from "@coreui/icons";
 
 import { AuthContext } from "../../context/AuthContext";
 import {
   createChallenge,
   fetchChallenges,
   joinChallenge,
+  fetchChallengeMessages,
+  sendChallengeMessage,
 } from "../../services/challenges";
 import { fetchFriends } from "../../services/friends";
 
@@ -53,6 +56,13 @@ const GroupChallenges = () => {
   const [loadingFriends, setLoadingFriends] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(initialFormState);
+  const [chatChallenge, setChatChallenge] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatError, setChatError] = useState("");
+  const [chatText, setChatText] = useState("");
+  const [sendingChat, setSendingChat] = useState(false);
+  const chatBottomRef = useRef(null);
 
   const isAuthenticated = Boolean(user);
 
@@ -173,6 +183,12 @@ const GroupChallenges = () => {
     return membership?.UserGroupChallenge?.role || null;
   };
 
+  const canChat = (challenge) => {
+    const status = membershipStatus(challenge);
+    const role = membershipRole(challenge);
+    return status === "accepted" || role === "creator";
+  };
+
   const formattedChallenges = useMemo(
     () =>
       challenges.map((challenge) => ({
@@ -232,6 +248,75 @@ const GroupChallenges = () => {
             : "Join challenge"}
       </CButton>
     );
+  };
+
+  const openChat = (challenge) => {
+    if (!user?.id) {
+      setError("Please log in to chat with challenge members.");
+      return;
+    }
+
+    if (!canChat(challenge)) {
+      setError("Join this challenge to chat with the group.");
+      return;
+    }
+
+    setChatChallenge(challenge);
+    setChatMessages([]);
+    setChatText("");
+    setChatError("");
+  };
+
+  useEffect(() => {
+    if (!chatChallenge?.id || !user?.id) return;
+
+    const loadMessages = async () => {
+      try {
+        setChatLoading(true);
+        setChatError("");
+        const data = await fetchChallengeMessages(chatChallenge.id, user.id);
+        setChatMessages(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Failed to load chat messages", err);
+        const message =
+          err?.response?.data?.error || err?.message || "Unable to load chat messages.";
+        setChatError(message);
+      } finally {
+        setChatLoading(false);
+      }
+    };
+
+    loadMessages();
+  }, [chatChallenge?.id, user?.id]);
+
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
+
+  const handleSendChat = async (event) => {
+    event.preventDefault();
+
+    if (!chatChallenge?.id || !user?.id || !chatText.trim()) return;
+
+    try {
+      setSendingChat(true);
+      const created = await sendChallengeMessage(chatChallenge.id, user.id, chatText);
+      setChatMessages((prev) => [...prev, created]);
+      setChatText("");
+    } catch (err) {
+      console.error("Failed to send chat message", err);
+      const message = err?.response?.data?.error || err?.message || "Could not send message.";
+      setChatError(message);
+    } finally {
+      setSendingChat(false);
+    }
+  };
+
+  const closeChat = () => {
+    setChatChallenge(null);
+    setChatMessages([]);
+    setChatText("");
+    setChatError("");
   };
 
   return (
@@ -294,7 +379,19 @@ const GroupChallenges = () => {
                         <div className="text-body-secondary small">
                           {challenge.creator?.name ? `Host: ${challenge.creator.name}` : ""}
                         </div>
-                        {renderJoinButton(challenge)}
+                        <div className="d-flex align-items-center gap-2">
+                          <CButton
+                            color="secondary"
+                            variant="outline"
+                            size="sm"
+                            disabled={!canChat(challenge) || !isAuthenticated}
+                            onClick={() => openChat(challenge)}
+                          >
+                            <CIcon icon={cilChatBubble} className="me-2" />
+                            {canChat(challenge) ? "Open chat" : "Join to chat"}
+                          </CButton>
+                          {renderJoinButton(challenge)}
+                        </div>
                       </div>
                     </CListGroupItem>
                   ))}
@@ -399,6 +496,88 @@ const GroupChallenges = () => {
             </CButton>
           </CModalFooter>
         </CForm>
+      </CModal>
+
+      <CModal
+        alignment="center"
+        visible={Boolean(chatChallenge)}
+        onClose={closeChat}
+        scrollable
+        size="lg"
+      >
+        <CModalHeader closeButton>
+          <CModalTitle>
+            <div className="d-flex flex-column">
+              <span>Challenge chat</span>
+              <small className="text-body-secondary">
+                {chatChallenge?.title || "Group challenge"}
+              </small>
+            </div>
+          </CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          {chatError && <CAlert color="danger">{chatError}</CAlert>}
+          {!chatChallenge || !canChat(chatChallenge) ? (
+            <CAlert color="info">Join this challenge to chat with other members.</CAlert>
+          ) : (
+            <>
+              <div
+                className="border rounded p-3 mb-3 bg-light-subtle"
+                style={{ maxHeight: 360, overflowY: "auto" }}
+              >
+                {chatLoading ? (
+                  <div className="d-flex justify-content-center py-4">
+                    <CSpinner />
+                  </div>
+                ) : chatMessages.length === 0 ? (
+                  <div className="text-center text-body-secondary py-3">
+                    No messages yet. Say hello to get the conversation started!
+                  </div>
+                ) : (
+                  chatMessages.map((message) => {
+                    const isMine = Number(message.sender_id) === Number(user?.id);
+                    return (
+                      <div
+                        key={message.id}
+                        className={`d-flex ${isMine ? "justify-content-end" : "justify-content-start"} mb-3`}
+                      >
+                        <div
+                          className={`p-3 rounded-3 shadow-sm ${
+                            isMine ? "bg-primary text-white" : "bg-white border"
+                          }`}
+                          style={{ maxWidth: "80%" }}
+                        >
+                          <div className="small fw-semibold mb-1">
+                            {isMine ? "You" : message.sender?.name || "Teammate"}
+                          </div>
+                          <div>{message.content}</div>
+                          <div className={`small mt-2 ${isMine ? "text-white-50" : "text-body-secondary"}`}>
+                            {new Date(message.created_at).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={chatBottomRef} />
+              </div>
+
+              <CForm onSubmit={handleSendChat}>
+                <CInputGroup>
+                  <CFormInput
+                    placeholder="Share an update with the group"
+                    value={chatText}
+                    onChange={(event) => setChatText(event.target.value)}
+                    disabled={chatLoading}
+                  />
+                  <CButton type="submit" color="primary" disabled={sendingChat || !chatText.trim()}>
+                    {sendingChat ? <CSpinner size="sm" /> : <CIcon icon={cilSend} className="me-2" />}Send
+                  </CButton>
+                </CInputGroup>
+              </CForm>
+            </>
+          )}
+        </CModalBody>
       </CModal>
     </>
   );
