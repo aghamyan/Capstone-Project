@@ -17,3 +17,11 @@ export const getTodayProgressLogs = async (userId) => {
   const response = await api.get(`/progress/today/${userId}`);
   return response.data;
 };
+
+export const getProgressHistory = async (userId) => {
+  if (!userId) {
+    throw new Error("userId is required to fetch progress history");
+  }
+  const response = await api.get(`/progress/history/${userId}`);
+  return response.data;
+};

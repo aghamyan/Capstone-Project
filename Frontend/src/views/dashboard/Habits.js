@@ -51,9 +51,10 @@ import HabitLibrary from "./HabitLibrary"
 import ProgressTracker from "./ProgressTracker"
 import HabitCoach from "./HabitCoach"
 import { getHabits, deleteHabit, updateHabit } from "../../services/habits"
-import { logHabitProgress } from "../../services/progress"
+import { logHabitProgress, getProgressHistory } from "../../services/progress"
 import { promptMissedReflection } from "../../utils/reflection"
 import { getDailyChallengeSummary } from "../../services/dailyChallenge"
+import { getProgressAnalytics, formatPercent } from "../../services/analytics"
 
 const createEditDraft = (habit) => ({
   id: habit?.id,
@@ -115,7 +116,7 @@ const DailyChallengeHighlight = ({ challenge, onLog }) => {
   )
 }
 
-const MyHabitsTab = ({ onAddClick }) => {
+const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
   const [habits, setHabits] = useState([])
   const [loading, setLoading] = useState(true)
   const [feedback, setFeedback] = useState(null)
@@ -185,6 +186,9 @@ const MyHabitsTab = ({ onAddClick }) => {
     try {
       setLoggingState(`${habitId}-${status}`)
       await logHabitProgress(habitId, payload)
+      if (typeof onProgressLogged === "function") {
+        await onProgressLogged()
+      }
       setFeedback({
         type: "success",
         message: `Logged ${status} for ${habit.title || habit.name || habit.habitName}.`,
@@ -418,283 +422,297 @@ const MyHabitsTab = ({ onAddClick }) => {
   )
 }
 
-const InsightsTab = () => {
-  const insightData = useMemo(
-    () => ({
-      topHabits: [
-        { name: "Morning run", rate: 92, streak: 12 },
-        { name: "Hydration", rate: 88, streak: 9 },
-        { name: "Reading", rate: 84, streak: 7 },
-      ],
-      strugglingHabits: [
-        { name: "Sleep by 11pm", rate: 56 },
-        { name: "Inbox zero", rate: 61 },
-        { name: "Deep work", rate: 64 },
-      ],
-      winRatesByCategory: [
-        { name: "Health", value: 82 },
-        { name: "Focus", value: 74 },
-        { name: "Learning", value: 68 },
-        { name: "Wellness", value: 71 },
-      ],
-      forecast: [
-        { label: "Mon", chance: 92 },
-        { label: "Tue", chance: 89 },
-        { label: "Wed", chance: 85 },
-        { label: "Thu", chance: 87 },
-        { label: "Fri", chance: 81 },
-        { label: "Sat", chance: 78 },
-        { label: "Sun", chance: 76 },
-      ],
-      bestTime: {
-        window: "7:00 - 9:00 AM",
-        detail: "Highest completion before meetings begin.",
-        lift: "+14% vs average",
-      },
-    }),
-    [],
-  )
+const InsightsTab = ({ analytics, historyEntries, loading, error, onRefresh }) => {
+  const summary = analytics?.summary
+  const habits = analytics?.habits ?? []
+
+  const topHabits = useMemo(() => {
+    return [...habits]
+      .filter((h) => (h.totals.done || h.totals.missed) > 0)
+      .sort((a, b) => b.successRate - a.successRate)
+      .slice(0, 3)
+      .map((h) => ({
+        name: h.habitName,
+        rate: h.successRate,
+        streak: h.streak?.current ?? 0,
+      }))
+  }, [habits])
+
+  const strugglingHabits = useMemo(() => {
+    return [...habits]
+      .filter((h) => (h.totals.done || h.totals.missed) > 0)
+      .sort((a, b) => a.successRate - b.successRate)
+      .slice(0, 3)
+      .map((h) => ({
+        name: h.habitName,
+        rate: h.successRate,
+      }))
+  }, [habits])
+
+  const forecast = useMemo(() => {
+    const trend = summary?.dailyTrend ?? []
+    const lastSeven = trend.slice(-7)
+    if (lastSeven.length === 0) return []
+    return lastSeven.map((day) => {
+      const completion = day.completed + day.missed
+      const percent = completion ? Math.round((day.completed / completion) * 100) : 0
+      const label = new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' })
+      return { label, chance: percent }
+    })
+  }, [summary?.dailyTrend])
+
+  const winRatesByCategory = useMemo(() => {
+    if (!historyEntries?.length) return []
+    const buckets = historyEntries.reduce((acc, entry) => {
+      if (!entry.category) return acc
+      if (!acc[entry.category]) acc[entry.category] = { done: 0, missed: 0 }
+      if (entry.status === 'done') acc[entry.category].done += 1
+      if (entry.status === 'missed') acc[entry.category].missed += 1
+      return acc
+    }, {})
+    return Object.entries(buckets).map(([category, counts]) => {
+      const total = counts.done + counts.missed
+      const value = total ? Math.round((counts.done / total) * 100) : 0
+      return { name: category, value }
+    })
+  }, [historyEntries])
+
+  const bestTime = useMemo(() => {
+    if (summary?.peakDay) {
+      const label = new Date(`${summary.peakDay.date}T00:00:00`).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+      })
+      const completion = summary.peakDay.completed + summary.peakDay.missed
+      const lift = completion ? formatPercent((summary.peakDay.completed / completion) * 100) : '—'
+      return {
+        window: label,
+        detail: `You logged ${summary.peakDay.completed} wins on your strongest day`,
+        lift: `${lift} completion rate`,
+      }
+    }
+    return {
+      window: 'Keep logging',
+      detail: 'Complete or miss a habit to unlock your personalised best window.',
+      lift: '',
+    }
+  }, [summary?.peakDay])
+
+  const showEmptyState = !loading && !summary?.totalCheckIns
 
   return (
     <div className="mt-3">
-      <CRow className="g-4">
-        <CCol lg={6}>
-          <CCard className="shadow-sm border-0 h-100 habits-panel">
-            <CCardHeader className="bg-gradient-primary text-white">
-              <div className="d-flex align-items-center gap-2">
-                <CIcon icon={cilChartLine} />
-                <span className="fw-semibold">Highest performing habits</span>
-              </div>
-            </CCardHeader>
-            <CCardBody className="d-flex flex-column gap-3">
-              <CFormLabel className="text-uppercase small text-muted mb-1">Consistency rate</CFormLabel>
-              <div className="d-flex flex-column gap-2">
-                {insightData.topHabits.map((habit) => (
-                  <div key={habit.name} className="d-flex align-items-center gap-3">
-                    <div className="flex-grow-1">
-                      <div className="d-flex justify-content-between align-items-center">
-                        <span className="fw-semibold">{habit.name}</span>
-                        <CBadge color="success">{habit.rate}%</CBadge>
+      {(error || showEmptyState) && (
+        <CAlert color={error ? 'danger' : 'info'} className="mb-3">
+          {error || 'Log a habit to see your insights come alive.'}
+        </CAlert>
+      )}
+
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div className="text-muted small">Insights refresh when you log progress.</div>
+        <CButton size="sm" color="light" onClick={onRefresh} disabled={loading}>
+          Refresh
+        </CButton>
+      </div>
+
+      {loading ? (
+        <div className="d-flex justify-content-center my-4">
+          <CSpinner color="primary" />
+        </div>
+      ) : (
+        <CRow className="g-4">
+          <CCol lg={6}>
+            <CCard className="shadow-sm border-0 h-100 habits-panel">
+              <CCardHeader className="bg-gradient-primary text-white">
+                <div className="d-flex align-items-center gap-2">
+                  <CIcon icon={cilChartLine} />
+                  <span className="fw-semibold">Highest performing habits</span>
+                </div>
+              </CCardHeader>
+              <CCardBody className="d-flex flex-column gap-3">
+                <CFormLabel className="text-uppercase small text-muted mb-1">Consistency rate</CFormLabel>
+                <div className="d-flex flex-column gap-3">
+                  {topHabits.length === 0 && <span className="text-muted">Log a habit to see rankings.</span>}
+                  {topHabits.map((habit) => (
+                    <div key={habit.name} className="d-flex align-items-center justify-content-between">
+                      <div>
+                        <div className="fw-semibold">{habit.name}</div>
+                        <small className="text-muted">{habit.streak || 0}-day streak</small>
                       </div>
-                      <CProgress className="mt-2" thin color="success" value={habit.rate} />
+                      <CBadge color="success" className="px-3 py-2">{habit.rate}%</CBadge>
                     </div>
-                    <CBadge color="light" className="text-dark">
-                      {habit.streak} day streak
-                    </CBadge>
+                  ))}
+                </div>
+              </CCardBody>
+            </CCard>
+          </CCol>
+          <CCol lg={6}>
+            <CCard className="shadow-sm border-0 h-100 habits-panel">
+              <CCardHeader className="bg-white d-flex align-items-center gap-2">
+                <CIcon icon={cilBolt} className="text-danger" />
+                <span className="fw-semibold">Habits needing attention</span>
+              </CCardHeader>
+              <CCardBody className="d-flex flex-column gap-3">
+                <div className="d-flex flex-column gap-2">
+                  {strugglingHabits.length === 0 && <span className="text-muted">No risky habits yet.</span>}
+                  {strugglingHabits.map((habit) => (
+                    <div key={habit.name} className="d-flex align-items-center justify-content-between">
+                      <div>
+                        <div className="fw-semibold">{habit.name}</div>
+                        <small className="text-muted">Drop-in momentum</small>
+                      </div>
+                      <CBadge color="warning" className="text-dark px-3 py-2">
+                        {habit.rate}%
+                      </CBadge>
+                    </div>
+                  ))}
+                </div>
+                <div className="bg-body-tertiary p-3 rounded-3">
+                  <div className="text-muted small mb-1">Next best action</div>
+                  <p className="mb-0 text-body-secondary">
+                    Reschedule the two lowest-performing habits to your strongest timeslot for the week.
+                  </p>
+                </div>
+              </CCardBody>
+            </CCard>
+          </CCol>
+
+          <CCol lg={4}>
+            <CCard className="shadow-sm border-0 h-100 habits-panel">
+              <CCardHeader className="bg-white d-flex align-items-center gap-2">
+                <CIcon icon={cilClock} className="text-primary" />
+                <span className="fw-semibold">Best day</span>
+              </CCardHeader>
+              <CCardBody className="d-flex flex-column gap-2">
+                <h4 className="fw-bold mb-1">{bestTime.window}</h4>
+                <p className="text-body-secondary mb-2">{bestTime.detail}</p>
+                {bestTime.lift && <CBadge color="info" className="text-dark">{bestTime.lift}</CBadge>}
+              </CCardBody>
+            </CCard>
+          </CCol>
+          <CCol lg={4}>
+            <CCard className="shadow-sm border-0 h-100 habits-panel">
+              <CCardHeader className="bg-white d-flex align-items-center gap-2">
+                <CIcon icon={cilChartLine} className="text-success" />
+                <span className="fw-semibold">Win rate by category</span>
+              </CCardHeader>
+              <CCardBody className="d-flex flex-column gap-3">
+                {winRatesByCategory.length === 0 && <span className="text-muted">No categories logged yet.</span>}
+                {winRatesByCategory.map((category) => (
+                  <div key={category.name} className="d-flex align-items-center justify-content-between">
+                    <div>
+                      <div className="fw-semibold">{category.name}</div>
+                      <small className="text-muted">Momentum</small>
+                    </div>
+                    <CProgress value={category.value} color="success" style={{ width: '140px' }} />
                   </div>
                 ))}
-              </div>
-            </CCardBody>
-          </CCard>
-        </CCol>
-        <CCol lg={6}>
-          <CCard className="shadow-sm border-0 h-100 habits-panel">
-            <CCardHeader className="bg-white">
-              <div className="d-flex align-items-center gap-2">
-                <CIcon icon={cilList} className="text-warning" />
-                <span className="fw-semibold">Most struggling habits</span>
-              </div>
-            </CCardHeader>
-            <CCardBody className="d-flex flex-column gap-3">
-              <CFormLabel className="text-uppercase small text-muted mb-1">Win rate</CFormLabel>
-              {insightData.strugglingHabits.map((habit) => (
-                <div key={habit.name} className="bg-body-tertiary rounded-3 p-3">
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="fw-semibold">{habit.name}</span>
-                    <CBadge color="warning" className="text-dark">{habit.rate}%</CBadge>
-                  </div>
-                  <CProgress color="warning" value={habit.rate} />
-                  <small className="text-muted">Add a lighter variant or pair with a reminder.</small>
-                </div>
-              ))}
-            </CCardBody>
-          </CCard>
-        </CCol>
-      </CRow>
-
-      <CRow className="g-4 mt-1">
-        <CCol lg={5}>
-          <CCard className="shadow-sm border-0 h-100 habits-panel">
-            <CCardHeader className="bg-white">
-              <div className="d-flex align-items-center gap-2">
-                <CIcon icon={cilClock} className="text-primary" />
-                <span className="fw-semibold">Best completion time</span>
-              </div>
-            </CCardHeader>
-            <CCardBody>
-              <div className="p-3 rounded-4" style={{ background: "linear-gradient(120deg, #e0ecff, #f3f8ff)" }}>
-                <div className="text-uppercase small text-muted">Time of day</div>
-                <h4 className="fw-bold mb-1">{insightData.bestTime.window}</h4>
-                <p className="text-body-secondary mb-2">{insightData.bestTime.detail}</p>
-                <CBadge color="info" className="text-dark">{insightData.bestTime.lift}</CBadge>
-              </div>
-            </CCardBody>
-          </CCard>
-        </CCol>
-        <CCol lg={4}>
-          <CCard className="shadow-sm border-0 h-100 habits-panel">
-            <CCardHeader className="bg-white">
-              <div className="d-flex align-items-center gap-2">
-                <CIcon icon={cilBadge} className="text-success" />
-                <span className="fw-semibold">Win rate by category</span>
-              </div>
-            </CCardHeader>
-            <CCardBody className="d-flex flex-column gap-3">
-              {insightData.winRatesByCategory.map((category) => (
-                <div key={category.name}>
-                  <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span>{category.name}</span>
-                    <CBadge color="light" className="text-dark">
-                      {category.value}%
-                    </CBadge>
-                  </div>
-                  <CProgress color="primary" value={category.value} />
-                </div>
-              ))}
-            </CCardBody>
-          </CCard>
-        </CCol>
-        <CCol lg={3}>
-          <CCard className="shadow-sm border-0 h-100 habits-panel">
-            <CCardHeader className="bg-white">
-              <div className="d-flex align-items-center gap-2">
+              </CCardBody>
+            </CCard>
+          </CCol>
+          <CCol lg={4}>
+            <CCard className="shadow-sm border-0 h-100 habits-panel">
+              <CCardHeader className="bg-white d-flex align-items-center gap-2">
                 <CIcon icon={cilBolt} className="text-info" />
                 <span className="fw-semibold">Weekly success forecast</span>
-              </div>
-            </CCardHeader>
-            <CCardBody className="d-flex flex-column gap-3">
-              {insightData.forecast.map((day) => (
-                <div key={day.label}>
-                  <div className="d-flex justify-content-between align-items-center">
-                    <span className="text-muted">{day.label}</span>
-                    <span className="fw-semibold">{day.chance}%</span>
+              </CCardHeader>
+              <CCardBody className="d-flex flex-column gap-3">
+                {forecast.length === 0 && <span className="text-muted">Keep logging to see a forecast.</span>}
+                {forecast.map((day) => (
+                  <div key={day.label}>
+                    <div className="d-flex justify-content-between align-items-center">
+                      <span className="text-muted">{day.label}</span>
+                      <span className="fw-semibold">{day.chance}%</span>
+                    </div>
+                    <CProgressBar color="info" value={day.chance} className="rounded-pill" />
                   </div>
-                  <CProgressBar color="info" value={day.chance} className="rounded-pill" />
-                </div>
-              ))}
-            </CCardBody>
-          </CCard>
-        </CCol>
-      </CRow>
+                ))}
+              </CCardBody>
+            </CCard>
+          </CCol>
+        </CRow>
+      )}
     </div>
   )
 }
 
-const HistoryTab = () => {
-  const heatmap = useMemo(() => Array.from({ length: 30 }, (_, i) => (i % 7 === 0 ? "missed" : "done")), [])
-  const streak = { longest: 21, current: 8, goal: 30 }
+const HistoryTab = ({ entries, loading, error, onRefresh }) => {
+  const formatDate = (date) => new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  const formatTime = (date) => new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
   const exportCsv = () => {
-    const header = "day,status\n"
-    const rows = heatmap
-      .map((value, index) => `Day ${index + 1},${value}`)
+    const header = "habit,status,date,time,reason\n"
+    const rows = entries
+      .map((entry) => {
+        const reason = entry.reason ? entry.reason.replace(/"/g, '""') : ""
+        return `${entry.habitTitle},${entry.status},${entry.progressDate},${formatTime(entry.createdAt)},"${reason}"`
+      })
       .join("\n")
-    const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" })
+    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
+    const link = document.createElement('a')
     link.href = url
-    link.download = "habit-history.csv"
+    link.download = 'habit-history.csv'
     link.click()
     URL.revokeObjectURL(url)
   }
 
   return (
     <div className="mt-3">
-      <CRow className="g-4">
-        <CCol lg={7}>
-          <CCard className="shadow-sm border-0 h-100 habits-panel">
-            <CCardHeader className="bg-white d-flex align-items-center justify-content-between">
-              <div className="d-flex align-items-center gap-2">
-                <CIcon icon={cilChartLine} className="text-primary" />
-                <span className="fw-semibold">Habit history</span>
-              </div>
-              <CButton color="primary" size="sm" variant="outline" onClick={exportCsv}>
-                Export CSV
-              </CButton>
-            </CCardHeader>
-            <CCardBody className="d-flex flex-column gap-3">
-              <div>
-                <div className="d-flex align-items-center justify-content-between mb-2">
-                  <span className="fw-semibold">Calendar heatmap</span>
-                  <CBadge color="light" className="text-dark">Last 30 days</CBadge>
-                </div>
-                <div className="d-flex flex-wrap gap-2">
-                  {heatmap.map((value, index) => (
-                    <div
-                      key={index}
-                      className="rounded-2"
-                      style={{
-                        width: "26px",
-                        height: "26px",
-                        background:
-                          value === "done"
-                            ? "linear-gradient(135deg, #74d680, #3bb78f)"
-                            : "linear-gradient(135deg, #ffd166, #ff6b6b)",
-                        opacity: value === "done" ? 0.95 : 0.8,
-                      }}
-                      title={`${value === "done" ? "Completed" : "Missed"} on day ${index + 1}`}
-                    />
-                  ))}
-                </div>
-              </div>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div className="text-muted small">Latest 50 check-ins, including your missed-day notes.</div>
+        <div className="d-flex gap-2">
+          <CButton color="light" size="sm" onClick={onRefresh} disabled={loading}>
+            Refresh
+          </CButton>
+          <CButton color="primary" size="sm" variant="outline" onClick={exportCsv} disabled={!entries.length}>
+            Export CSV
+          </CButton>
+        </div>
+      </div>
 
-              <div className="p-3 rounded-3 bg-body-tertiary">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <span className="fw-semibold">Monthly view</span>
-                  <CBadge color="info" className="text-dark">June snapshot</CBadge>
-                </div>
-                <div className="d-flex flex-wrap gap-3">
-                  <div>
-                    <div className="text-muted small">Completion</div>
-                    <h4 className="fw-bold mb-0">82%</h4>
+      {error && <CAlert color="danger">{error}</CAlert>}
+
+      {loading ? (
+        <div className="d-flex justify-content-center my-4">
+          <CSpinner color="primary" />
+        </div>
+      ) : entries.length === 0 ? (
+        <div className="text-center text-body-secondary py-4">Log your first habit to see history.</div>
+      ) : (
+        <CListGroup flush>
+          {entries.map((entry) => (
+            <CListGroupItem key={entry.id} className="py-3">
+              <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                <div className="d-flex flex-column gap-1">
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="fw-semibold">{entry.habitTitle}</span>
+                    {entry.category && (
+                      <CBadge color="info" className="text-uppercase small subtle-badge">{entry.category}</CBadge>
+                    )}
                   </div>
-                  <div>
-                    <div className="text-muted small">Missed</div>
-                    <h4 className="fw-bold mb-0">6 days</h4>
+                  <div className="small text-muted">
+                    {formatDate(entry.progressDate)} · {formatTime(entry.createdAt)}
                   </div>
-                  <div>
-                    <div className="text-muted small">Perfect days</div>
-                    <h4 className="fw-bold mb-0">12</h4>
-                  </div>
+                  {entry.status === 'missed' && entry.reason && (
+                    <div className="small text-body-secondary bg-body-tertiary p-2 rounded-2">
+                      <span className="fw-semibold">Your note:</span> {entry.reason}
+                    </div>
+                  )}
                 </div>
+                <CBadge color={entry.status === 'done' ? 'success' : 'danger'} className="px-3 py-2">
+                  {entry.status === 'done' ? 'Done' : 'Missed'}
+                </CBadge>
               </div>
-            </CCardBody>
-          </CCard>
-        </CCol>
-        <CCol lg={5}>
-          <CCard className="shadow-sm border-0 h-100 habits-panel">
-            <CCardHeader className="bg-white">
-              <div className="d-flex align-items-center gap-2">
-                <CIcon icon={cilBolt} className="text-success" />
-                <span className="fw-semibold">Longest streak</span>
-              </div>
-            </CCardHeader>
-            <CCardBody className="d-flex flex-column gap-3">
-              <div className="p-3 rounded-4" style={{ background: "linear-gradient(135deg, #e1f3e3, #f2fff6)" }}>
-                <div className="d-flex align-items-center justify-content-between mb-2">
-                  <span className="text-muted">Personal best</span>
-                  <CBadge color="success">{streak.longest} days</CBadge>
-                </div>
-                <CProgress value={(streak.longest / streak.goal) * 100} color="success" className="mb-2" />
-                <small className="text-body-secondary">Goal: {streak.goal}-day streak</small>
-              </div>
-              <div className="bg-body-tertiary p-3 rounded-3">
-                <div className="d-flex justify-content-between">
-                  <span>Current streak</span>
-                  <span className="fw-semibold">{streak.current} days</span>
-                </div>
-                <CProgress color="info" value={(streak.current / streak.goal) * 100} className="mt-2" />
-                <small className="text-muted">Keep the run alive this week.</small>
-              </div>
-            </CCardBody>
-          </CCard>
-        </CCol>
-      </CRow>
+            </CListGroupItem>
+          ))}
+        </CListGroup>
+      )}
     </div>
   )
 }
 
-const AutomationTab = () => {
+const AutomationTab = ({ summary, loading }) => {
   const [rules, setRules] = useState([
     {
       id: 1,
@@ -725,6 +743,10 @@ const AutomationTab = () => {
 
   return (
     <div className="mt-3">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div className="text-muted small">Automations respond to your latest check-ins.</div>
+        {loading && <CSpinner size="sm" />}
+      </div>
       <CRow className="g-4">
         {rules.map((rule) => (
           <CCol key={rule.id} lg={4}>
@@ -741,7 +763,9 @@ const AutomationTab = () => {
                 <p className="text-body-secondary mb-0">{rule.description}</p>
                 <div className="d-flex align-items-center gap-2 mt-auto">
                   <CBadge color={rule.tone}>{rule.active ? "Enabled" : "Disabled"}</CBadge>
-                  <small className="text-muted">Automation keeps habits on autopilot.</small>
+                  <small className="text-muted">
+                    {summary?.totalMissed ? `${summary.totalMissed} missed logs reviewed this week.` : "Ready to react."}
+                  </small>
                 </div>
               </CCardBody>
             </CCard>
@@ -752,21 +776,26 @@ const AutomationTab = () => {
   )
 }
 
-const RewardsTab = () => {
-  const rewards = {
-    xp: 1280,
-    level: 6,
-    nextLevel: 7,
-    progressToNext: 65,
-    badges: [
-      { name: "Momentum", note: "5-day streak", color: "success" },
-      { name: "Consistency", note: "20 completions", color: "info" },
-      { name: "Night owl reset", note: "3 evening wins", color: "warning" },
-    ],
-  }
+const RewardsTab = ({ summary, loading }) => {
+  const totalDone = summary?.totalDone ?? 0
+  const totalMissed = summary?.totalMissed ?? 0
+  const xp = Math.max(0, totalDone * 10 + totalMissed * 2)
+  const level = Math.max(1, Math.floor(xp / 500) + 1)
+  const nextLevel = level + 1
+  const progressToNext = Math.min(100, Math.round(((xp % 500) / 500) * 100))
+
+  const badges = [
+    { name: "Momentum", note: `${totalDone} completions logged`, color: "success" },
+    { name: "Consistency", note: `${summary?.totalHabits ?? 0} habits tracked`, color: "info" },
+    { name: "Reflection", note: `${totalMissed} honest misses`, color: "warning" },
+  ]
 
   return (
     <div className="mt-3">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div className="text-muted small">Rewards update with every log.</div>
+        {loading && <CSpinner size="sm" />}
+      </div>
       <CRow className="g-4">
         <CCol lg={5}>
           <CCard className="shadow-sm border-0 h-100 habits-panel">
@@ -780,19 +809,17 @@ const RewardsTab = () => {
               <div className="d-flex justify-content-between align-items-center">
                 <div>
                   <div className="text-uppercase small text-muted">Current level</div>
-                  <h3 className="fw-bold mb-0">Level {rewards.level}</h3>
-                  <small className="text-body-secondary">Next: Level {rewards.nextLevel}</small>
+                  <h3 className="fw-bold mb-0">Level {level}</h3>
+                  <small className="text-body-secondary">Next: Level {nextLevel}</small>
                 </div>
-                <CBadge color="light" className="text-dark">
-                  {rewards.xp} XP
-                </CBadge>
+                <CBadge color="light" className="text-dark">{xp} XP</CBadge>
               </div>
               <div>
                 <div className="d-flex justify-content-between mb-1">
                   <span className="text-muted">Progress to next level</span>
-                  <span className="fw-semibold">{rewards.progressToNext}%</span>
+                  <span className="fw-semibold">{progressToNext}%</span>
                 </div>
-                <CProgress value={rewards.progressToNext} color="success" />
+                <CProgress value={progressToNext} color="success" />
               </div>
               <div className="p-3 rounded-3 bg-body-tertiary">
                 <div className="text-muted small mb-1">How XP works</div>
@@ -813,7 +840,7 @@ const RewardsTab = () => {
             </CCardHeader>
             <CCardBody className="d-flex flex-column gap-3">
               <div className="d-flex flex-wrap gap-2">
-                {rewards.badges.map((badge) => (
+                {badges.map((badge) => (
                   <CBadge key={badge.name} color={badge.color} className="px-3 py-2">
                     <span className="fw-semibold">{badge.name}</span>
                     <div className="small text-white-50">{badge.note}</div>
@@ -872,14 +899,45 @@ const HabitCoachBubble = () => {
 
 const Habits = () => {
   const [activeTab, setActiveTab] = useState("my-habits")
+  const [analytics, setAnalytics] = useState(null)
+  const [historyEntries, setHistoryEntries] = useState([])
+  const [signalsLoading, setSignalsLoading] = useState(false)
+  const [signalsError, setSignalsError] = useState("")
+
+  const user = useMemo(() => JSON.parse(localStorage.getItem("user") || "{}"), [])
+
+  const refreshSignals = useCallback(async () => {
+    if (!user?.id) return
+    try {
+      setSignalsLoading(true)
+      const [analyticsData, historyData] = await Promise.all([
+        getProgressAnalytics(user.id),
+        getProgressHistory(user.id),
+      ])
+      setAnalytics(analyticsData)
+      setHistoryEntries(Array.isArray(historyData) ? historyData : [])
+      setSignalsError("")
+    } catch (error) {
+      console.error("Failed to refresh habit analytics", error)
+      setSignalsError("We couldn't refresh your habit insights just now.")
+    } finally {
+      setSignalsLoading(false)
+    }
+  }, [user?.id])
+
+  useEffect(() => {
+    refreshSignals()
+  }, [refreshSignals])
+
+  const summary = analytics?.summary
 
   const heroStats = useMemo(
     () => [
-      { label: "Weekly win rate", value: "82%", tone: "success" },
-      { label: "Current streak", value: "21 days", tone: "info" },
-      { label: "Active habits", value: "12", tone: "warning" },
+      { label: "Weekly win rate", value: formatPercent(summary?.completionRate ?? 0), tone: "success" },
+      { label: "Current streak", value: `${summary?.streakLeader?.streak?.current ?? 0} days`, tone: "info" },
+      { label: "Active habits", value: `${summary?.totalHabits ?? 0}`, tone: "warning" },
     ],
-    [],
+    [summary?.completionRate, summary?.streakLeader?.streak?.current, summary?.totalHabits],
   )
 
   return (
@@ -956,9 +1014,11 @@ const Habits = () => {
         </CNavItem>
       </CNav>
 
+      {signalsError && <CAlert color="warning">{signalsError}</CAlert>}
+
       <CTabContent>
         <CTabPane visible={activeTab === "my-habits"}>
-          <MyHabitsTab onAddClick={() => setActiveTab("add")} />
+          <MyHabitsTab onAddClick={() => setActiveTab("add")} onProgressLogged={refreshSignals} />
         </CTabPane>
         <CTabPane visible={activeTab === "add"}>
           <div className="mt-3">
@@ -976,16 +1036,27 @@ const Habits = () => {
           </div>
         </CTabPane>
         <CTabPane visible={activeTab === "insights"}>
-          <InsightsTab />
+          <InsightsTab
+            analytics={analytics}
+            historyEntries={historyEntries}
+            loading={signalsLoading}
+            error={signalsError}
+            onRefresh={refreshSignals}
+          />
         </CTabPane>
         <CTabPane visible={activeTab === "history"}>
-          <HistoryTab />
+          <HistoryTab
+            entries={historyEntries}
+            loading={signalsLoading}
+            error={signalsError}
+            onRefresh={refreshSignals}
+          />
         </CTabPane>
         <CTabPane visible={activeTab === "automation"}>
-          <AutomationTab />
+          <AutomationTab summary={summary} loading={signalsLoading} />
         </CTabPane>
         <CTabPane visible={activeTab === "rewards"}>
-          <RewardsTab />
+          <RewardsTab summary={summary} loading={signalsLoading} />
         </CTabPane>
       </CTabContent>
 
