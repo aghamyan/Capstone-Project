@@ -46,6 +46,8 @@ const SmartScheduler = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [planningId, setPlanningId] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [activeDrag, setActiveDrag] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null);
 
   const loadInsights = useCallback(async () => {
     if (!user?.id) return;
@@ -72,6 +74,15 @@ const SmartScheduler = () => {
   const overlaps = insights?.overlaps ?? [];
   const suggestions = insights?.suggestions ?? [];
   const upcoming = insights?.upcoming ?? [];
+  const freeWindowsByDay = useMemo(() => {
+    return freeWindows.reduce((acc, slot) => {
+      if (!acc[slot.date]) {
+        acc[slot.date] = [];
+      }
+      acc[slot.date].push(slot);
+      return acc;
+    }, {});
+  }, [freeWindows]);
 
   const planSuggestion = async (suggestion) => {
     if (!user?.id) return;
@@ -95,6 +106,27 @@ const SmartScheduler = () => {
     } finally {
       setPlanningId(null);
     }
+  };
+
+  const handleDragStart = (suggestion) => {
+    setActiveDrag(suggestion);
+    setDropTarget(null);
+  };
+
+  const handleDragEnd = () => {
+    setActiveDrag(null);
+    setDropTarget(null);
+  };
+
+  const handleDropOnSlot = (slot) => {
+    if (!activeDrag) return;
+    planSuggestion({
+      ...activeDrag,
+      date: slot.date,
+      start: slot.start,
+      end: slot.end,
+    });
+    handleDragEnd();
   };
 
   if (loading) {
@@ -324,6 +356,122 @@ const SmartScheduler = () => {
             ) : (
               <div className="p-4 text-body-secondary">Your upcoming days are fully booked.</div>
             )}
+          </CCardBody>
+        </CCard>
+      </CCol>
+
+      <CCol xs={12}>
+        <CCard className="border-0 shadow-sm mb-4">
+          <CCardHeader className="bg-body-secondary fw-semibold text-uppercase small">
+            Drag & drop your week
+          </CCardHeader>
+          <CCardBody>
+            <div className="text-body-secondary small mb-3">
+              Drag a suggested habit into a free window to place it at an exact time. You still get smart
+              recommendations, but now you can lay them out like a calendar.
+            </div>
+            <div className="d-flex flex-column flex-lg-row gap-3 align-items-stretch drag-board">
+              <div className="flex-grow-1">
+                {Object.keys(freeWindowsByDay).length ? (
+                  <div className="drop-grid">
+                    {Object.entries(freeWindowsByDay).map(([date, slots]) => (
+                      <div key={date} className="drop-column">
+                        <div className="drop-column-header">{date}</div>
+                        <div className="drop-column-body">
+                          {slots
+                            .slice()
+                            .sort((a, b) => a.start.localeCompare(b.start))
+                            .map((slot) => {
+                              const slotKey = `${slot.date}-${slot.start}-${slot.end}`;
+                              const isActive = dropTarget === slotKey;
+                              return (
+                                <div
+                                  key={slotKey}
+                                  className={`drop-slot ${isActive ? "drop-slot-active" : ""} ${!activeDrag ? "drop-slot-idle" : ""}`}
+                                  onDragOver={(e) => {
+                                    e.preventDefault();
+                                    if (activeDrag) {
+                                      setDropTarget(slotKey);
+                                    }
+                                  }}
+                                  onDragLeave={() => setDropTarget(null)}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    handleDropOnSlot(slot);
+                                  }}
+                                >
+                                  <div className="d-flex align-items-center justify-content-between">
+                                    <div>
+                                      <div className="fw-semibold">{slot.start} - {slot.end}</div>
+                                      <div className="text-body-secondary small">{slot.durationMinutes} minutes free</div>
+                                    </div>
+                                    <CBadge color="success">{slot.focus ?? "Open"}</CBadge>
+                                  </div>
+                                  <div className="mt-2 small text-primary fw-semibold">
+                                    {isActive && activeDrag
+                                      ? `Release to schedule ${activeDrag.habitName}`
+                                      : "Drop a task here"}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-body-secondary">We'll surface drop targets once we detect free time in your horizon.</div>
+                )}
+              </div>
+              <div className="drag-source-column">
+                <div className="fw-semibold mb-2">Suggested tasks</div>
+                <div className="drag-source-list">
+                  {suggestions.length ? (
+                    suggestions.map((suggestion) => {
+                      const suggestionKey = `${suggestion.habitId}-${suggestion.date}-${suggestion.start}`;
+                      const isPlanning = planningId === suggestionKey;
+                      return (
+                        <div
+                          key={suggestionKey}
+                          className={`drag-card ${activeDrag?.habitId === suggestion.habitId ? "drag-card-active" : ""}`}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.effectAllowed = "move";
+                            handleDragStart(suggestion);
+                          }}
+                          onDragEnd={handleDragEnd}
+                        >
+                          <div className="d-flex align-items-center justify-content-between">
+                            <div className="d-flex align-items-center gap-2">
+                              <CIcon icon={cilList} className="text-primary" />
+                              <span className="fw-semibold">{suggestion.habitName}</span>
+                            </div>
+                            <CBadge color="primary">{suggestion.confidence}%</CBadge>
+                          </div>
+                          <div className="text-body-secondary small mt-1">{suggestion.reason}</div>
+                          <div className="d-flex align-items-center justify-content-between mt-2 small text-muted">
+                            <span>
+                              {suggestion.date} · {suggestion.start} - {suggestion.end}
+                            </span>
+                            <CButton
+                              color="link"
+                              size="sm"
+                              className="p-0"
+                              disabled={isPlanning}
+                              onClick={() => planSuggestion(suggestion)}
+                            >
+                              {isPlanning ? <CSpinner size="sm" /> : "Auto-place"}
+                            </CButton>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-body-secondary small">Smart suggestions will appear here.</div>
+                  )}
+                </div>
+              </div>
+            </div>
           </CCardBody>
         </CCard>
       </CCol>
