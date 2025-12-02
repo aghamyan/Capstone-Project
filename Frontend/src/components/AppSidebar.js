@@ -26,7 +26,7 @@ const AppSidebar = () => {
 
   return (
     <CSidebar
-      className="border-end"
+      className="border-0 neon-sidebar shadow-sm"
       colorScheme="dark"
       position="fixed"
       unfoldable={unfoldable}
@@ -35,22 +35,32 @@ const AppSidebar = () => {
         dispatch({ type: 'set', sidebarShow: visible })
       }}
     >
-      <CSidebarHeader className="border-bottom">
-        <CSidebarBrand to="/">
-          <CIcon customClassName="sidebar-brand-full" icon={logo} height={32} />
-          <CIcon customClassName="sidebar-brand-narrow" icon={sygnet} height={32} />
-        </CSidebarBrand>
-        <CCloseButton
-          className="d-lg-none"
-          dark
-          onClick={() => dispatch({ type: 'set', sidebarShow: false })}
-        />
+      <CSidebarHeader className="border-0 px-3 py-4 neon-sidebar__header">
+        <div className="d-flex align-items-center justify-content-between w-100">
+          <div className="brand-crest d-flex align-items-center gap-3">
+            <span className="brand-crest__orb" aria-hidden="true" />
+            <CSidebarBrand to="/" className="p-0 m-0 brand-crest__logo">
+              <CIcon customClassName="sidebar-brand-full" icon={logo} height={40} />
+              <CIcon customClassName="sidebar-brand-narrow" icon={sygnet} height={40} />
+            </CSidebarBrand>
+          </div>
+          <CCloseButton
+            className="d-lg-none text-white"
+            dark
+            onClick={() => dispatch({ type: 'set', sidebarShow: false })}
+          />
+        </div>
       </CSidebarHeader>
       <AppSidebarNav items={navigation} />
-      <CSidebarFooter className="border-top d-none d-lg-flex">
-        <CSidebarToggler
-          onClick={() => dispatch({ type: 'set', sidebarUnfoldable: !unfoldable })}
-        />
+      <CSidebarFooter className="border-0 d-none d-lg-flex justify-content-center pb-4">
+        <div className="sidebar-glow rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2">
+          <span className="status-dot pulse" />
+          <small className="text-white-50">All systems synced</small>
+          <CSidebarToggler
+            className="text-white"
+            onClick={() => dispatch({ type: 'set', sidebarUnfoldable: !unfoldable })}
+          />
+        </div>
       </CSidebarFooter>
     </CSidebar>
   )
