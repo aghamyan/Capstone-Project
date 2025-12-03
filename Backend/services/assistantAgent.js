@@ -1,6 +1,6 @@
 const MAX_HISTORY_MESSAGES = parseInt(process.env.ASSISTANT_HISTORY_LIMIT || "12", 10);
 const GEMINI_BASE_URL = (process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta").replace(/\/$/, "");
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash-latest";
+const GEMINI_MODEL = (process.env.GEMINI_MODEL || "gemini-1.5-flash").replace(/-latest$/, "");
 const PROVIDER_NAME = process.env.GEMINI_PROVIDER_NAME || "Google Gemini";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyA0MwERRiDFuO-kuMsF-BmJWdQaIIO8F1k";
 
