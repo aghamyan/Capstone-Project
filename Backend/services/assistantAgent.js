@@ -166,7 +166,7 @@ export const runReasoningAgent = async ({
             },
           ],
     // System instruction is where we put long context / persona
-    system_instruction: {
+    systemInstruction: {
       role: "system",
       parts: [{ text: systemInstruction }],
     },
