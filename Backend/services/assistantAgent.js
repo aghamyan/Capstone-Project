@@ -1,17 +1,17 @@
 const MAX_HISTORY_MESSAGES = parseInt(process.env.ASSISTANT_HISTORY_LIMIT || "12", 10);
-const OPENAI_BASE_URL = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
-const PROVIDER_NAME = process.env.OPENAI_PROVIDER_NAME || "OpenAI";
+const GEMINI_BASE_URL = (process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta").replace(/\/$/, "");
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const PROVIDER_NAME = process.env.GEMINI_PROVIDER_NAME || "Google Gemini";
 
-const hasApiKey = () => Boolean(process.env.OPENAI_API_KEY);
+const hasApiKey = () => Boolean(process.env.GEMINI_API_KEY);
 
 export const getAgentStatus = () => ({
   ready: hasApiKey(),
   provider: PROVIDER_NAME,
-  model: hasApiKey() ? OPENAI_MODEL : null,
+  model: hasApiKey() ? GEMINI_MODEL : null,
   reason: hasApiKey()
     ? null
-    : "Set the OPENAI_API_KEY environment variable to enable the adaptive AI companion.",
+    : "Set the GEMINI_API_KEY environment variable to enable the adaptive AI companion.",
   updatedAt: new Date().toISOString(),
 });
 
@@ -94,48 +94,73 @@ const buildMessages = ({ snapshot, insightText, history = [] }) => {
   const contextBlock = describeSnapshot(snapshot, insightText);
 
   const formattedHistory = limitHistory(history).map((entry) => ({
-    role: entry.role === "assistant" ? "assistant" : "user",
-    content: entry.content,
+    role: entry.role === "assistant" ? "model" : "user",
+    parts: [{ text: entry.content }],
   }));
 
-  return [
-    { role: "system", content: `${systemPrompt}\n\n${contextBlock}` },
-    ...formattedHistory,
-  ];
+  return {
+    systemInstruction: `${systemPrompt}\n\n${contextBlock}`,
+    contents: formattedHistory,
+  };
 };
 
 export const runReasoningAgent = async ({ snapshot, insightText, history, apiKeyOverride }) => {
-  const apiKey = apiKeyOverride || process.env.OPENAI_API_KEY;
+  const apiKey = apiKeyOverride || process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error("Missing OpenAI API key");
+    throw new Error("Missing Gemini API key");
   }
 
-  const messages = buildMessages({ snapshot, insightText, history });
+  const { systemInstruction, contents } = buildMessages({ snapshot, insightText, history });
 
-  const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
+  const payload = {
+    contents:
+      contents && contents.length
+        ? contents
+        : [
+            {
+              role: "user",
+              parts: [
+                {
+                  text: "Provide tailored guidance based on the system instruction and any available context.",
+                },
+              ],
+            },
+          ],
+    system_instruction: {
+      role: "system",
+      parts: [{ text: systemInstruction }],
     },
-    body: JSON.stringify({
-      model: OPENAI_MODEL,
+    generationConfig: {
       temperature: 0.7,
-      top_p: 0.95,
-      messages,
-    }),
-  });
+      topP: 0.95,
+    },
+  };
+
+  const response = await fetch(
+    `${GEMINI_BASE_URL}/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`OpenAI request failed: ${response.status} ${errorText}`);
+    throw new Error(`Gemini request failed: ${response.status} ${errorText}`);
   }
 
   const data = await response.json();
-  const reply = data?.choices?.[0]?.message?.content?.trim();
+  const reply = data?.candidates?.[0]?.content?.parts
+    ?.map((part) => part.text)
+    .filter(Boolean)
+    .join("\n")
+    ?.trim();
 
   if (!reply) {
-    throw new Error("OpenAI response missing content");
+    throw new Error("Gemini response missing content");
   }
 
   return {
@@ -143,7 +168,7 @@ export const runReasoningAgent = async ({ snapshot, insightText, history, apiKey
     meta: {
       ready: true,
       provider: PROVIDER_NAME,
-      model: OPENAI_MODEL,
+      model: GEMINI_MODEL,
       reason: null,
       usage: data?.usage || null,
       updatedAt: new Date().toISOString(),
