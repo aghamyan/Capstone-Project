@@ -1,32 +1,29 @@
-// ai/geminiAgent.js  (or whatever path you use)
+// ai/claudeAgent.js  (or whatever path you use)
 
 const MAX_HISTORY_MESSAGES = parseInt(process.env.ASSISTANT_HISTORY_LIMIT || "12", 10)
 
-// ✅ Use v1 instead of v1beta
-const GEMINI_BASE_URL = (
-  process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com/v1"
+const CLAUDE_BASE_URL = (
+  process.env.CLAUDE_BASE_URL || "https://api.anthropic.com/v1"
 ).replace(/\/$/, "")
 
-// ✅ Use a CURRENT model name
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash-latest"
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-3-5-sonnet-latest"
 
 // Just a label, for UI / status
-const PROVIDER_NAME = process.env.GEMINI_PROVIDER_NAME || "Google Gemini"
+const PROVIDER_NAME = process.env.CLAUDE_PROVIDER_NAME || "Anthropic Claude"
 
-// ❗ API key MUST come from env, do NOT hardcode real keys in code
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyA0MwERRiDFuO-kuMsF-BmJWdQaIIO8F1k"
+const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY
 
 // ---------- STATUS HELPERS ----------
 
-const hasApiKey = () => Boolean(GEMINI_API_KEY)
+const hasApiKey = () => Boolean(CLAUDE_API_KEY)
 
 export const getAgentStatus = () => ({
   ready: hasApiKey(),
   provider: PROVIDER_NAME,
-  model: hasApiKey() ? GEMINI_MODEL : null,
+  model: hasApiKey() ? CLAUDE_MODEL : null,
   reason: hasApiKey()
     ? null
-    : "Set the GEMINI_API_KEY environment variable to enable the adaptive AI companion.",
+    : "Set the CLAUDE_API_KEY environment variable to enable the adaptive AI companion.",
   updatedAt: new Date().toISOString(),
 })
 
@@ -121,8 +118,8 @@ const buildMessages = ({ snapshot, insightText, history = [] }) => {
   const contextBlock = describeSnapshot(snapshot, insightText)
 
   const formattedHistory = limitHistory(history).map((entry) => ({
-    role: entry.role === "assistant" ? "model" : "user",
-    parts: [{ text: entry.content }],
+    role: entry.role === "assistant" ? "assistant" : "user",
+    content: entry.content,
   }))
 
   return {
@@ -139,9 +136,9 @@ export const runReasoningAgent = async ({
   history,
   apiKeyOverride,
 }) => {
-  const apiKey = apiKeyOverride || GEMINI_API_KEY
+  const apiKey = apiKeyOverride || CLAUDE_API_KEY
   if (!apiKey) {
-    throw new Error("Missing Gemini API key. Set GEMINI_API_KEY in your environment.")
+    throw new Error("Missing Claude API key. Set CLAUDE_API_KEY in your environment.")
   }
 
   const { systemInstruction, contents } = buildMessages({
@@ -151,58 +148,50 @@ export const runReasoningAgent = async ({
   })
 
   const payload = {
-    // Chat contents
-    contents:
+    model: CLAUDE_MODEL,
+    system: systemInstruction,
+    temperature: 0.7,
+    top_p: 0.95,
+    max_tokens: 1024,
+    messages:
       contents && contents.length
         ? contents
         : [
             {
               role: "user",
-              parts: [
-                {
-                  text: "Provide tailored guidance based on the system instruction and any available context.",
-                },
-              ],
+              content:
+                "Provide tailored guidance based on the system instruction and any available context.",
             },
           ],
-    // System instruction is where we put long context / persona
-    systemInstruction: {
-      role: "system",
-      parts: [{ text: systemInstruction }],
-    },
-    generationConfig: {
-      temperature: 0.7,
-      topP: 0.95,
-    },
   }
 
-  const url = `${GEMINI_BASE_URL}/models/${encodeURIComponent(
-    GEMINI_MODEL
-  )}:generateContent?key=${apiKey}`
+  const url = `${CLAUDE_BASE_URL}/messages`
 
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify(payload),
   })
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Gemini request failed: ${response.status} ${errorText}`)
+    throw new Error(`Claude request failed: ${response.status} ${errorText}`)
   }
 
   const data = await response.json()
 
-  const reply = data?.candidates?.[0]?.content?.parts
+  const reply = data?.content
     ?.map((part) => part.text)
     .filter(Boolean)
     .join("\n")
     ?.trim()
 
   if (!reply) {
-    throw new Error("Gemini response missing content")
+    throw new Error("Claude response missing content")
   }
 
   return {
@@ -210,7 +199,7 @@ export const runReasoningAgent = async ({
     meta: {
       ready: true,
       provider: PROVIDER_NAME,
-      model: GEMINI_MODEL,
+      model: CLAUDE_MODEL,
       reason: null,
       usage: data?.usage || null,
       updatedAt: new Date().toISOString(),
