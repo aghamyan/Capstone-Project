@@ -1,68 +1,48 @@
-import { ChatAnthropic } from "@langchain/anthropic"
-import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages"
+// assistantAgent.js
+// Main Claude AI reasoning engine for StepHabit
 
-// ai/claudeAgent.js  (or whatever path you use)
+import { ChatAnthropic } from "@langchain/anthropic";
+import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 
-const MAX_HISTORY_MESSAGES = parseInt(process.env.ASSISTANT_HISTORY_LIMIT || "12", 10)
+const MAX_HISTORY_MESSAGES = parseInt(process.env.ASSISTANT_HISTORY_LIMIT || "12", 10);
 
-const CLAUDE_BASE_URL = (
-  process.env.CLAUDE_BASE_URL || "https://api.anthropic.com"
-).replace(/\/$/, "")
+// ---- MODEL CONFIG ----
+const CLAUDE_BASE_URL = (process.env.CLAUDE_BASE_URL || "https://api.anthropic.com").replace(/\/$/, "");
 
-// Use a pinned Claude model version by default to avoid MODEL_NOT_FOUND errors
-// that can occur if "-latest" aliases are unavailable in a given environment.
-const CLAUDE_MODEL =
-  process.env.CLAUDE_MODEL || "claude-3-5-sonnet-20241022"
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-5-20250929";
+const FALLBACK_CLAUDE_MODEL = process.env.CLAUDE_FALLBACK_MODEL || "claude-haiku-4-5-20251001";
 
-// Fallback for accounts/environments that do not yet have access to the
-// default model. Haiku is broadly available and minimizes 404 "model not
-// found" errors while still returning useful summaries.
-const FALLBACK_CLAUDE_MODEL =
-  process.env.CLAUDE_FALLBACK_MODEL || "claude-3-haiku-20240307"
+const PROVIDER_NAME = process.env.CLAUDE_PROVIDER_NAME || "Anthropic Claude";
+const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 
-// Just a label, for UI / status
-const PROVIDER_NAME = process.env.CLAUDE_PROVIDER_NAME || "Anthropic Claude"
-
-const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY
-
-// ---------- STATUS HELPERS ----------
-
-const hasApiKey = () => Boolean(CLAUDE_API_KEY)
+// ---- STATUS HELPERS ----
+const hasApiKey = () => Boolean(CLAUDE_API_KEY);
 
 export const getAgentStatus = () => ({
   ready: hasApiKey(),
   provider: PROVIDER_NAME,
   model: hasApiKey() ? CLAUDE_MODEL : null,
-  reason: hasApiKey()
-    ? null
-    : "Set the CLAUDE_API_KEY environment variable to enable the adaptive AI companion.",
+  reason: hasApiKey() ? null : "Set the CLAUDE_API_KEY environment variable.",
   updatedAt: new Date().toISOString(),
-})
+});
 
-// ---------- HISTORY + SNAPSHOT HELPERS ----------
-
+// ---- HISTORY UTILS ----
 const limitHistory = (history = []) => {
-  if (!Array.isArray(history) || !history.length) {
-    return []
-  }
+  if (!Array.isArray(history) || !history.length) return [];
+  const limit = Number.isFinite(MAX_HISTORY_MESSAGES) ? Math.max(MAX_HISTORY_MESSAGES, 2) : 12;
+  return history.slice(-limit);
+};
 
-  const limit = Number.isFinite(MAX_HISTORY_MESSAGES)
-    ? Math.max(MAX_HISTORY_MESSAGES, 2)
-    : 12
-
-  return history.slice(-limit)
-}
-
-const formatList = (items = []) => items.filter(Boolean).join("; ")
+// ---- SNAPSHOT FORMATTER ----
+const formatList = (items = []) => items.filter(Boolean).join("; ");
 
 const describeSnapshot = (snapshot = {}, insightText) => {
-  const profile = snapshot.user || {}
-  const progress = snapshot.progress || {}
-  const schedules = snapshot.schedules?.upcoming || []
-  const topHabits = (snapshot.progress?.habitSummaries || []).slice(0, 5)
-  const needsHelp = (snapshot.progress?.habitSummaries || [])
-    .filter((habit) => habit.completionRate < 60)
-    .slice(0, 3)
+  const profile = snapshot.user || {};
+  const progress = snapshot.progress || {};
+  const schedules = snapshot.schedules?.upcoming || [];
+
+  const topHabits = (progress.habitSummaries || []).slice(0, 5);
+  const needsHelp = (progress.habitSummaries || []).filter(h => h.completionRate < 60).slice(0, 3);
 
   const lines = [
     `Name: ${profile.name || "Unknown"}`,
@@ -70,150 +50,112 @@ const describeSnapshot = (snapshot = {}, insightText) => {
     `Focus area: ${profile.focus_area || "Not set"}`,
     `Daily commitment: ${profile.daily_commitment || "Not set"}`,
     `Support preference: ${profile.support_preference || "Not set"}`,
-    `Average completion: ${progress.completionRate || 0}% over ${progress.total || 0} recent entries`,
-  ]
+    `Average completion: ${progress.completionRate || 0}% over ${progress.total || 0} entries`,
+  ];
 
   if (topHabits.length) {
     lines.push(
-      `Top habits: ${formatList(
-        topHabits.map(
-          (habit) =>
-            `${habit.title} — ${habit.completionRate}% success (${habit.completed} completed, ${habit.missed} missed)`
-        )
-      )}`
-    )
+      `Top habits: ${formatList(topHabits.map(h =>
+        `${h.title} — ${h.completionRate}% (${h.completed} done, ${h.missed} missed)`
+      ))}`
+    );
   }
 
   if (needsHelp.length) {
     lines.push(
-      `Habits needing focus: ${formatList(
-        needsHelp.map(
-          (habit) =>
-            `${habit.title} — ${habit.completionRate}% success (${habit.completed} completed, ${habit.missed} missed)`
-        )
-      )}`
-    )
+      `Habits needing focus: ${formatList(needsHelp.map(h =>
+        `${h.title} — ${h.completionRate}% (${h.completed} done, ${h.missed} missed)`
+      ))}`
+    );
   }
 
   if (schedules.length) {
     lines.push(
       `Upcoming schedule: ${formatList(
-        schedules.slice(0, 5).map(
-          (item) =>
-            `${item.habitTitle} on ${item.day} at ${item.starttime}${
-              item.endtime ? ` until ${item.endtime}` : ""
-            }`
+        schedules.slice(0, 5).map(item =>
+          `${item.habitTitle} on ${item.day} at ${item.starttime}`
         )
       )}`
-    )
+    );
   }
 
-  if (insightText) {
-    lines.push(`Recent insight summary: ${insightText}`)
-  }
+  if (insightText) lines.push(`Recent insight: ${insightText}`);
 
-  return lines.join("\n")
-}
+  return lines.join("\n");
+};
 
-// ---------- MESSAGE BUILDER ----------
-
+// ---- MESSAGE BUILDER ----
 const buildMessages = ({ snapshot, insightText, history = [] }) => {
   const systemPrompt = [
-    "You are StepHabit's AI companion, a motivational coach who reasons carefully",
-    "about the user's habits, schedules, and progress before responding.",
-    "Provide empathetic yet practical guidance, highlight relevant insights,",
-    "and end with a reflective or action-oriented question that encourages follow-up.",
-    "Keep responses concise (2-4 short paragraphs or paragraphs with a short bullet list).",
-    "Use Markdown for emphasis when it improves clarity.",
-  ].join(" ")
+    "You are StepHabit's AI companion, a motivational coach.",
+    "You reason carefully about habits, schedules, and progress.",
+    "Keep responses short, supportive, and actionable.",
+    "Always end with a reflective or action-oriented question."
+  ].join(" ");
 
-  const contextBlock = describeSnapshot(snapshot, insightText)
+  const contextBlock = describeSnapshot(snapshot, insightText);
 
-  const formattedHistory = limitHistory(history)
-    .filter((entry) => Boolean(entry?.content))
-    .map((entry) =>
-      entry.role === "assistant"
-        ? new AIMessage(entry.content)
-        : new HumanMessage(entry.content)
-    )
+  const formattedHistory = limitHistory(history).map(entry =>
+    entry.role === "assistant"
+      ? new AIMessage(entry.content)
+      : new HumanMessage(entry.content)
+  );
 
   return {
     systemInstruction: `${systemPrompt}\n\n${contextBlock}`,
     contents: formattedHistory,
-  }
-}
+  };
+};
 
-// ---------- MAIN CALL ----------
+// ---- MAIN AGENT CALL ----
+export const runReasoningAgent = async ({ snapshot, insightText, history, apiKeyOverride }) => {
+  const apiKey = apiKeyOverride || CLAUDE_API_KEY;
+  if (!apiKey) throw new Error("Missing CLAUDE_API_KEY.");
 
-export const runReasoningAgent = async ({
-  snapshot,
-  insightText,
-  history,
-  apiKeyOverride,
-}) => {
-  const apiKey = apiKeyOverride || CLAUDE_API_KEY
-  if (!apiKey) {
-    throw new Error("Missing Claude API key. Set CLAUDE_API_KEY in your environment.")
-  }
+  const { systemInstruction, contents } = buildMessages({ snapshot, insightText, history });
 
-  const { systemInstruction, contents } = buildMessages({
-    snapshot,
-    insightText,
-    history,
-  })
+  const modelsToTry = [CLAUDE_MODEL, FALLBACK_CLAUDE_MODEL];
 
-  const modelsToTry = [CLAUDE_MODEL, FALLBACK_CLAUDE_MODEL].filter(Boolean)
+  const isModelNotFound = err =>
+    err?.lc_error_code === "MODEL_NOT_FOUND" ||
+    err?.status === 404 ||
+    err?.error?.error?.type === "not_found_error";
 
-  const isModelNotFound = (error) =>
-    error?.lc_error_code === "MODEL_NOT_FOUND" ||
-    error?.status === 404 ||
-    error?.error?.error?.type === "not_found_error"
-
-  let replyMessage
-  let modelUsed = CLAUDE_MODEL
+  let replyMessage;
+  let modelUsed = modelsToTry[0];
 
   for (const modelName of modelsToTry) {
     try {
+      console.log("Trying Claude model:", modelName);
+
       const chat = new ChatAnthropic({
         anthropicApiKey: apiKey,
-        anthropicApiUrl: `${CLAUDE_BASE_URL}/v1`,
+        anthropicApiUrl: CLAUDE_BASE_URL, // IMPORTANT — DO NOT ADD /v1
         model: modelName,
         temperature: 0.7,
         topP: 0.95,
         maxTokens: 1024,
-      })
+      });
 
       replyMessage = await chat.invoke([
         new SystemMessage(systemInstruction),
-        ...(contents && contents.length
-          ? contents
-          : [
-              new HumanMessage(
-                "Provide tailored guidance based on the system instruction and any available context."
-              ),
-            ]),
-      ])
+        ...(contents.length ? contents : [new HumanMessage("Summarize my progress.")]),
+      ]);
 
-      modelUsed = modelName
-      break
-    } catch (error) {
-      if (!isModelNotFound(error) || modelName === modelsToTry.at(-1)) {
-        throw error
-      }
+      modelUsed = modelName;
+      break; // success
+    } catch (err) {
+      console.error("Model failed:", modelName, err?.error || err?.message);
+      if (!isModelNotFound(err) || modelName === modelsToTry.at(-1)) throw err;
     }
   }
 
-  const reply = typeof replyMessage.content === "string"
-    ? replyMessage.content.trim()
-    : replyMessage.content
-        ?.map((part) => part?.text)
-        .filter(Boolean)
-        .join("\n")
-        ?.trim()
+  const reply =
+    typeof replyMessage.content === "string"
+      ? replyMessage.content.trim()
+      : replyMessage.content.map(p => p.text).filter(Boolean).join("\n").trim();
 
-  if (!reply) {
-    throw new Error("Claude response missing content")
-  }
+  if (!reply) throw new Error("Claude returned no content.");
 
   return {
     reply,
@@ -221,9 +163,7 @@ export const runReasoningAgent = async ({
       ready: true,
       provider: PROVIDER_NAME,
       model: modelUsed,
-      reason: null,
-      usage: replyMessage?.response_metadata?.usage || null,
       updatedAt: new Date().toISOString(),
     },
-  }
-}
+  };
+};
