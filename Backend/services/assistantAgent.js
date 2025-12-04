@@ -14,6 +14,12 @@ const CLAUDE_BASE_URL = (
 const CLAUDE_MODEL =
   process.env.CLAUDE_MODEL || "claude-3-5-sonnet-20241022"
 
+// Fallback for accounts/environments that do not yet have access to the
+// default model. Haiku is broadly available and minimizes 404 "model not
+// found" errors while still returning useful summaries.
+const FALLBACK_CLAUDE_MODEL =
+  process.env.CLAUDE_FALLBACK_MODEL || "claude-3-haiku-20240307"
+
 // Just a label, for UI / status
 const PROVIDER_NAME = process.env.CLAUDE_PROVIDER_NAME || "Anthropic Claude"
 
@@ -156,25 +162,46 @@ export const runReasoningAgent = async ({
     history,
   })
 
-  const chat = new ChatAnthropic({
-    anthropicApiKey: apiKey,
-    anthropicApiUrl: `${CLAUDE_BASE_URL}/v1`,
-    model: CLAUDE_MODEL,
-    temperature: 0.7,
-    topP: 0.95,
-    maxTokens: 1024,
-  })
+  const modelsToTry = [CLAUDE_MODEL, FALLBACK_CLAUDE_MODEL].filter(Boolean)
 
-  const replyMessage = await chat.invoke([
-    new SystemMessage(systemInstruction),
-    ...(contents && contents.length
-      ? contents
-      : [
-          new HumanMessage(
-            "Provide tailored guidance based on the system instruction and any available context."
-          ),
-        ]),
-  ])
+  const isModelNotFound = (error) =>
+    error?.lc_error_code === "MODEL_NOT_FOUND" ||
+    error?.status === 404 ||
+    error?.error?.error?.type === "not_found_error"
+
+  let replyMessage
+  let modelUsed = CLAUDE_MODEL
+
+  for (const modelName of modelsToTry) {
+    try {
+      const chat = new ChatAnthropic({
+        anthropicApiKey: apiKey,
+        anthropicApiUrl: `${CLAUDE_BASE_URL}/v1`,
+        model: modelName,
+        temperature: 0.7,
+        topP: 0.95,
+        maxTokens: 1024,
+      })
+
+      replyMessage = await chat.invoke([
+        new SystemMessage(systemInstruction),
+        ...(contents && contents.length
+          ? contents
+          : [
+              new HumanMessage(
+                "Provide tailored guidance based on the system instruction and any available context."
+              ),
+            ]),
+      ])
+
+      modelUsed = modelName
+      break
+    } catch (error) {
+      if (!isModelNotFound(error) || modelName === modelsToTry.at(-1)) {
+        throw error
+      }
+    }
+  }
 
   const reply = typeof replyMessage.content === "string"
     ? replyMessage.content.trim()
@@ -193,7 +220,7 @@ export const runReasoningAgent = async ({
     meta: {
       ready: true,
       provider: PROVIDER_NAME,
-      model: CLAUDE_MODEL,
+      model: modelUsed,
       reason: null,
       usage: replyMessage?.response_metadata?.usage || null,
       updatedAt: new Date().toISOString(),
