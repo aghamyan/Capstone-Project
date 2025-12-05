@@ -21,10 +21,6 @@ import {
   CNav,
   CNavItem,
   CNavLink,
-  COffcanvas,
-  COffcanvasBody,
-  COffcanvasHeader,
-  COffcanvasTitle,
   CRow,
   CSpinner,
   CTabContent,
@@ -36,7 +32,6 @@ import {
 import CIcon from "@coreui/icons-react"
 import {
   cilBolt,
-  cilChatBubble,
   cilClock,
   cilChartLine,
   cilBadge,
@@ -49,7 +44,6 @@ import {
 import AddHabit from "./AddHabit"
 import HabitLibrary from "./HabitLibrary"
 import ProgressTracker from "./ProgressTracker"
-import HabitCoach from "./HabitCoach"
 import { getHabits, deleteHabit, updateHabit } from "../../services/habits"
 import { logHabitProgress, getProgressHistory } from "../../services/progress"
 import { promptMissedReflection } from "../../utils/reflection"
@@ -864,39 +858,6 @@ const RewardsTab = ({ summary, loading }) => {
   )
 }
 
-const HabitCoachBubble = () => {
-  const [visible, setVisible] = useState(false)
-
-  return (
-    <>
-      <CButton
-        color="info"
-        size="lg"
-        className="position-fixed shadow habit-coach-bubble"
-        style={{ bottom: "24px", right: "24px", zIndex: 1050 }}
-        onClick={() => setVisible(true)}
-      >
-        <CIcon icon={cilChatBubble} className="me-2" /> Habit Coach
-      </CButton>
-      <COffcanvas placement="end" visible={visible} onHide={() => setVisible(false)} backdrop>
-        <COffcanvasHeader closeButton>
-          <COffcanvasTitle>
-            <div className="d-flex align-items-center gap-2">
-              <CIcon icon={cilChatBubble} />
-              <span>Habit Coach</span>
-            </div>
-          </COffcanvasTitle>
-        </COffcanvasHeader>
-        <COffcanvasBody className="p-0" style={{ height: "100vh" }}>
-          <div className="h-100 overflow-auto">
-            <HabitCoach />
-          </div>
-        </COffcanvasBody>
-      </COffcanvas>
-    </>
-  )
-}
-
 const Habits = () => {
   const [activeTab, setActiveTab] = useState("my-habits")
   const [analytics, setAnalytics] = useState(null)
@@ -1060,7 +1021,6 @@ const Habits = () => {
         </CTabPane>
       </CTabContent>
 
-      <HabitCoachBubble />
     </div>
   )
 }
