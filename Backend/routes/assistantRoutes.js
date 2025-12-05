@@ -509,6 +509,11 @@ router.get("/history", async (req, res) => {
       .slice(0, 6)
       .map(([keyword, count]) => ({ keyword, count }));
 
+    const agentStatus = getAgentStatus();
+    const agent = agentStatus.ready
+      ? agentStatus
+      : { ...getCoachStatus(), ready: false, reason: agentStatus.reason };
+
     return res.json({
       history: mapHistory(historyRecords),
       summary: {
@@ -526,7 +531,7 @@ router.get("/history", async (req, res) => {
         insightText: insightRecord?.content || null,
         profileMemory,
       },
-      agent: getCoachStatus(),
+      agent,
     });
   } catch (error) {
     console.error("Failed to load assistant history", error);
@@ -676,14 +681,49 @@ router.post("/chat", async (req, res) => {
 
     const insight = await updateInsightMemory(userId, snapshot, counts);
 
-    const agentMeta = getCoachStatus();
+    const [agentStatus, historyRecords] = await Promise.all([
+      getAgentStatus(),
+      AssistantMemory.findAll({
+        where: {
+          user_id: userId,
+          role: { [Op.in]: ["user", "assistant"] },
+        },
+        order: [["created_at", "ASC"]],
+        limit: 18,
+      }),
+    ]);
 
-    const reply = craftAssistantReply({
-      message,
-      snapshot,
-      keywordInsight: insight.topKeywords,
-      messageKeywords: counts,
-    });
+    const history = mapHistory(historyRecords);
+
+    let agentMeta = agentStatus;
+    let reply;
+
+    if (agentStatus.ready) {
+      try {
+        const result = await runReasoningAgent({
+          snapshot,
+          insightText: insight.summaryText,
+          history,
+        });
+        reply = result.reply;
+        agentMeta = result.meta;
+      } catch (err) {
+        console.error("LLM chat failed, using crafted reply", err);
+        agentMeta = { ...agentStatus, ready: false, reason: err.message };
+      }
+    }
+
+    if (!reply) {
+      reply = craftAssistantReply({
+        message,
+        snapshot,
+        keywordInsight: insight.topKeywords,
+        messageKeywords: counts,
+      });
+      if (!agentMeta?.ready) {
+        agentMeta = { ...getCoachStatus(), ready: false, reason: agentMeta?.reason };
+      }
+    }
 
     await AssistantMemory.create({
       user_id: userId,
@@ -696,17 +736,19 @@ router.post("/chat", async (req, res) => {
       },
     });
 
-    const historyRecords = await AssistantMemory.findAll({
-      where: {
-        user_id: userId,
-        role: { [Op.in]: ["user", "assistant"] },
-      },
-      order: [["created_at", "ASC"]],
-    });
+    const updatedHistory = mapHistory(
+      await AssistantMemory.findAll({
+        where: {
+          user_id: userId,
+          role: { [Op.in]: ["user", "assistant"] },
+        },
+        order: [["created_at", "ASC"]],
+      })
+    );
 
     return res.json({
       reply,
-      history: mapHistory(historyRecords),
+      history: updatedHistory,
       summary: {
         profile: {
           name: snapshot.user.name,
