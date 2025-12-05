@@ -96,42 +96,40 @@ const CoachSummaryCard = ({ summary }) => {
   const completionRate = summary?.progress?.completionRate ?? 0;
 
   return (
-    <div className="mb-3 p-3 p-md-4 rounded-4 border bg-body-tertiary">
-      <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-        <div>
-          <div className="text-uppercase small text-body-secondary fw-semibold mb-1">
-            Coach at a glance
-          </div>
-          <h6 className="mb-0">
-            {summary?.profile?.goal || "Set a goal to personalize your chat"}
-          </h6>
-          <small className="text-medium-emphasis">{focusArea}</small>
-        </div>
-        <CBadge color="primary" className="px-3 py-2 bg-opacity-15 text-primary">
-          {completionRate}% completion
-        </CBadge>
-      </div>
-      <div className="d-flex flex-wrap gap-3">
+    <div className="mb-3 p-3 rounded-4 border bg-body-tertiary">
+      <div className="d-flex flex-wrap align-items-center gap-3 justify-content-between">
         <div className="d-flex align-items-center gap-2">
-          <CAvatar color="primary" textColor="white" size="md">
+          <CAvatar color="primary" textColor="white">
             <CIcon icon={cilLightbulb} />
           </CAvatar>
           <div>
-            <div className="fw-semibold">Next focus</div>
+            <div className="text-uppercase small text-body-secondary fw-semibold">
+              Focus
+            </div>
+            <div className="fw-semibold">{focusArea}</div>
             <small className="text-medium-emphasis">{nextHabit}</small>
           </div>
         </div>
         <div className="d-flex align-items-center gap-2">
-          <CAvatar color="info" textColor="white" size="md">
+          <CAvatar color="info" textColor="white">
             <CIcon icon={cilCalendar} />
           </CAvatar>
           <div>
-            <div className="fw-semibold">Recent wins</div>
-            <small className="text-medium-emphasis">
-              {summary?.progress?.completed ?? 0} logged · {summary?.progress?.missed ?? 0} missed
-            </small>
+            <div className="text-uppercase small text-body-secondary fw-semibold">
+              Goal
+            </div>
+            <div className="fw-semibold">
+              {summary?.profile?.goal || "Set a goal to personalize your chat"}
+            </div>
+            <small className="text-medium-emphasis">{summary?.profile?.name || "Your coach"}</small>
           </div>
         </div>
+        <CBadge
+          color="primary"
+          className="px-3 py-2 bg-opacity-15 text-primary text-center rounded-pill"
+        >
+          {completionRate}% complete
+        </CBadge>
       </div>
     </div>
   );
@@ -287,7 +285,7 @@ const HabitCoach = () => {
 
   return (
     <CRow className="g-4">
-      <CCol xs={12} xl={8}>
+      <CCol xs={12} xl={9}>
         <CCard className="shadow-sm h-100">
           <CCardHeader className="d-flex justify-content-between align-items-center">
             <div>
@@ -298,7 +296,7 @@ const HabitCoach = () => {
             </div>
             {initialLoading && <CSpinner size="sm" color="primary" />}
           </CCardHeader>
-          <CCardBody className="d-flex flex-column">
+          <CCardBody className="d-flex flex-column gap-3">
             {coach && (
               <CAlert
                 color={coach.ready ? "primary" : "warning"}
@@ -324,9 +322,9 @@ const HabitCoach = () => {
 
             <CoachSummaryCard summary={summary} />
 
-            <div className="mb-3">
-              <div className="d-flex flex-wrap gap-2 align-items-center">
-                <small className="text-medium-emphasis me-1">Try asking:</small>
+            <div className="d-flex flex-wrap gap-2 align-items-center mb-1">
+              <small className="text-medium-emphasis">Quick prompts</small>
+              <div className="d-flex flex-wrap gap-2 flex-grow-1">
                 {quickPrompts.map((prompt) => (
                   <CButton
                     key={prompt}
@@ -341,7 +339,10 @@ const HabitCoach = () => {
               </div>
             </div>
 
-            <div className="flex-grow-1 overflow-auto mb-3" style={{ maxHeight: "520px" }}>
+            <div
+              className="flex-grow-1 overflow-auto"
+              style={{ minHeight: "55vh" }}
+            >
               {initialLoading ? (
                 <div className="d-flex justify-content-center align-items-center h-100">
                   <CSpinner color="primary" />
@@ -397,7 +398,7 @@ const HabitCoach = () => {
         </CCard>
       </CCol>
 
-      <CCol xs={12} xl={4}>
+      <CCol xs={12} xl={3}>
         <InsightSection
           title="Personal Snapshot"
           icon={cilChartLine}
