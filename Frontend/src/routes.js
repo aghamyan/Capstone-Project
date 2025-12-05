@@ -11,8 +11,12 @@ const Habits = React.lazy(() => import("./views/dashboard/Habits"))
 const Planner = React.lazy(() => import("./views/dashboard/Planner"))
 const Notifications = React.lazy(() => import("./views/dashboard/Notifications"))
 
+// ===== Users =====
+const Users = React.lazy(() => import("./views/users/Users"))
+
 // ===== Profile =====
 const UserProfile = React.lazy(() => import("./views/profile/UserProfile"))
+const Settings = React.lazy(() => import("./views/profile/Settings"))
 
 // ===== Community =====
 const Community = React.lazy(() => import("./views/community/Community"))
@@ -35,8 +39,12 @@ const routes = [
   { path: "/smart-scheduler", name: "Planner", element: Planner },
   { path: "/progress-tracker", name: "Habits", element: Habits },
 
+  // ===== Users =====
+  { path: "/users", name: "Users", element: Users },
+
   // ===== Profile =====
   { path: "/profile", name: "Profile", element: UserProfile },
+  { path: "/settings", name: "Settings", element: Settings },
 
   // ===== Community =====
   { path: "/community", name: "Community", element: Community },
