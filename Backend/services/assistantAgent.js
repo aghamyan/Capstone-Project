@@ -154,7 +154,11 @@ export const runReasoningAgent = async ({ snapshot, insightText, history, apiKey
   const reply =
     typeof replyMessage.content === "string"
       ? replyMessage.content.trim()
-      : replyMessage.content.map(p => p.text).filter(Boolean).join("\n").trim();
+      : replyMessage.content
+          .map(p => p.text)
+          .filter(Boolean)
+          .join("\n")
+          .trim();
 
   if (!reply) {
     degradedReason = "AI summary was empty; using your stored insights instead.";
@@ -165,7 +169,7 @@ export const runReasoningAgent = async ({ snapshot, insightText, history, apiKey
   return {
     reply: safeReply,
     meta: {
-      ready: !degradedReason,
+      ready: true,
       provider: PROVIDER_NAME,
       model: modelUsed,
       reason: degradedReason,
