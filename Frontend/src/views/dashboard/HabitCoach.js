@@ -463,13 +463,16 @@ const HabitCoach = () => {
                   <small className="text-medium-emphasis">Draft your message and the coach replies instantly.</small>
                 </div>
 
-                <div className="rounded-4 border bg-body-tertiary p-3 flex-grow-1" style={{ minHeight: "320px" }}>
+                <div
+                  className="rounded-4 border bg-body-tertiary p-3 flex-grow-1"
+                  style={{ minHeight: "260px", maxHeight: "400px" }}
+                >
                   {initialLoading ? (
                     <div className="d-flex justify-content-center align-items-center h-100">
                       <CSpinner color="primary" />
                     </div>
                   ) : history.length ? (
-                    <div className="overflow-auto" style={{ maxHeight: "50vh" }}>
+                    <div className="overflow-auto h-100">
                       {history.map((entry) => renderMessage(entry))}
                       <div ref={bottomRef} />
                     </div>
