@@ -7,6 +7,7 @@ import {
   CCardBody,
   CCardHeader,
   CCol,
+  CFormSelect,
   CFormCheck,
   CFormInput,
   CFormLabel,
@@ -49,6 +50,7 @@ import { logHabitProgress, getProgressHistory } from "../../services/progress"
 import { promptMissedReflection } from "../../utils/reflection"
 import { getDailyChallengeSummary } from "../../services/dailyChallenge"
 import { getProgressAnalytics, formatPercent } from "../../services/analytics"
+import { emitDataRefresh, REFRESH_SCOPES, useDataRefresh } from "../../utils/refreshBus"
 
 const createEditDraft = (habit) => ({
   id: habit?.id,
@@ -59,12 +61,16 @@ const createEditDraft = (habit) => ({
   is_daily_goal: Boolean(habit?.is_daily_goal),
 })
 
-const DailyChallengeHighlight = ({ challenge, onLog }) => {
+const DailyChallengeHighlight = ({ challenge, onLog, loggingState }) => {
   if (!challenge?.focusHabit) return null
   const focus = challenge.focusHabit
+  const focusId = focus?.id || focus?.habitId
   const progressPercent = focus.targetForToday
     ? Math.min(100, Math.round((focus.doneToday / focus.targetForToday) * 100))
     : 0
+
+  const isLoggingDone = loggingState === `${focusId}-done`
+  const isLoggingMissed = loggingState === `${focusId}-missed`
 
   return (
     <CCard className="h-100 shadow-sm border-0 habits-panel challenge-card">
@@ -100,9 +106,31 @@ const DailyChallengeHighlight = ({ challenge, onLog }) => {
           </div>
         </div>
         <div className="d-flex flex-wrap gap-2">
-          <CButton color="success" size="sm" onClick={() => onLog(focus, "done")}>Log done</CButton>
-          <CButton color="danger" size="sm" variant="outline" onClick={() => onLog(focus, "missed")}>
-            Log missed
+          <CButton
+            color="success"
+            size="sm"
+            className={`rounded-pill log-action log-done${isLoggingDone ? " is-logging" : ""}`}
+            disabled={isLoggingDone}
+            onClick={() => onLog(focus, "done")}
+          >
+            <span className="d-inline-flex align-items-center gap-2">
+              {isLoggingDone && <CSpinner size="sm" color="light" />}
+              <span>{isLoggingDone ? "Logging..." : "Log done"}</span>
+            </span>
+          </CButton>
+          <CButton
+            color="danger"
+            size="sm"
+            variant="outline"
+            className={`rounded-pill log-action log-missed${isLoggingMissed ? " is-logging" : ""}`}
+            disabled={isLoggingMissed}
+            onClick={() => onLog(focus, "missed")}
+          >
+            <span className="d-inline-flex align-items-center gap-2">
+              {isLoggingMissed && <CSpinner size="sm" color="danger" />}
+              <CIcon icon={cilClock} className="opacity-75" />
+              <span>{isLoggingMissed ? "Logging..." : "Log missed"}</span>
+            </span>
           </CButton>
         </div>
       </CCardBody>
@@ -161,6 +189,14 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
     loadChallenge()
   }, [loadChallenge, loadHabits])
 
+  useDataRefresh(
+    [REFRESH_SCOPES.HABITS, REFRESH_SCOPES.PROGRESS],
+    useCallback(() => {
+      loadHabits()
+      loadChallenge()
+    }, [loadChallenge, loadHabits]),
+  )
+
   useEffect(() => {
     if (!feedback) return undefined
     const t = setTimeout(() => setFeedback(null), 4000)
@@ -183,6 +219,8 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
       if (typeof onProgressLogged === "function") {
         await onProgressLogged()
       }
+      emitDataRefresh(REFRESH_SCOPES.PROGRESS, { habitId, status })
+      emitDataRefresh(REFRESH_SCOPES.ANALYTICS, { habitId, status })
       setFeedback({
         type: "success",
         message: `Logged ${status} for ${habit.title || habit.name || habit.habitName}.`,
@@ -199,6 +237,7 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
     try {
       await deleteHabit(habitId)
       setHabits((prev) => prev.filter((h) => h.id !== habitId))
+      emitDataRefresh(REFRESH_SCOPES.HABITS, { reason: "habit-deleted", habitId })
       setFeedback({ type: "success", message: "Habit deleted." })
     } catch (error) {
       console.error("Failed to delete", error)
@@ -232,6 +271,7 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
       setHabits((prev) =>
         prev.map((habit) => (habit.id === updated.id ? { ...habit, ...updated } : habit)),
       )
+      emitDataRefresh(REFRESH_SCOPES.HABITS, { reason: "habit-updated", habitId: updated.id })
       setShowEditor(false)
       setFeedback({ type: "success", message: "Habit updated." })
     } catch (error) {
@@ -260,7 +300,11 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
       <CRow className="g-4">
         <CCol lg={4}>
           {challengeError && <CAlert color="warning">{challengeError}</CAlert>}
-          <DailyChallengeHighlight challenge={challenge} onLog={handleLog} />
+          <DailyChallengeHighlight
+            challenge={challenge}
+            onLog={handleLog}
+            loggingState={loggingState}
+          />
         </CCol>
         <CCol lg={8}>
           <CCard className="shadow-sm border-0 h-100 habits-panel">
@@ -311,21 +355,34 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
                           <CButton
                             size="sm"
                             color="success"
-                            className="rounded-pill"
+                            className={`rounded-pill log-action log-done${
+                              loggingState === `${habit.id}-done` ? " is-logging" : ""
+                            }`}
                             disabled={loggingState === `${habit.id}-done`}
                             onClick={() => handleLog(habit, "done")}
                           >
-                            {loggingState === `${habit.id}-done` ? "Logging..." : "Log done"}
+                            <span className="d-inline-flex align-items-center gap-2">
+                              {loggingState === `${habit.id}-done` && <CSpinner size="sm" color="light" />}
+                              <span>
+                                {loggingState === `${habit.id}-done` ? "Logging..." : "Log done"}
+                              </span>
+                            </span>
                           </CButton>
                           <CButton
                             size="sm"
                             color="warning"
                             variant="outline"
-                            className="rounded-pill"
+                            className={`rounded-pill log-action log-missed${loggingState === `${habit.id}-missed` ? " is-logging" : ""}`}
                             disabled={loggingState === `${habit.id}-missed`}
                             onClick={() => handleLog(habit, "missed")}
                           >
-                            {loggingState === `${habit.id}-missed` ? "Logging..." : "Log missed"}
+                            <span className="d-inline-flex align-items-center gap-2">
+                              {loggingState === `${habit.id}-missed` && <CSpinner size="sm" color="warning" />}
+                              <CIcon icon={cilClock} className="opacity-75" />
+                              <span>
+                                {loggingState === `${habit.id}-missed` ? "Logging..." : "Log missed"}
+                              </span>
+                            </span>
                           </CButton>
                           <CButton
                             size="sm"
@@ -634,9 +691,45 @@ const HistoryTab = ({ entries, loading, error, onRefresh }) => {
   const formatDate = (date) => new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   const formatTime = (date) => new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
+  const [selectedHabitIds, setSelectedHabitIds] = useState([])
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
+
+  const habitOptions = useMemo(() => {
+    const seen = new Map()
+    entries.forEach((entry) => {
+      const key = entry.habitId ?? entry.habit_id ?? entry.habitTitle
+      if (!key || seen.has(key)) return
+      seen.set(key, {
+        id: key,
+        label: entry.habitTitle,
+        category: entry.category,
+      })
+    })
+
+    return Array.from(seen.values()).sort((a, b) => a.label.localeCompare(b.label))
+  }, [entries])
+
+  const filteredEntries = useMemo(() => {
+    const start = startDate ? new Date(`${startDate}T00:00:00`) : null
+    const end = endDate ? new Date(`${endDate}T23:59:59`) : null
+
+    return [...entries]
+      .filter((entry) => {
+        const key = entry.habitId ?? entry.habit_id ?? entry.habitTitle
+        if (selectedHabitIds.length && !selectedHabitIds.includes(String(key))) return false
+
+        const progressDay = new Date(entry.progressDate ?? entry.createdAt)
+        if (start && progressDay < start) return false
+        if (end && progressDay > end) return false
+        return true
+      })
+      .sort((a, b) => new Date(b.createdAt ?? b.progressDate) - new Date(a.createdAt ?? a.progressDate))
+  }, [entries, endDate, selectedHabitIds, startDate])
+
   const exportCsv = () => {
     const header = "habit,status,date,time,reason\n"
-    const rows = entries
+    const rows = filteredEntries
       .map((entry) => {
         const reason = entry.reason ? entry.reason.replace(/"/g, '""') : ""
         return `${entry.habitTitle},${entry.status},${entry.progressDate},${formatTime(entry.createdAt)},"${reason}"`
@@ -653,15 +746,86 @@ const HistoryTab = ({ entries, loading, error, onRefresh }) => {
 
   return (
     <div className="mt-3">
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <div className="text-muted small">Latest 50 check-ins, including your missed-day notes.</div>
-        <div className="d-flex gap-2">
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+        <div className="text-muted small">
+          {filteredEntries.length === entries.length
+            ? "Latest 50 check-ins, including your missed-day notes."
+            : `Showing ${filteredEntries.length} of ${entries.length} logs.`}
+        </div>
+        <div className="d-flex gap-2 flex-wrap">
           <CButton color="light" size="sm" onClick={onRefresh} disabled={loading}>
             Refresh
           </CButton>
-          <CButton color="primary" size="sm" variant="outline" onClick={exportCsv} disabled={!entries.length}>
+          <CButton color="primary" size="sm" variant="outline" onClick={exportCsv} disabled={!filteredEntries.length}>
             Export CSV
           </CButton>
+        </div>
+      </div>
+
+      <div className="d-flex flex-wrap gap-3 mb-3">
+        <div className="flex-grow-1" style={{ minWidth: 220 }}>
+          <CFormLabel htmlFor="history-habit-filter" className="small fw-semibold text-uppercase text-body-secondary">
+            Filter by habit
+          </CFormLabel>
+          <CFormSelect
+            id="history-habit-filter"
+            multiple
+            size={Math.min(6, Math.max(3, habitOptions.length))}
+            value={selectedHabitIds}
+            onChange={(e) =>
+              setSelectedHabitIds(Array.from(e.target.selectedOptions).map((option) => option.value))
+            }
+          >
+            <option value="" disabled>
+              Select one or more habits
+            </option>
+            {habitOptions.map((habit) => (
+              <option key={habit.id} value={habit.id}>
+                {habit.label} {habit.category ? `(${habit.category})` : ""}
+              </option>
+            ))}
+          </CFormSelect>
+        </div>
+
+        <div className="d-flex flex-wrap gap-3 align-items-end">
+          <div>
+            <CFormLabel htmlFor="history-start-date" className="small fw-semibold text-uppercase text-body-secondary">
+              From
+            </CFormLabel>
+            <CFormInput
+              id="history-start-date"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <CFormLabel htmlFor="history-end-date" className="small fw-semibold text-uppercase text-body-secondary">
+              To
+            </CFormLabel>
+            <CFormInput
+              id="history-end-date"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+          <div className="d-flex gap-2 align-items-center mb-2">
+            <CButton
+              color="light"
+              size="sm"
+              variant="ghost"
+              className="mt-1"
+              onClick={() => {
+                setSelectedHabitIds([])
+                setStartDate("")
+                setEndDate("")
+              }}
+              disabled={!selectedHabitIds.length && !startDate && !endDate}
+            >
+              Clear filters
+            </CButton>
+          </div>
         </div>
       </div>
 
@@ -671,11 +835,13 @@ const HistoryTab = ({ entries, loading, error, onRefresh }) => {
         <div className="d-flex justify-content-center my-4">
           <CSpinner color="primary" />
         </div>
-      ) : entries.length === 0 ? (
-        <div className="text-center text-body-secondary py-4">Log your first habit to see history.</div>
+      ) : filteredEntries.length === 0 ? (
+        <div className="text-center text-body-secondary py-4">
+          {entries.length ? "No history matches your filters yet." : "Log your first habit to see history."}
+        </div>
       ) : (
         <CListGroup flush>
-          {entries.map((entry) => (
+          {filteredEntries.map((entry) => (
             <CListGroupItem key={entry.id} className="py-3">
               <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap">
                 <div className="d-flex flex-column gap-1">
