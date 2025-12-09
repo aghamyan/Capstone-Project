@@ -1,5 +1,5 @@
 // assistantAgent.js
-// Main Claude AI reasoning engine for StepHabit
+// Main AI reasoning engine for StepHabit
 
 import { ChatAnthropic } from "@langchain/anthropic";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
@@ -9,10 +9,10 @@ const MAX_HISTORY_MESSAGES = parseInt(process.env.ASSISTANT_HISTORY_LIMIT || "12
 // ---- MODEL CONFIG ----
 const CLAUDE_BASE_URL = (process.env.CLAUDE_BASE_URL || "https://api.anthropic.com").replace(/\/$/, "");
 
-const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-opus-4-20250514";
-const FALLBACK_CLAUDE_MODEL = process.env.CLAUDE_FALLBACK_MODEL || "claude-haiku-4-5-20251001";
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "amazon.nova-2-lite-v1:0";
+const FALLBACK_CLAUDE_MODEL = process.env.CLAUDE_FALLBACK_MODEL || "amazon.nova-2-lite-v1:0";
 
-const PROVIDER_NAME = process.env.CLAUDE_PROVIDER_NAME || "Anthropic Claude";
+const PROVIDER_NAME = process.env.CLAUDE_PROVIDER_NAME || "Amazon Nova";
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 
 // ---- STATUS HELPERS ----
@@ -127,7 +127,7 @@ export const runReasoningAgent = async ({ snapshot, insightText, history, apiKey
 
   for (const modelName of modelsToTry) {
     try {
-      console.log("Trying Claude model:", modelName);
+      console.log("Trying AI model:", modelName);
 
       const chat = new ChatAnthropic({
         anthropicApiKey: apiKey,
