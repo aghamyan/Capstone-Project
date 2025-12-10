@@ -46,6 +46,17 @@ const STOP_WORDS = new Set([
 
 const asPlain = (record) => (record ? record.get({ plain: true }) : null);
 
+const resolveApiOptions = (req) => ({
+  apiKeyOverride:
+    req.headers["x-ai-api-key"] ||
+    req.headers["x-claude-api-key"] ||
+    req.body?.apiKey ||
+    req.query?.apiKey ||
+    null,
+  modelOverride: req.headers["x-ai-model"] || req.body?.model || req.query?.model || null,
+  providerOverride: req.headers["x-ai-provider"] || req.body?.provider || req.query?.provider || null,
+});
+
 const getCoachStatus = () => ({
   ready: true,
   provider: "StepHabit Coach",
@@ -664,6 +675,7 @@ router.get("/history", async (req, res) => {
   }
 
   try {
+    const apiOptions = resolveApiOptions(req);
     const snapshot = await buildUserSnapshot(userId);
 
     const [historyRecords, insightRecord, profileMemory] = await Promise.all([
@@ -688,7 +700,7 @@ router.get("/history", async (req, res) => {
       .slice(0, 6)
       .map(([keyword, count]) => ({ keyword, count }));
 
-    const agentStatus = getAgentStatus();
+    const agentStatus = getAgentStatus(apiOptions);
     const agent = agentStatus.ready
       ? agentStatus
       : { ...getCoachStatus(), ready: false, reason: agentStatus.reason };
@@ -726,6 +738,7 @@ router.get("/summary", async (req, res) => {
   }
 
   try {
+    const apiOptions = resolveApiOptions(req);
     const snapshot = await buildUserSnapshot(userId);
     const [insightRecord, historyRecords, profileMemory] = await Promise.all([
       AssistantMemory.findOne({
@@ -743,7 +756,7 @@ router.get("/summary", async (req, res) => {
     const insightPayload = ensureObject(insightRecord?.keywords);
     let keywordCounts = insightPayload.keywordCounts || {};
     const history = mapHistory(historyRecords);
-    const agentStatus = getAgentStatus();
+    const agentStatus = getAgentStatus(apiOptions);
 
     let summaryText = null;
     let agent = agentStatus;
@@ -755,6 +768,7 @@ router.get("/summary", async (req, res) => {
           insightText: insightRecord?.content,
           profileMemory,
           history,
+          ...apiOptions,
         });
         summaryText = reply;
         agent = meta;
@@ -881,6 +895,7 @@ router.post("/chat", async (req, res) => {
   }
 
   try {
+    const apiOptions = resolveApiOptions(req);
     const snapshot = await buildUserSnapshot(userId);
     const { counts } = extractKeywords(message);
     const habitSuggestion = rewriteHabitIdea(message);
@@ -898,7 +913,7 @@ router.post("/chat", async (req, res) => {
     const insight = await updateInsightMemory(userId, snapshot, counts);
 
     const [agentStatus, historyRecords, profileMemory] = await Promise.all([
-      getAgentStatus(),
+      getAgentStatus(apiOptions),
       AssistantMemory.findAll({
         where: {
           user_id: userId,
@@ -946,6 +961,7 @@ router.post("/chat", async (req, res) => {
           insightText: insight.summaryText,
           profileMemory,
           history,
+          ...apiOptions,
         });
         reply = result.reply;
         agentMeta = result.meta;

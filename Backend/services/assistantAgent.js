@@ -13,18 +13,27 @@ const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-5-20250929";
 const FALLBACK_CLAUDE_MODEL = process.env.CLAUDE_FALLBACK_MODEL || "claude-haiku-4-5-20251001";
 
 const PROVIDER_NAME = process.env.CLAUDE_PROVIDER_NAME || "Anthropic Claude";
-const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
+const ENV_CLAUDE_API_KEY =
+  process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.AI_API_KEY;
 
 // ---- STATUS HELPERS ----
-const hasApiKey = () => Boolean(CLAUDE_API_KEY);
+const resolveApiKey = (override) => override || ENV_CLAUDE_API_KEY;
 
-export const getAgentStatus = () => ({
-  ready: hasApiKey(),
-  provider: PROVIDER_NAME,
-  model: hasApiKey() ? CLAUDE_MODEL : null,
-  reason: hasApiKey() ? null : "Set the CLAUDE_API_KEY environment variable.",
-  updatedAt: new Date().toISOString(),
-});
+const hasApiKey = (override) => Boolean(resolveApiKey(override));
+
+export const getAgentStatus = (options = {}) => {
+  const apiKeyAvailable = hasApiKey(options.apiKeyOverride);
+
+  return {
+    ready: apiKeyAvailable,
+    provider: options.providerOverride || PROVIDER_NAME,
+    model: apiKeyAvailable ? options.modelOverride || CLAUDE_MODEL : null,
+    reason: apiKeyAvailable
+      ? null
+      : "Set the CLAUDE_API_KEY or ANTHROPIC_API_KEY environment variable, or include an API key with the request.",
+    updatedAt: new Date().toISOString(),
+  };
+};
 
 // ---- HISTORY UTILS ----
 const limitHistory = (history = []) => {
@@ -118,10 +127,12 @@ export const runReasoningAgent = async ({
   insightText,
   profileMemory,
   history,
-  apiKeyOverride
+  apiKeyOverride,
+  modelOverride,
+  providerOverride,
 }) => {
-  const apiKey = apiKeyOverride || CLAUDE_API_KEY;
-  if (!apiKey) throw new Error("Missing CLAUDE_API_KEY.");
+  const apiKey = resolveApiKey(apiKeyOverride);
+  if (!apiKey) throw new Error("Missing AI API key.");
 
   const { systemInstruction, contents } = buildMessages({
     snapshot,
@@ -130,7 +141,7 @@ export const runReasoningAgent = async ({
     history,
   });
 
-  const modelsToTry = [CLAUDE_MODEL, FALLBACK_CLAUDE_MODEL];
+  const modelsToTry = [modelOverride || CLAUDE_MODEL, FALLBACK_CLAUDE_MODEL].filter(Boolean);
 
   const isModelNotFound = err =>
     err?.lc_error_code === "MODEL_NOT_FOUND" ||
@@ -212,7 +223,7 @@ export const runReasoningAgent = async ({
     reply: safeReply,
     meta: {
       ready: true,
-      provider: PROVIDER_NAME,
+      provider: providerOverride || PROVIDER_NAME,
       model: modelUsed,
       reason: degradedReason,
       updatedAt: new Date().toISOString(),
