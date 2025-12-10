@@ -1082,10 +1082,7 @@ const Habits = () => {
           </p>
           <div className="d-flex gap-2 flex-wrap mt-1">
             <CButton color="primary" size="sm" className="rounded-pill" onClick={() => setActiveTab("add")}>
-              <CIcon icon={cilPlus} className="me-2" /> Add new habit
-            </CButton>
-            <CButton color="light" size="sm" className="rounded-pill">
-              View quick wins
+              <CIcon icon={cilPlus} className="me-2" /> Add habit
             </CButton>
           </div>
         </div>
