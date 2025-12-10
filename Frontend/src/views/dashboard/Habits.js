@@ -70,9 +70,6 @@ const DailyChallengeHighlight = ({ challenge, onLog, loggingState }) => {
     ? Math.min(100, Math.round((focus.doneToday / focus.targetForToday) * 100))
     : 0
 
-  const isLoggingDone = loggingState === `${focusId}-done`
-  const isLoggingMissed = loggingState === `${focusId}-missed`
-
   return (
     <CCard className="h-100 shadow-sm border-0 habits-panel challenge-card">
       <CCardHeader className="bg-gradient-primary text-white">
@@ -105,34 +102,6 @@ const DailyChallengeHighlight = ({ challenge, onLog, loggingState }) => {
             <CBadge color="success">{focus.doneToday}</CBadge>
             <span className="text-muted small">of {focus.targetForToday} wins</span>
           </div>
-        </div>
-        <div className="d-flex flex-wrap gap-2">
-          <CButton
-            color="success"
-            size="sm"
-            className={`rounded-pill log-action log-done${isLoggingDone ? " is-logging" : ""}`}
-            disabled={isLoggingDone}
-            onClick={() => onLog(focus, "done")}
-          >
-            <span className="d-inline-flex align-items-center gap-2">
-              {isLoggingDone && <CSpinner size="sm" color="light" />}
-              <span>{isLoggingDone ? "Logging..." : "Log done"}</span>
-            </span>
-          </CButton>
-          <CButton
-            color="danger"
-            size="sm"
-            variant="outline"
-            className={`rounded-pill log-action log-missed${isLoggingMissed ? " is-logging" : ""}`}
-            disabled={isLoggingMissed}
-            onClick={() => onLog(focus, "missed")}
-          >
-            <span className="d-inline-flex align-items-center gap-2">
-              {isLoggingMissed && <CSpinner size="sm" color="danger" />}
-              <CIcon icon={cilClock} className="opacity-75" />
-              <span>{isLoggingMissed ? "Logging..." : "Log missed"}</span>
-            </span>
-          </CButton>
         </div>
       </CCardBody>
     </CCard>
@@ -217,6 +186,7 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
     try {
       setLoggingState(`${habitId}-${status}`)
       await logHabitProgress(habitId, payload)
+      await loadChallenge()
       if (typeof onProgressLogged === "function") {
         await onProgressLogged()
       }
