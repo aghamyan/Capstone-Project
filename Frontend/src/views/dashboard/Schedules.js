@@ -45,13 +45,6 @@ const MySchedule = () => {
   const [calendarFileText, setCalendarFileText] = useState("")
   const calendarFileInputRef = useRef(null)
 
-  const handleChooseCalendarFile = () => {
-    setCalendarError("")
-    if (calendarFileInputRef.current) {
-      calendarFileInputRef.current.click()
-    }
-  }
-
   const formattedCalendarEvents = useMemo(() => {
     const sorted = [...calendarEvents].sort((a, b) => {
       const aDate = a?.start_time ? new Date(a.start_time).getTime() : 0
@@ -594,21 +587,16 @@ const MySchedule = () => {
                   Or upload a .ics file
                 </CFormLabel>
                 <div className="d-flex align-items-center gap-2 flex-wrap position-relative">
-                  <CButton
-                    type="button"
-                    color="secondary"
-                    variant="outline"
-                    onClick={handleChooseCalendarFile}
-                  >
+                  <CButton component="label" color="secondary" variant="outline">
                     Choose file
+                    <CFormInput
+                      type="file"
+                      accept=".ics,text/calendar"
+                      onChange={handleCalendarFile}
+                      ref={calendarFileInputRef}
+                      className="d-none"
+                    />
                   </CButton>
-                  <CFormInput
-                    type="file"
-                    accept=".ics,text/calendar"
-                    onChange={handleCalendarFile}
-                    ref={calendarFileInputRef}
-                    className="visually-hidden position-absolute"
-                  />
                   {calendarFileName && (
                     <div className="small text-success">Selected: {calendarFileName}</div>
                   )}
