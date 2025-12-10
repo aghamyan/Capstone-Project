@@ -200,7 +200,7 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
       emitDataRefresh(REFRESH_SCOPES.PROGRESS, { habitId, status })
       emitDataRefresh(REFRESH_SCOPES.ANALYTICS, { habitId, status })
       setFeedback({
-        type: "success",
+        type: status === "missed" ? "warning" : "success",
         message: `Logged ${status} for ${habit.title || habit.name || habit.habitName}.`,
       })
     } catch (error) {
