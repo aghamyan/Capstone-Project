@@ -1,5 +1,5 @@
 // assistantAgent.js
-// Main AI reasoning engine for StepHabit
+// Main Claude AI reasoning engine for StepHabit
 
 import { ChatAnthropic } from "@langchain/anthropic";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
@@ -7,19 +7,22 @@ import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages
 const MAX_HISTORY_MESSAGES = parseInt(process.env.ASSISTANT_HISTORY_LIMIT || "12", 10);
 
 // ---- MODEL CONFIG ----
+// Do NOT include /v1 in the base URL — LangChain adds the correct endpoints internally.
 const CLAUDE_BASE_URL = (process.env.CLAUDE_BASE_URL || "https://api.anthropic.com").replace(/\/$/, "");
 
-const CLAUDE_MODEL = (process.env.CLAUDE_MODEL || "claude-3-5-sonnet-20241022").trim();
+// ACTIVE, NON-DEPRECATED MODELS (from Anthropic model status table)
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-5-20250929";       // Best main model
+const FALLBACK_CLAUDE_MODEL = process.env.CLAUDE_FALLBACK_MODEL || "claude-haiku-4-5-20251001"; // Lightweight fallback
 
-const CLAUDE_API_KEY = (process.env.CLAUDE_API_KEY || "").trim();
+const PROVIDER_NAME = process.env.CLAUDE_PROVIDER_NAME || "Anthropic Claude";
+const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 
 // ---- STATUS HELPERS ----
 const hasApiKey = () => Boolean(CLAUDE_API_KEY);
 
 export const getAgentStatus = () => ({
   ready: hasApiKey(),
-  provider: "Anthropic Claude",
-  endpoint: `${CLAUDE_BASE_URL}/v1`,
+  provider: PROVIDER_NAME,
   model: hasApiKey() ? CLAUDE_MODEL : null,
   reason: hasApiKey() ? null : "Set the CLAUDE_API_KEY environment variable.",
   updatedAt: new Date().toISOString(),
@@ -110,36 +113,53 @@ const buildMessages = ({ snapshot, insightText, history = [] }) => {
 export const runReasoningAgent = async ({ snapshot, insightText, history, apiKeyOverride }) => {
   const apiKey = apiKeyOverride || CLAUDE_API_KEY;
   if (!apiKey) throw new Error("Missing CLAUDE_API_KEY.");
-  if (!CLAUDE_MODEL) throw new Error("Missing CLAUDE_MODEL.");
 
   const { systemInstruction, contents } = buildMessages({ snapshot, insightText, history });
 
-  let replyMessage;
+  const modelsToTry = [CLAUDE_MODEL, FALLBACK_CLAUDE_MODEL];
+
+  const isModelNotFound = err =>
+    err?.lc_error_code === "MODEL_NOT_FOUND" ||
+    err?.status === 404 ||
+    err?.error?.error?.type === "not_found_error";
+
+  let replyMessage = null;
+  let modelUsed = modelsToTry[0];
   let degradedReason = null;
 
-  try {
-    const chat = new ChatAnthropic({
-      apiKey,
-      anthropicApiUrl: `${CLAUDE_BASE_URL}/v1`,
-      model: CLAUDE_MODEL,
-      temperature: 0.7,
-      topP: 0.95,
-      maxTokens: 1024,
-    });
+  for (const modelName of modelsToTry) {
+    try {
+      console.log("Trying Claude model:", modelName);
 
-    replyMessage = await chat.invoke([
-      new SystemMessage(systemInstruction),
-      ...(contents.length ? contents : [new HumanMessage("Summarize my progress.")]),
-    ]);
-  } catch (err) {
-    console.error("Model failed:", CLAUDE_MODEL, err?.error || err?.message);
-    throw err;
+      const chat = new ChatAnthropic({
+        anthropicApiKey: apiKey,
+        anthropicApiUrl: CLAUDE_BASE_URL, // No /v1
+        model: modelName,
+        temperature: 0.7,   // Claude 4.x does not allow both temperature + topP
+        maxTokens: 1024,
+      });
+
+      replyMessage = await chat.invoke([
+        new SystemMessage(systemInstruction),
+        ...(contents.length ? contents : [new HumanMessage("Summarize my progress.")]),
+      ]);
+
+      modelUsed = modelName;
+      break; // Success
+    } catch (err) {
+      console.error("Model failed:", modelName, err?.error || err?.message);
+      if (!isModelNotFound(err) || modelName === modelsToTry.at(-1)) throw err;
+    }
   }
 
   const reply =
-    typeof replyMessage.content === "string"
+    typeof replyMessage?.content === "string"
       ? replyMessage.content.trim()
-      : replyMessage.content.map(p => p.text).filter(Boolean).join("\n").trim();
+      : replyMessage?.content
+          ?.map(p => p.text)
+          .filter(Boolean)
+          .join("\n")
+          .trim();
 
   if (!reply) {
     degradedReason = "AI summary was empty; using your stored insights instead.";
@@ -150,10 +170,9 @@ export const runReasoningAgent = async ({ snapshot, insightText, history, apiKey
   return {
     reply: safeReply,
     meta: {
-      ready: !degradedReason,
-      provider: "Anthropic Claude",
-      endpoint: `${CLAUDE_BASE_URL}/v1`,
-      model: CLAUDE_MODEL,
+      ready: true,
+      provider: PROVIDER_NAME,
+      model: modelUsed,
       reason: degradedReason,
       updatedAt: new Date().toISOString(),
     },
