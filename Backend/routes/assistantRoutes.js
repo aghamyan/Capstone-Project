@@ -147,6 +147,11 @@ const shouldCreateHabit = (message) => {
   return wantsToAddHabit || text.includes("habit");
 };
 
+const wantsHabitConfirmation = (message) => {
+  if (!message) return false;
+  return /\b(yes|yeah|yep|sure|okay|ok|please do|do it|sounds good|go ahead)\b/i.test(message);
+};
+
 const rewriteHabitIdea = (message) => {
   if (!looksLikeHabitIdea(message)) return null;
 
@@ -176,6 +181,30 @@ const rewriteHabitIdea = (message) => {
   };
 };
 
+const persistSuggestedHabit = async ({ userId, suggestion, existingHabits }) => {
+  if (!suggestion) return null;
+
+  const normalizedTitle = suggestion.title?.trim().toLowerCase();
+  const alreadyHaveHabit = existingHabits.find(
+    (habit) => habit.title?.trim().toLowerCase() === normalizedTitle
+  );
+
+  if (alreadyHaveHabit) {
+    return alreadyHaveHabit;
+  }
+
+  const newHabit = await Habit.create({
+    user_id: userId,
+    title: suggestion.title,
+    description: suggestion.description,
+    category: suggestion.category,
+    target_reps: suggestion.targetReps,
+    is_daily_goal: suggestion.isDailyGoal,
+  });
+
+  return newHabit.get({ plain: true });
+};
+
 const formatHabitSuggestion = (suggestion) => {
   if (!suggestion) return "";
   const lines = [
@@ -191,6 +220,29 @@ const formatHabitSuggestion = (suggestion) => {
   }
 
   return lines.join("\n");
+};
+
+const findPendingHabitSuggestion = (history) => {
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    const entry = history[i];
+    if (entry.role !== "assistant") continue;
+    const meta = ensureObject(entry.keywords);
+    if (meta.createdHabit) continue;
+    if (meta.habitSuggestion) {
+      return meta.habitSuggestion;
+    }
+  }
+  return null;
+};
+
+const shortenReply = (reply) => {
+  if (!reply) return reply;
+  const sentences = reply
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+  const concise = sentences.slice(0, 3).join(" ");
+  return concise.length > 650 ? `${concise.slice(0, 647)}...` : concise;
 };
 
 const extractKeywords = (message) => {
@@ -832,27 +884,9 @@ router.post("/chat", async (req, res) => {
     const snapshot = await buildUserSnapshot(userId);
     const { counts } = extractKeywords(message);
     const habitSuggestion = rewriteHabitIdea(message);
+    const wantsAddNow = habitSuggestion && shouldCreateHabit(message);
+    const isHabitConfirmation = wantsHabitConfirmation(message);
     let createdHabit = null;
-
-    if (habitSuggestion && shouldCreateHabit(message)) {
-      const duplicateHabit = snapshot.habits.find(
-        (habit) => habit.title?.toLowerCase() === habitSuggestion.title.toLowerCase()
-      );
-
-      if (!duplicateHabit) {
-        const newHabit = await Habit.create({
-          user_id: userId,
-          title: habitSuggestion.title,
-          description: habitSuggestion.description,
-          category: habitSuggestion.category,
-          target_reps: habitSuggestion.targetReps,
-          is_daily_goal: habitSuggestion.isDailyGoal,
-        });
-
-        createdHabit = newHabit.get({ plain: true });
-        snapshot.habits.push(createdHabit);
-      }
-    }
 
     await AssistantMemory.create({
       user_id: userId,
@@ -877,9 +911,33 @@ router.post("/chat", async (req, res) => {
     ]);
 
     const history = mapHistory(historyRecords);
+    const pendingSuggestion = findPendingHabitSuggestion(history);
 
     let agentMeta = agentStatus;
     let reply;
+
+    if (!createdHabit && isHabitConfirmation && pendingSuggestion) {
+      createdHabit = await persistSuggestedHabit({
+        userId,
+        suggestion: pendingSuggestion,
+        existingHabits: snapshot.habits,
+      });
+      if (createdHabit && !snapshot.habits.find((habit) => habit.id === createdHabit.id)) {
+        snapshot.habits.push(createdHabit);
+      }
+    }
+
+    if (!createdHabit && wantsAddNow) {
+      createdHabit = await persistSuggestedHabit({
+        userId,
+        suggestion: habitSuggestion,
+        existingHabits: snapshot.habits,
+      });
+
+      if (createdHabit && !snapshot.habits.find((habit) => habit.id === createdHabit.id)) {
+        snapshot.habits.push(createdHabit);
+      }
+    }
 
     if (agentStatus.ready) {
       try {
@@ -909,9 +967,14 @@ router.post("/chat", async (req, res) => {
       }
     }
 
-    if (habitSuggestion) {
-      const suggestionText = formatHabitSuggestion(habitSuggestion);
-      reply = reply ? `${reply}\n\n${suggestionText}` : suggestionText;
+    reply = shortenReply(reply);
+
+    const suggestionForReply = habitSuggestion || pendingSuggestion;
+
+    if (!createdHabit && suggestionForReply) {
+      const suggestionText = formatHabitSuggestion(suggestionForReply);
+      const prompt = "Want me to add it to your habit library? Reply yes to confirm.";
+      reply = reply ? `${reply}\n\n${suggestionText}\n${prompt}` : `${suggestionText}\n${prompt}`;
     }
 
     if (createdHabit) {
@@ -926,7 +989,7 @@ router.post("/chat", async (req, res) => {
         keywords: insight.topKeywords,
         messageKeywords: counts,
         agent: agentMeta,
-        habitSuggestion,
+        habitSuggestion: suggestionForReply,
         createdHabit,
       },
     });
