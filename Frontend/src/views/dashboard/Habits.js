@@ -102,7 +102,7 @@ const DailyChallengeHighlight = ({ challenge }) => {
           </div>
         </div>
         {focus && (
-          <div className="rounded border p-3 bg-light">
+          <div className="rounded border p-3 focus-habit-card">
             <div className="d-flex align-items-center justify-content-between mb-2">
               <div className="text-uppercase small text-muted">Focus habit</div>
               {focus.category && (
@@ -346,14 +346,14 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
                           </CButton>
                           <CButton
                             size="sm"
-                            color="warning"
+                            color="danger"
                             variant="outline"
                             className={`rounded-pill log-action log-missed${loggingState === `${habit.id}-missed` ? " is-logging" : ""}`}
                             disabled={loggingState === `${habit.id}-missed`}
                             onClick={() => handleLog(habit, "missed")}
                           >
                             <span className="d-inline-flex align-items-center gap-2">
-                              {loggingState === `${habit.id}-missed` && <CSpinner size="sm" color="warning" />}
+                              {loggingState === `${habit.id}-missed` && <CSpinner size="sm" color="danger" />}
                               <CIcon icon={cilClock} className="opacity-75" />
                               <span>
                                 {loggingState === `${habit.id}-missed` ? "Logging..." : "Log missed"}
