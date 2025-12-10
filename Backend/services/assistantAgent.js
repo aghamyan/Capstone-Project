@@ -118,7 +118,38 @@ const buildMessages = ({ snapshot, insightText, profileMemory, history = [] }) =
   return {
     systemInstruction: `${systemPrompt}\n\nUSER DATA SNAPSHOT:\n${contextBlock}`,
     contents: formattedHistory,
+    contextBlock,
+    insightText,
   };
+};
+
+// ---- COPY DETECTION ----
+const normalizeText = (text) => (text ? text.replace(/\s+/g, " ").trim().toLowerCase() : "");
+
+const isCopiedInsight = (reply, insightText) => {
+  if (!reply || !insightText) return false;
+  const normalizedReply = normalizeText(reply);
+  const normalizedInsight = normalizeText(insightText);
+  if (!normalizedReply || !normalizedInsight) return false;
+  return (
+    normalizedReply === normalizedInsight ||
+    normalizedInsight.includes(normalizedReply) ||
+    normalizedReply.includes(normalizedInsight)
+  );
+};
+
+const isCopiedSnapshot = (reply, snapshotText) => {
+  if (!reply || !snapshotText) return false;
+  const normalizedReply = normalizeText(reply);
+  const normalizedSnapshot = normalizeText(snapshotText);
+  if (!normalizedReply || !normalizedSnapshot) return false;
+
+  const snapshotSnippet = normalizedSnapshot.slice(0, 160);
+  return (
+    normalizedReply === normalizedSnapshot ||
+    normalizedReply.includes(snapshotSnippet) ||
+    normalizedSnapshot.includes(normalizedReply)
+  );
 };
 
 // ---- MAIN AGENT CALL ----
@@ -134,7 +165,7 @@ export const runReasoningAgent = async ({
   const apiKey = resolveApiKey(apiKeyOverride);
   if (!apiKey) throw new Error("Missing AI API key.");
 
-  const { systemInstruction, contents } = buildMessages({
+  const { systemInstruction, contents, contextBlock } = buildMessages({
     snapshot,
     insightText,
     profileMemory,
@@ -175,13 +206,17 @@ export const runReasoningAgent = async ({
     return { result: null, modelName: null };
   };
 
-  const baseMessages = [
+  const summaryRequest = (instruction) => [
     new SystemMessage(systemInstruction),
     ...(contents.length ? contents : []),
-    new HumanMessage("Give a short, natural motivational summary based on the user's data.")
+    new HumanMessage(instruction),
   ];
 
-  ({ result: replyMessage, modelName: modelUsed } = await tryClaude(baseMessages));
+  ({ result: replyMessage, modelName: modelUsed } = await tryClaude(
+    summaryRequest(
+      "Give a short, natural motivational summary based on the user's data. Do not copy the snapshot text; rewrite it in your own words."
+    )
+  ));
 
   // ---- EXTRACT REPLY TEXT ----
   let reply =
@@ -195,16 +230,21 @@ export const runReasoningAgent = async ({
     reply?.includes("Top habits:") ||
     reply?.includes("Focus area:") ||
     reply?.includes("Habits needing") ||
-    reply?.includes("Average completion");
+    reply?.includes("Average completion") ||
+    isCopiedInsight(reply, insightText) ||
+    isCopiedSnapshot(reply, contextBlock);
 
   if (looksLikeAnalytics) {
     console.log("Claude returned analytics instead of a summary. Regenerating...");
 
     const rewritePrompt = [
-      new SystemMessage("Rewrite the previous output."),
+      new SystemMessage(
+        `${systemInstruction}\n\nRewrite the summary in your own words without repeating the structured fields. Always end with a short motivational question.`
+      ),
       new HumanMessage(
-        "Rewrite your last message into a warm motivational summary. Do NOT list raw fields. Do NOT repeat analytics. Produce a natural, supportive paragraph with one question at the end."
-      )
+        "Create a fresh motivational paragraph based on the snapshot above. Do NOT copy the raw analytics or the previous draft. Be concise, supportive, and action-oriented."
+      ),
+      new HumanMessage(`Previous draft to avoid copying: ${reply}`),
     ];
 
     ({ result: replyMessage, modelName: modelUsed } = await tryClaude(rewritePrompt));
@@ -214,7 +254,7 @@ export const runReasoningAgent = async ({
         ? replyMessage.content.trim()
         : replyMessage?.content?.map(p => p.text).filter(Boolean).join("\n").trim();
 
-    degradedReason = "Analytics detected; rewritten as motivational summary.";
+    degradedReason = "Analytics or copied text detected; regenerated with AI summary.";
   }
 
   const safeReply = reply || insightText || "I'm here to help you move forward. What feels like the next small step?";
