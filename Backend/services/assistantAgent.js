@@ -7,12 +7,10 @@ import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages
 const MAX_HISTORY_MESSAGES = parseInt(process.env.ASSISTANT_HISTORY_LIMIT || "12", 10);
 
 // ---- MODEL CONFIG ----
-// Do NOT include /v1 in the base URL — LangChain adds the correct endpoints internally.
 const CLAUDE_BASE_URL = (process.env.CLAUDE_BASE_URL || "https://api.anthropic.com").replace(/\/$/, "");
 
-// ACTIVE, NON-DEPRECATED MODELS (from Anthropic model status table)
-const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-5-20250929";       // Best main model
-const FALLBACK_CLAUDE_MODEL = process.env.CLAUDE_FALLBACK_MODEL || "claude-haiku-4-5-20251001"; // Lightweight fallback
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-5-20250929";
+const FALLBACK_CLAUDE_MODEL = process.env.CLAUDE_FALLBACK_MODEL || "claude-haiku-4-5-20251001";
 
 const PROVIDER_NAME = process.env.CLAUDE_PROVIDER_NAME || "Anthropic Claude";
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
@@ -51,8 +49,8 @@ const describeSnapshot = (snapshot = {}, insightText, profileMemory) => {
     `Primary goal: ${profile.primary_goal || "Not specified"}`,
     `Focus area: ${profile.focus_area || "Not set"}`,
     `Daily commitment: ${profile.daily_commitment || "Not set"}`,
-    `Support preference: ${profile.support_preference || "Not set"}`,
-    `Average completion: ${progress.completionRate || 0}% over ${progress.total || 0} entries`,
+    `Support style: ${profile.support_preference || "Not set"}`,
+    `Average completion: ${progress.completionRate || 0}% over ${progress.total || 0} recent actions`,
   ];
 
   if (profileMemory?.about) {
@@ -61,26 +59,24 @@ const describeSnapshot = (snapshot = {}, insightText, profileMemory) => {
 
   if (topHabits.length) {
     lines.push(
-      `Top habits: ${formatList(topHabits.map(h =>
-        `${h.title} — ${h.completionRate}% (${h.completed} done, ${h.missed} missed)`
-      ))}`
+      `Top habits: ${formatList(
+        topHabits.map(h => `${h.title} (${h.completionRate}% success)`)
+      )}`
     );
   }
 
   if (needsHelp.length) {
     lines.push(
-      `Habits needing focus: ${formatList(needsHelp.map(h =>
-        `${h.title} — ${h.completionRate}% (${h.completed} done, ${h.missed} missed)`
-      ))}`
+      `Habits needing love: ${formatList(
+        needsHelp.map(h => `${h.title} (${h.completionRate}% success)`)
+      )}`
     );
   }
 
   if (schedules.length) {
     lines.push(
       `Upcoming schedule: ${formatList(
-        schedules.slice(0, 5).map(item =>
-          `${item.habitTitle} on ${item.day} at ${item.starttime}`
-        )
+        schedules.slice(0, 5).map(item => `${item.habitTitle} on ${item.day} at ${item.starttime}`)
       )}`
     );
   }
@@ -93,10 +89,13 @@ const describeSnapshot = (snapshot = {}, insightText, profileMemory) => {
 // ---- MESSAGE BUILDER ----
 const buildMessages = ({ snapshot, insightText, profileMemory, history = [] }) => {
   const systemPrompt = [
-    "You are StepHabit's AI companion, a motivational coach.",
-    "You reason carefully about habits, schedules, and progress.",
-    "Keep responses short, supportive, and actionable.",
-    "Always end with a reflective or action-oriented question."
+    "You are StepHabit's AI coach.",
+    "Your job is to turn the user's data into a warm, natural motivational summary.",
+    "NEVER repeat the raw analytics fields such as 'Primary goal:', 'Focus area:', 'Top habits:', etc.",
+    "NEVER output the structured snapshot text back to the user.",
+    "ALWAYS convert the analytics into a natural short paragraph.",
+    "Keep responses supportive and actionable.",
+    "End with a small reflective or motivational question."
   ].join(" ");
 
   const contextBlock = describeSnapshot(snapshot, insightText, profileMemory);
@@ -108,13 +107,19 @@ const buildMessages = ({ snapshot, insightText, profileMemory, history = [] }) =
   );
 
   return {
-    systemInstruction: `${systemPrompt}\n\n${contextBlock}`,
+    systemInstruction: `${systemPrompt}\n\nUSER DATA SNAPSHOT:\n${contextBlock}`,
     contents: formattedHistory,
   };
 };
 
 // ---- MAIN AGENT CALL ----
-export const runReasoningAgent = async ({ snapshot, insightText, profileMemory, history, apiKeyOverride }) => {
+export const runReasoningAgent = async ({
+  snapshot,
+  insightText,
+  profileMemory,
+  history,
+  apiKeyOverride
+}) => {
   const apiKey = apiKeyOverride || CLAUDE_API_KEY;
   if (!apiKey) throw new Error("Missing CLAUDE_API_KEY.");
 
@@ -136,16 +141,16 @@ export const runReasoningAgent = async ({ snapshot, insightText, profileMemory, 
   let modelUsed = modelsToTry[0];
   let degradedReason = null;
 
-  const tryClaude = async (messages) => {
+  const tryClaude = async messages => {
     for (const modelName of modelsToTry) {
       try {
         console.log("Trying Claude model:", modelName);
 
         const chat = new ChatAnthropic({
           anthropicApiKey: apiKey,
-          anthropicApiUrl: CLAUDE_BASE_URL, // No /v1
+          anthropicApiUrl: CLAUDE_BASE_URL,
           model: modelName,
-          temperature: 0.7,   // Claude 4.x does not allow both temperature + topP
+          temperature: 0.7,
           maxTokens: 1024,
         });
 
@@ -159,45 +164,49 @@ export const runReasoningAgent = async ({ snapshot, insightText, profileMemory, 
     return { result: null, modelName: null };
   };
 
-  ({ result: replyMessage, modelName: modelUsed } = await tryClaude([
+  const baseMessages = [
     new SystemMessage(systemInstruction),
-    ...(contents.length ? contents : [new HumanMessage("Summarize my progress.")]),
-  ]));
+    ...(contents.length ? contents : []),
+    new HumanMessage("Give a short, natural motivational summary based on the user's data.")
+  ];
 
-  // If Claude returned an empty response, regenerate with an explicit fallback prompt
-  if (!replyMessage) {
-    const fallbackPrompt = new SystemMessage(
-      `${systemInstruction}\n\nYour first reply was empty. Provide a concise, encouraging summary of the user's progress and next steps.`
-    );
-    const fallbackUser = new HumanMessage(
-      `Write a short AI summary of this journey:\n${describeSnapshot(
-        snapshot,
-        insightText,
-        profileMemory
-      )}`
-    );
+  ({ result: replyMessage, modelName: modelUsed } = await tryClaude(baseMessages));
 
-    ({ result: replyMessage, modelName: modelUsed } = await tryClaude([fallbackPrompt, fallbackUser]));
-    degradedReason = replyMessage
-      ? "AI summary regenerated with a fallback prompt."
-      : "AI summary was empty; using your stored insights instead.";
-  }
-
-  const reply =
+  // ---- EXTRACT REPLY TEXT ----
+  let reply =
     typeof replyMessage?.content === "string"
       ? replyMessage.content.trim()
-      : replyMessage?.content
-          ?.map(p => p.text)
-          .filter(Boolean)
-          .join("\n")
-          .trim();
+      : replyMessage?.content?.map?.(p => p.text).filter(Boolean).join("\n").trim();
 
-  if (!reply) {
-    degradedReason = "AI summary was empty; using your stored insights instead.";
+  // ---- DETECTION LOGIC: check if Claude duplicated analytics ----
+  const looksLikeAnalytics =
+    reply?.includes("Primary goal:") ||
+    reply?.includes("Top habits:") ||
+    reply?.includes("Focus area:") ||
+    reply?.includes("Habits needing") ||
+    reply?.includes("Average completion");
+
+  if (looksLikeAnalytics) {
+    console.log("Claude returned analytics instead of a summary. Regenerating...");
+
+    const rewritePrompt = [
+      new SystemMessage("Rewrite the previous output."),
+      new HumanMessage(
+        "Rewrite your last message into a warm motivational summary. Do NOT list raw fields. Do NOT repeat analytics. Produce a natural, supportive paragraph with one question at the end."
+      )
+    ];
+
+    ({ result: replyMessage, modelName: modelUsed } = await tryClaude(rewritePrompt));
+
+    reply =
+      typeof replyMessage?.content === "string"
+        ? replyMessage.content.trim()
+        : replyMessage?.content?.map(p => p.text).filter(Boolean).join("\n").trim();
+
+    degradedReason = "Analytics detected; rewritten as motivational summary.";
   }
 
-  const safeReply =
-    reply || insightText || describeSnapshot(snapshot, insightText, profileMemory);
+  const safeReply = reply || insightText || "I'm here to help you move forward. What feels like the next small step?";
 
   return {
     reply: safeReply,
