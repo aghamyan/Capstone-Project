@@ -248,15 +248,40 @@ body {
 }
 
 .nav-glow__icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 999px;
   display: grid;
   place-items: center;
   background: var(--cui-body-secondary-bg);
   border: 1px solid var(--cui-border-color-translucent);
   color: var(--cui-primary);
   font-size: 1rem;
+  position: relative;
+}
+
+.nav-glow__icon .nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: inherit;
+}
+
+.nav-glow__icon .nav-icon svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.nav-glow__icon .nav-icon-bullet {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
 }
 
 .nav-glow__label {

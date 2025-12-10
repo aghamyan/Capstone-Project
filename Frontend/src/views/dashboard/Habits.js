@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import {
   CAlert,
   CBadge,
@@ -1025,7 +1026,30 @@ const RewardsTab = ({ summary, loading }) => {
 }
 
 const Habits = () => {
-  const [activeTab, setActiveTab] = useState("my-habits")
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const tabFromPath = useCallback((pathname) => {
+    if (pathname.includes("/addhabit")) return "add"
+    if (pathname.includes("/habit-library")) return "library"
+    if (pathname.includes("/progress-tracker")) return "progress"
+    return "my-habits"
+  }, [])
+
+  const pathForTab = useCallback((tab) => {
+    switch (tab) {
+      case "add":
+        return "/addhabit"
+      case "library":
+        return "/habit-library"
+      case "progress":
+        return "/progress-tracker"
+      default:
+        return "/habits"
+    }
+  }, [])
+
+  const [activeTab, setActiveTab] = useState(() => tabFromPath(location.pathname))
   const [analytics, setAnalytics] = useState(null)
   const [historyEntries, setHistoryEntries] = useState([])
   const [signalsLoading, setSignalsLoading] = useState(false)
@@ -1056,6 +1080,19 @@ const Habits = () => {
     refreshSignals()
   }, [refreshSignals])
 
+  useEffect(() => {
+    const nextTab = tabFromPath(location.pathname)
+    setActiveTab(nextTab)
+  }, [location.pathname, tabFromPath])
+
+  const handleTabChange = useCallback(
+    (tab) => {
+      setActiveTab(tab)
+      navigate(pathForTab(tab))
+    },
+    [navigate, pathForTab],
+  )
+
   const summary = analytics?.summary
 
   const heroStats = useMemo(
@@ -1081,11 +1118,8 @@ const Habits = () => {
             and ready for momentum.
           </p>
           <div className="d-flex gap-2 flex-wrap mt-1">
-            <CButton color="primary" size="sm" className="rounded-pill" onClick={() => setActiveTab("add")}>
-              <CIcon icon={cilPlus} className="me-2" /> Add new habit
-            </CButton>
-            <CButton color="light" size="sm" className="rounded-pill">
-              View quick wins
+            <CButton color="primary" size="sm" className="rounded-pill" onClick={() => handleTabChange("add")}>
+              <CIcon icon={cilPlus} className="me-2" /> Add habit
             </CButton>
           </div>
         </div>
@@ -1104,18 +1138,22 @@ const Habits = () => {
 
       <CNav variant="tabs" role="tablist" className="mb-3 habits-nav">
         <CNavItem>
-          <CNavLink active={activeTab === "my-habits"} onClick={() => setActiveTab("my-habits")}>My Habits</CNavLink>
+          <CNavLink active={activeTab === "my-habits"} onClick={() => handleTabChange("my-habits")}>
+            My Habits
+          </CNavLink>
         </CNavItem>
         <CNavItem>
-          <CNavLink active={activeTab === "add"} onClick={() => setActiveTab("add")}>Add Habit</CNavLink>
+          <CNavLink active={activeTab === "add"} onClick={() => handleTabChange("add")}>
+            Add Habit
+          </CNavLink>
         </CNavItem>
         <CNavItem>
-          <CNavLink active={activeTab === "library"} onClick={() => setActiveTab("library")}>
+          <CNavLink active={activeTab === "library"} onClick={() => handleTabChange("library")}>
             Habit Library
           </CNavLink>
         </CNavItem>
         <CNavItem>
-          <CNavLink active={activeTab === "progress"} onClick={() => setActiveTab("progress")}>
+          <CNavLink active={activeTab === "progress"} onClick={() => handleTabChange("progress")}>
             Progress
           </CNavLink>
         </CNavItem>
@@ -1145,7 +1183,7 @@ const Habits = () => {
 
       <CTabContent>
         <CTabPane visible={activeTab === "my-habits"}>
-          <MyHabitsTab onAddClick={() => setActiveTab("add")} onProgressLogged={refreshSignals} />
+          <MyHabitsTab onAddClick={() => handleTabChange("add")} onProgressLogged={refreshSignals} />
         </CTabPane>
         <CTabPane visible={activeTab === "add"}>
           <div className="mt-3">
