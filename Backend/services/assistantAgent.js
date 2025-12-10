@@ -1,26 +1,27 @@
 // assistantAgent.js
 // Main AI reasoning engine for StepHabit
 
-import { ChatNVIDIA } from "@langchain/nvidia";
+import { ChatAnthropic } from "@langchain/anthropic";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 
 const MAX_HISTORY_MESSAGES = parseInt(process.env.ASSISTANT_HISTORY_LIMIT || "12", 10);
 
 // ---- MODEL CONFIG ----
-const NEMOTRON_BASE_URL = (process.env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.com/v1").replace(/\/$/, "");
+const CLAUDE_BASE_URL = (process.env.CLAUDE_BASE_URL || "https://api.anthropic.com").replace(/\/$/, "");
 
-const NEMOTRON_MODEL = (process.env.NVIDIA_MODEL || "nvidia/nemotron-nano-9b-v2:free").trim();
+const CLAUDE_MODEL = (process.env.CLAUDE_MODEL || "claude-3-5-sonnet-20241022").trim();
 
-const NVIDIA_API_KEY = (process.env.NVIDIA_API_KEY || process.env.CLAUDE_API_KEY || "").trim();
+const CLAUDE_API_KEY = (process.env.CLAUDE_API_KEY || "").trim();
 
 // ---- STATUS HELPERS ----
-const hasApiKey = () => Boolean(NVIDIA_API_KEY);
+const hasApiKey = () => Boolean(CLAUDE_API_KEY);
 
 export const getAgentStatus = () => ({
   ready: hasApiKey(),
-  endpoint: NEMOTRON_BASE_URL,
-  model: hasApiKey() ? NEMOTRON_MODEL : null,
-  reason: hasApiKey() ? null : "Set the NVIDIA_API_KEY environment variable.",
+  provider: "Anthropic Claude",
+  endpoint: `${CLAUDE_BASE_URL}/v1`,
+  model: hasApiKey() ? CLAUDE_MODEL : null,
+  reason: hasApiKey() ? null : "Set the CLAUDE_API_KEY environment variable.",
   updatedAt: new Date().toISOString(),
 });
 
@@ -107,9 +108,9 @@ const buildMessages = ({ snapshot, insightText, history = [] }) => {
 
 // ---- MAIN AGENT CALL ----
 export const runReasoningAgent = async ({ snapshot, insightText, history, apiKeyOverride }) => {
-  const apiKey = apiKeyOverride || NVIDIA_API_KEY;
-  if (!apiKey) throw new Error("Missing NVIDIA_API_KEY.");
-  if (!NEMOTRON_MODEL) throw new Error("Missing NVIDIA_MODEL.");
+  const apiKey = apiKeyOverride || CLAUDE_API_KEY;
+  if (!apiKey) throw new Error("Missing CLAUDE_API_KEY.");
+  if (!CLAUDE_MODEL) throw new Error("Missing CLAUDE_MODEL.");
 
   const { systemInstruction, contents } = buildMessages({ snapshot, insightText, history });
 
@@ -117,10 +118,10 @@ export const runReasoningAgent = async ({ snapshot, insightText, history, apiKey
   let degradedReason = null;
 
   try {
-    const chat = new ChatNVIDIA({
+    const chat = new ChatAnthropic({
       apiKey,
-      baseURL: NEMOTRON_BASE_URL,
-      model: NEMOTRON_MODEL,
+      anthropicApiUrl: `${CLAUDE_BASE_URL}/v1`,
+      model: CLAUDE_MODEL,
       temperature: 0.7,
       topP: 0.95,
       maxTokens: 1024,
@@ -131,7 +132,7 @@ export const runReasoningAgent = async ({ snapshot, insightText, history, apiKey
       ...(contents.length ? contents : [new HumanMessage("Summarize my progress.")]),
     ]);
   } catch (err) {
-    console.error("Model failed:", NEMOTRON_MODEL, err?.error || err?.message);
+    console.error("Model failed:", CLAUDE_MODEL, err?.error || err?.message);
     throw err;
   }
 
@@ -150,8 +151,9 @@ export const runReasoningAgent = async ({ snapshot, insightText, history, apiKey
     reply: safeReply,
     meta: {
       ready: !degradedReason,
-      endpoint: NEMOTRON_BASE_URL,
-      model: NEMOTRON_MODEL,
+      provider: "Anthropic Claude",
+      endpoint: `${CLAUDE_BASE_URL}/v1`,
+      model: CLAUDE_MODEL,
       reason: degradedReason,
       updatedAt: new Date().toISOString(),
     },
