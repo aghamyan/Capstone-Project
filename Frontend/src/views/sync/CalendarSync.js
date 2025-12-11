@@ -276,21 +276,17 @@ const CalendarSync = () => {
                     Upload .ics file (optional)
                   </CFormLabel>
                   <div className="d-flex align-items-center gap-3">
-                    <CButton
-                      component="label"
-                      color="light"
-                      className="border"
-                    >
+                    <label htmlFor="icsUpload" className="btn btn-light border mb-0">
                       <CIcon icon={cilCloudUpload} className="me-2" />
                       Choose file
-                      <input
-                        id="icsUpload"
-                        type="file"
-                        accept=".ics,text/calendar"
-                        hidden
-                        onChange={handleFileChange}
-                      />
-                    </CButton>
+                    </label>
+                    <input
+                      id="icsUpload"
+                      type="file"
+                      accept=".ics,text/calendar"
+                      className="d-none"
+                      onChange={handleFileChange}
+                    />
                     <span className="text-body-secondary">
                       {form.fileName || "No file selected"}
                     </span>
