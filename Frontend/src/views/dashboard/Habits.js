@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import {
   CAlert,
@@ -9,7 +9,6 @@ import {
   CCardHeader,
   CCol,
   CFormSelect,
-  CFormCheck,
   CFormInput,
   CFormLabel,
   CFormTextarea,
@@ -33,28 +32,14 @@ import {
   CTooltip,
 } from "@coreui/react"
 import CIcon from "@coreui/icons-react"
-import {
-  cilClock,
-  cilChartLine,
-  cilBadge,
-  cilList,
-  cilBolt,
-  cilPencil,
-  cilPlus,
-  cilTrash,
-} from "@coreui/icons"
+import { cilClock, cilChartLine, cilBadge, cilList, cilBolt, cilPlus } from "@coreui/icons"
 
 import AddHabit from "./AddHabit"
 import HabitLibrary from "./HabitLibrary"
 import ProgressTracker from "./ProgressTracker"
 import HabitCoach from "./HabitCoach"
-import { getHabits, deleteHabit, updateHabit } from "../../services/habits"
-import {
-  logHabitProgress,
-  getProgressHistory,
-  updateHabitProgressCount,
-} from "../../services/progress"
-import { promptMissedReflection } from "../../utils/reflection"
+import { getHabits, updateHabit } from "../../services/habits"
+import { getProgressHistory, updateHabitProgressCount } from "../../services/progress"
 import { getProgressAnalytics, formatPercent } from "../../services/analytics"
 import { emitDataRefresh, REFRESH_SCOPES, useDataRefresh } from "../../utils/refreshBus"
 
@@ -71,7 +56,6 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
   const [habits, setHabits] = useState([])
   const [loading, setLoading] = useState(true)
   const [feedback, setFeedback] = useState(null)
-  const [loggingState, setLoggingState] = useState(null)
   const [showEditor, setShowEditor] = useState(false)
   const [editDraft, setEditDraft] = useState(createEditDraft({}))
   const [savingEdit, setSavingEdit] = useState(false)
@@ -130,38 +114,6 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
       loadHistory()
     }, [loadHabits, loadHistory]),
   )
-
-  const handleLog = async (habit, status) => {
-    const habitId = habit?.id || habit?.habitId
-    if (!habitId || !userId) return
-    const payload = { userId, status }
-    if (status === "missed") {
-      const reason = promptMissedReflection(habit.title || habit.name || habit.habitName)
-      const trimmed = reason?.trim()
-      if (!trimmed) return
-      payload.reason = trimmed
-    }
-
-    try {
-      setLoggingState(`${habitId}-${status}`)
-      await logHabitProgress(habitId, payload)
-      if (typeof onProgressLogged === "function") {
-        await onProgressLogged()
-      }
-      emitDataRefresh(REFRESH_SCOPES.PROGRESS, { habitId, status })
-      emitDataRefresh(REFRESH_SCOPES.ANALYTICS, { habitId, status })
-      await loadHistory()
-      setFeedback({
-        type: status === "missed" ? "warning" : "success",
-        message: `Logged ${status} for ${habit.title || habit.name || habit.habitName}.`,
-      })
-    } catch (error) {
-      console.error("Failed to log status", error)
-      setFeedback({ type: "danger", message: "Could not record that action." })
-    } finally {
-      setLoggingState(null)
-    }
-  }
 
   const cycleStatus = useCallback((status) => {
     if (status === "done") return "missed"
@@ -238,18 +190,6 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
     },
     [cycleStatus, historyByHabit, loadHistory, updateCountsForDate, userId],
   )
-
-  const handleDelete = async (habitId) => {
-    try {
-      await deleteHabit(habitId)
-      setHabits((prev) => prev.filter((h) => h.id !== habitId))
-      emitDataRefresh(REFRESH_SCOPES.HABITS, { reason: "habit-deleted", habitId })
-      setFeedback({ type: "success", message: "Habit deleted." })
-    } catch (error) {
-      console.error("Failed to delete", error)
-      setFeedback({ type: "danger", message: "Unable to delete habit right now." })
-    }
-  }
 
   const startEdit = (habit) => {
     setEditDraft(createEditDraft(habit))
@@ -424,30 +364,24 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
   )
 
   const DayStatusCheckbox = ({ status, onToggle, disabled, inputId, title }) => {
-    const checkboxRef = useRef(null)
-
-    useEffect(() => {
-      if (checkboxRef.current) {
-        checkboxRef.current.indeterminate = status === "missed"
-      }
-    }, [status])
+    const mark = status === "done" ? "✓" : status === "missed" ? "✕" : ""
 
     return (
-      <div
+      <button
+        type="button"
         className={`month-checkbox status-${status || "empty"}${disabled ? " is-saving" : ""}`}
-        role="group"
-        aria-label="Toggle status"
+        aria-label={title}
+        aria-pressed={Boolean(status)}
+        disabled={disabled}
+        onClick={onToggle}
         title={title}
+        id={inputId}
       >
-        <CFormCheck
-          type="checkbox"
-          id={inputId}
-          checked={status === "done"}
-          onChange={onToggle}
-          disabled={disabled}
-          inputRef={checkboxRef}
-        />
-      </div>
+        <span className="month-checkbox__mark" aria-hidden="true">
+          {mark}
+        </span>
+        <span className="visually-hidden">Toggle day status</span>
+      </button>
     )
   }
 
@@ -541,7 +475,6 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
                         Week {index + 1}
                       </div>
                     ))}
-                    <div className="action-col-placeholder" />
                   </div>
 
                   <div className="tracker-grid-wrapper">
@@ -549,13 +482,14 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
                       <div className="tracker-cell tracker-head habit-col">Our habits</div>
                       {visibleDays.map((day) => (
                         <div key={`head-${formatDateKey(day)}`} className="tracker-cell tracker-head text-center">
-                          <div className="fw-semibold small">
-                            {day.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 2)}
+                          <div className="fw-semibold small weekday-label">
+                            {day.toLocaleDateString(undefined, { weekday: "short" })}
                           </div>
-                          <div className="text-muted tiny-date">{day.getDate()}</div>
+                          <div className="text-muted tiny-date">
+                            {day.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                          </div>
                         </div>
                       ))}
-                      <div className="tracker-cell tracker-head action-col text-center">Log</div>
 
                       {habits.map((habit) => {
                         const progress = habitProgress.get(habit.id) || { rate: 0 }
@@ -571,7 +505,17 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
                                     }${habit.category ? ` • ${habit.category}` : ""}`}
                                     placement="bottom"
                                   >
-                                    <span className="fw-semibold habit-title cursor-help">{habit.title}</span>
+                                    <span
+                                      className="fw-semibold habit-title cursor-help"
+                                      role="button"
+                                      tabIndex={0}
+                                      onClick={() => startEdit(habit)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") startEdit(habit)
+                                      }}
+                                    >
+                                      {habit.title}
+                                    </span>
                                   </CTooltip>
                                   {habit.category && (
                                     <CBadge color="info" className="text-uppercase small subtle-badge">
@@ -614,60 +558,6 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
                                 </div>
                               )
                             })}
-                            <div className="tracker-cell action-col">
-                              <div className="d-flex flex-column gap-2">
-                                <CButton
-                                  size="sm"
-                                  color="success"
-                                  className={`rounded-pill log-action w-100${
-                                    loggingState === `${habit.id}-done` ? " is-logging" : ""
-                                  }`}
-                                  disabled={loggingState === `${habit.id}-done`}
-                                  onClick={() => handleLog(habit, "done")}
-                                >
-                                  <span className="d-inline-flex align-items-center gap-2">
-                                    {loggingState === `${habit.id}-done` && <CSpinner size="sm" color="light" />}
-                                    <span>{loggingState === `${habit.id}-done` ? "Logging..." : "Mark done"}</span>
-                                  </span>
-                                </CButton>
-                                <CButton
-                                  size="sm"
-                                  color="danger"
-                                  variant="outline"
-                                  className={`rounded-pill log-action w-100${
-                                    loggingState === `${habit.id}-missed` ? " is-logging" : ""
-                                  }`}
-                                  disabled={loggingState === `${habit.id}-missed`}
-                                  onClick={() => handleLog(habit, "missed")}
-                                >
-                                  <span className="d-inline-flex align-items-center gap-2">
-                                    {loggingState === `${habit.id}-missed` && <CSpinner size="sm" color="danger" />}
-                                    <CIcon icon={cilClock} className="opacity-75" />
-                                    <span>{loggingState === `${habit.id}-missed` ? "Logging..." : "Missed"}</span>
-                                  </span>
-                                </CButton>
-                                <div className="d-flex gap-2">
-                                  <CButton
-                                    size="sm"
-                                    color="secondary"
-                                    variant="outline"
-                                    className="rounded-pill w-100"
-                                    onClick={() => startEdit(habit)}
-                                  >
-                                    <CIcon icon={cilPencil} className="me-1" /> Edit
-                                  </CButton>
-                                  <CButton
-                                    size="sm"
-                                    color="danger"
-                                    variant="ghost"
-                                    className="rounded-pill"
-                                    onClick={() => handleDelete(habit.id)}
-                                  >
-                                    <CIcon icon={cilTrash} />
-                                  </CButton>
-                                </div>
-                              </div>
-                            </div>
                           </React.Fragment>
                         )
                       })}

@@ -739,7 +739,7 @@ body {
 .habit-tracker-grid {
   --habit-day-count: 28;
   display: grid;
-  grid-template-columns: minmax(220px, 1.1fr) repeat(var(--habit-day-count), minmax(34px, 1fr)) minmax(200px, 0.8fr);
+  grid-template-columns: minmax(240px, 1.1fr) repeat(var(--habit-day-count), minmax(42px, 1fr));
   align-items: stretch;
   min-width: 960px;
   border-collapse: collapse;
@@ -765,14 +765,6 @@ body {
     background: inherit;
     box-shadow: 4px 0 12px rgba(0, 0, 0, 0.04);
   }
-
-  &.action-col {
-    position: sticky;
-    right: 0;
-    z-index: 2;
-    background: inherit;
-    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.04);
-  }
 }
 
 .day-cell {
@@ -786,37 +778,41 @@ body {
   height: 100%;
   display: grid;
   place-items: center;
-  padding: 0.15rem;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--cui-body-bg) 96%, rgba(63, 94, 251, 0.04));
+  padding: 0.3rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--cui-body-bg) 96%, rgba(63, 94, 251, 0.06));
   border: 1px solid var(--cui-border-color-translucent);
   transition: all 0.15s ease;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--cui-secondary-color);
+  cursor: pointer;
 
-  .form-check-input {
-    margin: 0;
-    width: 1.25rem;
-    height: 1.25rem;
-    cursor: pointer;
+  &:focus-visible {
+    outline: 2px solid var(--cui-primary);
+    outline-offset: 2px;
+  }
+
+  &:hover:not(.is-saving) {
+    border-color: color-mix(in srgb, var(--cui-primary) 30%, var(--cui-border-color));
+    box-shadow: 0 6px 16px rgba(63, 94, 251, 0.1);
+  }
+
+  .month-checkbox__mark {
+    font-size: 1.2rem;
+    line-height: 1;
   }
 
   &.status-done {
     background: color-mix(in srgb, var(--cui-success) 12%, var(--cui-body-bg));
     border-color: color-mix(in srgb, var(--cui-success) 35%, transparent);
-
-    .form-check-input {
-      background-color: var(--cui-success);
-      border-color: color-mix(in srgb, var(--cui-success) 45%, transparent);
-    }
+    color: color-mix(in srgb, var(--cui-success) 60%, var(--cui-body-color));
   }
 
   &.status-missed {
     background: color-mix(in srgb, var(--cui-danger) 12%, var(--cui-body-bg));
     border-color: color-mix(in srgb, var(--cui-danger) 35%, transparent);
-
-    .form-check-input {
-      background-color: color-mix(in srgb, var(--cui-danger) 68%, transparent);
-      border-color: color-mix(in srgb, var(--cui-danger) 55%, transparent);
-    }
+    color: color-mix(in srgb, var(--cui-danger) 60%, var(--cui-body-color));
   }
 
   &.status-empty {
@@ -836,11 +832,13 @@ body {
   &.status-done {
     background: color-mix(in srgb, var(--cui-success) 18%, var(--cui-body-bg));
     border-color: color-mix(in srgb, var(--cui-success) 35%, var(--cui-border-color));
+    color: color-mix(in srgb, var(--cui-success) 70%, #e8fff2);
   }
 
   &.status-missed {
     background: color-mix(in srgb, var(--cui-danger) 18%, var(--cui-body-bg));
     border-color: color-mix(in srgb, var(--cui-danger) 35%, var(--cui-border-color));
+    color: color-mix(in srgb, var(--cui-danger) 70%, #ffecec);
   }
 }
 
@@ -866,13 +864,8 @@ body {
     border-radius: 8px;
   }
 
-  .habit-col-placeholder,
-  .action-col-placeholder {
+  .habit-col-placeholder {
     width: 220px;
-  }
-
-  .action-col-placeholder {
-    width: 210px;
   }
 }
 
@@ -905,53 +898,6 @@ body {
   background: color-mix(in srgb, var(--cui-body-bg) 92%, rgba(255, 255, 255, 0.02));
   border-color: var(--cui-border-color);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.38);
-}
-
-.log-action {
-  position: relative;
-  overflow: hidden;
-  transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-
-  &:active {
-    transform: translateY(1px) scale(0.99);
-  }
-
-  &.is-logging {
-    animation: pulse-logging 1s ease-in-out infinite;
-    box-shadow: 0 10px 24px rgba(63, 94, 251, 0.16);
-  }
-
-  .spinner-border {
-    width: 1rem;
-    height: 1rem;
-  }
-}
-
-.log-done {
-  background: linear-gradient(135deg, #2ecc71, #27ae60);
-  border: none;
-}
-
-.log-missed {
-  border-color: rgba(220, 53, 69, 0.45) !important;
-  color: #b02a37 !important;
-  background: color-mix(in srgb, #fff1f3 94%, transparent);
-
-  &:hover {
-    background: color-mix(in srgb, #ffe3e8 88%, transparent);
-    border-color: rgba(220, 53, 69, 0.7) !important;
-  }
-}
-
-:root[data-coreui-theme='dark'] .log-missed {
-  color: #f8d7da !important;
-  border-color: rgba(220, 53, 69, 0.65) !important;
-  background: color-mix(in srgb, var(--cui-body-bg) 85%, rgba(220, 53, 69, 0.18));
-
-  &:hover {
-    background: color-mix(in srgb, var(--cui-body-bg) 80%, rgba(220, 53, 69, 0.25));
-    border-color: rgba(220, 53, 69, 0.8) !important;
-  }
 }
 
 .focus-habit-card {
