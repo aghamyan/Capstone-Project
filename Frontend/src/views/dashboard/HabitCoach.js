@@ -53,9 +53,9 @@ const KnowledgeCard = ({ context }) => {
       <CCardHeader className="d-flex align-items-center gap-2">
         <CIcon icon={cilStorage} className="text-info" />
         <div>
-          <div className="fw-semibold">AI Knowledge</div>
+          <div className="fw-semibold">Coach Knowledge</div>
           <small className="text-medium-emphasis">
-            The assistant reads your user profile, recent chat, and every database table.
+            HabitCoach reads your user profile, recent chat, and every database table.
           </small>
         </div>
       </CCardHeader>
@@ -88,7 +88,7 @@ const KnowledgeCard = ({ context }) => {
   );
 };
 
-const AiChat = () => {
+const HabitCoach = () => {
   const { user } = useContext(AuthContext);
   const [history, setHistory] = useState([]);
   const [context, setContext] = useState(null);
@@ -106,8 +106,8 @@ const AiChat = () => {
       const data = await fetchAiChatHistory(user.id);
       setHistory(data.history || []);
     } catch (err) {
-      console.error("Failed to load AI chat", err);
-      setError("Unable to load AI chat history right now.");
+      console.error("Failed to load HabitCoach", err);
+      setError("Unable to load your coach history right now.");
     } finally {
       setInitialLoading(false);
     }
@@ -150,7 +150,7 @@ const AiChat = () => {
       setHistory(data.history || []);
       setContext(data.context || null);
     } catch (err) {
-      console.error("Failed to send AI message", err);
+      console.error("Failed to send coach message", err);
       setError("Something went wrong sending your message. Try again.");
       // Reload the last known history to avoid showing stuck optimistic messages
       setHistory(previousHistory);
@@ -171,9 +171,9 @@ const AiChat = () => {
         <CCard className="mb-4">
           <CCardHeader className="d-flex align-items-center justify-content-between">
             <div>
-              <div className="fw-semibold">AI chat</div>
+              <div className="fw-semibold">HabitCoach</div>
               <small className="text-medium-emphasis">
-                Ask anything — the AI follows your conversation and can see your profile plus every table.
+                Ask anything — HabitCoach follows your conversation and can see your profile plus every table.
               </small>
             </div>
             <CBadge color="info">Live</CBadge>
@@ -206,7 +206,7 @@ const AiChat = () => {
                   rows={2}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Ask the AI anything about your data"
+                  placeholder="Ask HabitCoach anything about your habits"
                   disabled={loading}
                 />
               </CInputGroup>
@@ -247,4 +247,4 @@ const AiChat = () => {
   );
 };
 
-export default AiChat;
+export default HabitCoach;
