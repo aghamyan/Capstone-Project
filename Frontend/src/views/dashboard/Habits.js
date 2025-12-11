@@ -107,19 +107,6 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
     }
   }, [userId])
 
-  const loadHistory = useCallback(async () => {
-    if (!userId) return
-    try {
-      const data = await getProgressHistory(userId)
-      setHistoryEntries(Array.isArray(data) ? data : [])
-      setHistoryError("")
-    } catch (error) {
-      console.error("Failed to load progress history", error)
-      setHistoryEntries([])
-      setHistoryError("Recent history is temporarily unavailable.")
-    }
-  }, [userId])
-
   useEffect(() => {
     loadHabits()
     loadHistory()
