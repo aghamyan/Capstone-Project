@@ -798,10 +798,11 @@ body {
   display: grid;
   place-items: center;
   background: transparent;
+  padding-inline: 4px;
 }
 
 .month-checkbox {
-  width: 100%;
+  width: calc(100% - 8px);
   aspect-ratio: 1 / 1;
   min-height: 56px;
   display: grid;

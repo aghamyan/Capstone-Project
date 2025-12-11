@@ -174,7 +174,27 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
         await updateCountsForDate(habitId, dateKey, nextStatus)
         emitDataRefresh(REFRESH_SCOPES.PROGRESS, { habitId, status: nextStatus || "cleared", date: dateKey })
         emitDataRefresh(REFRESH_SCOPES.ANALYTICS, { habitId, status: nextStatus || "cleared", date: dateKey })
-        await loadHistory()
+        setHistoryEntries((prev) => {
+          const filtered = prev.filter((entry) => {
+            const entryHabitId = String(entry.habitId ?? entry.habit_id ?? "")
+            const entryDate = (entry.progressDate || entry.createdAt || "").slice(0, 10)
+            return !(entryHabitId === String(habitId) && entryDate === dateKey)
+          })
+
+          if (!nextStatus) return filtered
+
+          const nextEntry = {
+            id: `${habitId}-${dateKey}`,
+            habitId,
+            habit_id: habitId,
+            habitTitle: habit.title || habit.name || habit.habitName || "Habit",
+            status: nextStatus,
+            progressDate: dateKey,
+            createdAt: new Date().toISOString(),
+          }
+
+          return [...filtered, nextEntry]
+        })
         setFeedback({
           type: nextStatus === "missed" ? "warning" : "success",
           message:
@@ -189,7 +209,7 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
         setCalendarSaving(null)
       }
     },
-    [cycleStatus, historyByHabit, loadHistory, updateCountsForDate, userId],
+    [cycleStatus, historyByHabit, updateCountsForDate, userId],
   )
 
   const startEdit = (habit) => {
