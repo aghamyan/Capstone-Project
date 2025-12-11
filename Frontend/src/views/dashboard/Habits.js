@@ -169,6 +169,18 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
     return "done"
   }, [])
 
+  const historyByHabit = useMemo(() => {
+    return historyEntries.reduce((acc, entry) => {
+      const habitKey = String(entry.habitId ?? entry.habit_id ?? "")
+      if (!habitKey) return acc
+      const dateKey = (entry.progressDate || entry.createdAt || "").slice(0, 10)
+      if (!dateKey) return acc
+      if (!acc[habitKey]) acc[habitKey] = {}
+      acc[habitKey][dateKey] = entry.status
+      return acc
+    }, {})
+  }, [historyEntries])
+
   const updateCountsForDate = useCallback(
     async (habitId, dateKey, nextStatus) => {
       if (!userId) return
@@ -326,18 +338,6 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
     }
     return chunks
   }, [visibleDays])
-
-  const historyByHabit = useMemo(() => {
-    return historyEntries.reduce((acc, entry) => {
-      const habitKey = String(entry.habitId ?? entry.habit_id ?? "")
-      if (!habitKey) return acc
-      const dateKey = (entry.progressDate || entry.createdAt || "").slice(0, 10)
-      if (!dateKey) return acc
-      if (!acc[habitKey]) acc[habitKey] = {}
-      acc[habitKey][dateKey] = entry.status
-      return acc
-    }, {})
-  }, [historyEntries])
 
   const historyByDate = useMemo(() => {
     return historyEntries.reduce((map, entry) => {
