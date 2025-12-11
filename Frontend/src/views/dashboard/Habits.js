@@ -480,14 +480,22 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
 
                   <div className="tracker-grid-wrapper">
                     <div className="habit-tracker-grid" style={{ "--habit-day-count": visibleDays.length }}>
-                      <div className="tracker-cell tracker-head habit-col">Our habits</div>
+                      <div className="tracker-cell tracker-head habit-col">
+                        <div className="d-flex flex-column gap-1">
+                          <span className="text-uppercase small text-muted">Our habits</span>
+                          <span className="fw-semibold">Daily tracker</span>
+                        </div>
+                      </div>
                       {visibleDays.map((day) => (
                         <div key={`head-${formatDateKey(day)}`} className="tracker-cell tracker-head text-center">
-                          <div className="fw-semibold small weekday-label">
-                            {day.toLocaleDateString(undefined, { weekday: "short" })}
-                          </div>
-                          <div className="text-muted tiny-date">
-                            {day.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                          <div className="date-header">
+                            <span className="weekday-label">
+                              {day.toLocaleDateString(undefined, { weekday: "short" })}
+                            </span>
+                            <span className="tiny-date">
+                              <span>{day.toLocaleDateString(undefined, { month: "short" })}</span>
+                              <span>{day.getDate()}</span>
+                            </span>
                           </div>
                         </div>
                       ))}
@@ -498,7 +506,7 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
                         return (
                           <React.Fragment key={habit.id}>
                             <div className="tracker-cell habit-col">
-                              <div className="d-flex flex-column gap-1">
+                              <div className="habit-meta">
                                 <div className="d-flex align-items-center gap-2 flex-wrap">
                                   <CTooltip
                                     content={`${habit.description || "No description yet."}${
@@ -519,21 +527,23 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
                                     </span>
                                   </CTooltip>
                                   {habit.category && (
-                                    <CBadge color="info" className="text-uppercase small subtle-badge">
+                                    <CBadge color="light" className="text-uppercase small habit-tag">
                                       {habit.category}
                                     </CBadge>
                                   )}
                                   {habit.is_daily_goal && <CBadge color="success">Daily</CBadge>}
                                 </div>
-                                <div className="text-body-secondary small">
-                                  {habit.description || "No description"}
-                                </div>
+                                {habit.description && <p className="habit-desc">{habit.description}</p>}
                                 {habit.target_reps ? (
-                                  <div className="text-body-secondary small mt-1">🎯 Target: {habit.target_reps}</div>
+                                  <p className="habit-desc text-muted mb-0">🎯 Target: {habit.target_reps}</p>
                                 ) : null}
-                                <div className="d-flex align-items-center gap-2 mt-2">
-                                  <CProgress value={progress.rate} color="primary" className="flex-grow-1" />
-                                  <small className="text-muted">{progress.rate}%</small>
+                                <div className="habit-progress-row">
+                                  <CProgress
+                                    value={progress.rate}
+                                    color="success"
+                                    className="flex-grow-1 habit-progress"
+                                  />
+                                  <span className="habit-progress-rate text-muted">{progress.rate}%</span>
                                 </div>
                               </div>
                             </div>
