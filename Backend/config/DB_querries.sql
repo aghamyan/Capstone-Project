@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS friends CASCADE;
 DROP TABLE IF EXISTS user_achievements CASCADE;
 DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS progress CASCADE;
+DROP TABLE IF EXISTS busy_schedules CASCADE;
 DROP TABLE IF EXISTS schedules CASCADE;
 DROP TABLE IF EXISTS habits CASCADE;
 DROP TABLE IF EXISTS group_challenges CASCADE;
@@ -52,6 +53,24 @@ CREATE TABLE schedules (
     endtime TIME,
     enddate DATE,
     repeat VARCHAR(50) DEFAULT 'daily',  -- daily, weekly, every3days, custom
+    customdays VARCHAR(100),
+    notes TEXT,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ======================
+-- BUSY SCHEDULES (non-habit events)
+-- ======================
+CREATE TABLE busy_schedules (
+    id SERIAL PRIMARY KEY,
+    userid INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    day DATE NOT NULL,
+    starttime TIME NOT NULL,
+    endtime TIME,
+    enddate DATE,
+    repeat VARCHAR(50) DEFAULT 'daily',
     customdays VARCHAR(100),
     notes TEXT,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

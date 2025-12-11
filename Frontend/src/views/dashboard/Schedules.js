@@ -286,11 +286,14 @@ const MySchedule = () => {
       : null
 
   // ✅ Delete schedule
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, type) => {
     try {
-      const res = await fetch(`${API_BASE}/schedules/${id}`, { method: "DELETE" })
+      const res = await fetch(
+        `${API_BASE}/schedules/${id}${type ? `?type=${type}` : ""}`,
+        { method: "DELETE" }
+      )
       if (!res.ok) throw new Error("Failed to delete schedule")
-      setSchedules((prev) => prev.filter((s) => s.id !== id))
+      setSchedules((prev) => prev.filter((s) => !(String(s.id) === String(id) && s.type === type)))
       emitDataRefresh(REFRESH_SCOPES.SCHEDULES, { reason: "schedule-deleted", scheduleId: id })
     } catch (err) {
       console.error("❌ Failed to delete schedule:", err)
@@ -616,7 +619,7 @@ const MySchedule = () => {
             ) : (
               <CListGroup flush>
                 {schedules.map((s) => (
-                  <CListGroupItem key={s.id} className="py-3">
+                  <CListGroupItem key={`${s.type || "habit"}-${s.id}`} className="py-3">
                     <div className="d-flex justify-content-between align-items-start flex-wrap gap-2">
                       <div>
                         <div className="fw-semibold">
@@ -635,7 +638,7 @@ const MySchedule = () => {
                           color="danger"
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDelete(s.id)}
+                          onClick={() => handleDelete(s.id, s.type)}
                         >
                           Delete
                         </CButton>

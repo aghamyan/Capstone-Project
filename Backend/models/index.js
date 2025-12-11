@@ -6,6 +6,7 @@
 import User from "./User.js";
 import Habit from "./Habit.js";
 import Schedule from "./Schedule.js";
+import BusySchedule from "./BusySchedule.js";
 import Progress from "./Progress.js";
 import Notification from "./Notification.js";
 import Achievement from "./Achievement.js";
@@ -26,6 +27,10 @@ User.hasMany(Habit, { foreignKey: "user_id", as: "habits" });
 Habit.belongsTo(User, { foreignKey: "user_id", as: "owner" });
 Habit.hasMany(Schedule, { foreignKey: "habit_id", as: "schedules" });
 Schedule.belongsTo(Habit, { foreignKey: "habit_id", as: "habit" });
+
+// Busy blocks are informational and only belong to a user
+User.hasMany(BusySchedule, { foreignKey: "user_id", as: "busySchedules" });
+BusySchedule.belongsTo(User, { foreignKey: "user_id", as: "owner" });
 
 // === Habit progress tracking ===
 Habit.hasMany(Progress, { foreignKey: "habit_id", as: "progressLogs" });
@@ -138,6 +143,7 @@ export {
   User,
   Habit,
   Schedule,
+  BusySchedule,
   Progress,
   Notification,
   Achievement,
