@@ -179,6 +179,7 @@ router.post("/register/request-code", async (req, res) => {
     if (err instanceof EmailConfigError) {
       return res.status(503).json({
         error: "Email service is not configured. Please set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS.",
+        code: err.code,
       });
     }
 

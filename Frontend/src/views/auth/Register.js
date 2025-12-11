@@ -173,6 +173,13 @@ const Register = () => {
       const data = await response.json()
 
       if (!response.ok) {
+        if (response.status === 503 && data?.code === "EMAIL_CONFIG_MISSING") {
+          console.warn("Email configuration missing. Please set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS.")
+          throw new Error(
+            "Email verification is temporarily unavailable. Please try again later or contact support."
+          )
+        }
+
         throw new Error(data?.error || "We couldn’t send the verification code.")
       }
 
