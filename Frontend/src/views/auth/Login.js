@@ -3,7 +3,6 @@ import {
   CButton,
   CCard,
   CCardBody,
-  CCardHeader,
   CCol,
   CContainer,
   CForm,
@@ -16,6 +15,7 @@ import CIcon from "@coreui/icons-react"
 import { cilUser, cilLockLocked, cilSun } from "@coreui/icons"
 import { Link, useNavigate } from "react-router-dom"
 import { AuthContext } from "../../context/AuthContext"
+import { API_BASE } from "../../utils/apiConfig"
 
 const Login = () => {
   const [form, setForm] = useState({ email: "", password: "" })
@@ -32,7 +32,7 @@ const Login = () => {
     setMessage("")
 
     try {
-      const res = await fetch("http://localhost:5001/api/users/login", {
+      const res = await fetch(`${API_BASE}/users/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -56,22 +56,8 @@ const Login = () => {
   return (
     <div className="auth-page">
       <CContainer>
-        <CRow className="align-items-center g-4">
-          <CCol lg={6} className="d-none d-lg-block">
-            <div className="auth-hero">
-              <div className="eyebrow mb-2">Habit companion</div>
-              <h1 className="hero-title">Welcome back to StepHabit</h1>
-              <p className="hero-subtitle mb-4">
-                Sign in to pick up your streaks, review your goals, and keep your day flowing with intention.
-              </p>
-              <ul className="auth-highlights">
-                <li>Beautiful dashboard that stays calm, even when the schedule is busy.</li>
-                <li>One-tap check-ins and planner shortcuts so nothing gets lost.</li>
-                <li>Secure, privacy-first space—only you see your reflections.</li>
-              </ul>
-            </div>
-          </CCol>
-          <CCol xs={12} lg={6}>
+        <CRow className="align-items-center justify-content-center g-4">
+          <CCol xs={12} md={10} lg={6}>
             <CCard className="auth-card shadow-lg">
               <CCardBody className="p-4 p-lg-5">
                 <div className="text-center mb-4">

@@ -62,16 +62,11 @@ const createEditDraft = (habit) => ({
   is_daily_goal: Boolean(habit?.is_daily_goal),
 })
 
-const DailyChallengeHighlight = ({ challenge, onLog, loggingState }) => {
-  if (!challenge?.focusHabit) return null
-  const focus = challenge.focusHabit
-  const focusId = focus?.id || focus?.habitId
-  const progressPercent = focus.targetForToday
-    ? Math.min(100, Math.round((focus.doneToday / focus.targetForToday) * 100))
-    : 0
-
-  const isLoggingDone = loggingState === `${focusId}-done`
-  const isLoggingMissed = loggingState === `${focusId}-missed`
+const DailyChallengeHighlight = ({ challenge }) => {
+  const focus = challenge?.focusHabit
+  const totals = challenge?.today || { done: 0, missed: 0 }
+  const totalLogs = totals.done + totals.missed
+  const progressPercent = totalLogs ? Math.round((totals.done / totalLogs) * 100) : 0
 
   return (
     <CCard className="h-100 shadow-sm border-0 habits-panel challenge-card">
@@ -82,58 +77,44 @@ const DailyChallengeHighlight = ({ challenge, onLog, loggingState }) => {
             <div className="text-uppercase small fw-semibold opacity-75">
               Daily Challenge
             </div>
-            <h5 className="mb-0">Focus: {focus.title || focus.name}</h5>
+            <h5 className="mb-0">Today's overall progress</h5>
           </div>
         </div>
       </CCardHeader>
       <CCardBody className="d-flex flex-column gap-3">
-        <div className="d-flex align-items-center justify-content-between">
-          <div className="text-body-secondary small">Reason</div>
-          {focus.category && (
-            <CBadge color="warning" className="text-dark">
-              {focus.category}
-            </CBadge>
-          )}
-        </div>
-        <p className="mb-0 text-body-secondary">{focus.reason}</p>
         <div className="bg-body-secondary rounded p-3">
           <div className="d-flex justify-content-between align-items-center mb-2">
             <span className="text-uppercase small text-muted">Today's progress</span>
-            <span className="fw-semibold">{progressPercent}%</span>
+            <span className="fw-semibold">{progressPercent}% win rate</span>
           </div>
-          <div className="d-flex gap-2 align-items-center">
-            <CBadge color="success">{focus.doneToday}</CBadge>
-            <span className="text-muted small">of {focus.targetForToday} wins</span>
+          <div className="d-flex gap-3 align-items-center flex-wrap">
+            <div className="d-flex align-items-center gap-2">
+              <CBadge color="success">{totals.done}</CBadge>
+              <span className="text-muted small">wins logged</span>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <CBadge color="warning" className="text-dark">
+                {totals.missed}
+              </CBadge>
+              <span className="text-muted small">missed</span>
+            </div>
+            <div className="text-muted small">Total check-ins: {totalLogs}</div>
           </div>
         </div>
-        <div className="d-flex flex-wrap gap-2">
-          <CButton
-            color="success"
-            size="sm"
-            className={`rounded-pill log-action log-done${isLoggingDone ? " is-logging" : ""}`}
-            disabled={isLoggingDone}
-            onClick={() => onLog(focus, "done")}
-          >
-            <span className="d-inline-flex align-items-center gap-2">
-              {isLoggingDone && <CSpinner size="sm" color="light" />}
-              <span>{isLoggingDone ? "Logging..." : "Log done"}</span>
-            </span>
-          </CButton>
-          <CButton
-            color="danger"
-            size="sm"
-            variant="outline"
-            className={`rounded-pill log-action log-missed${isLoggingMissed ? " is-logging" : ""}`}
-            disabled={isLoggingMissed}
-            onClick={() => onLog(focus, "missed")}
-          >
-            <span className="d-inline-flex align-items-center gap-2">
-              {isLoggingMissed && <CSpinner size="sm" color="danger" />}
-              <CIcon icon={cilClock} className="opacity-75" />
-              <span>{isLoggingMissed ? "Logging..." : "Log missed"}</span>
-            </span>
-          </CButton>
-        </div>
+        {focus && (
+          <div className="rounded border p-3 focus-habit-card">
+            <div className="d-flex align-items-center justify-content-between mb-2">
+              <div className="text-uppercase small text-muted">Focus habit</div>
+              {focus.category && (
+                <CBadge color="warning" className="text-dark">
+                  {focus.category}
+                </CBadge>
+              )}
+            </div>
+            <div className="fw-semibold">{focus.title || focus.name}</div>
+            <p className="mb-0 text-body-secondary">{focus.reason}</p>
+          </div>
+        )}
       </CCardBody>
     </CCard>
   )
@@ -163,7 +144,7 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
       setLoading(true)
       const data = await getHabits(userId)
       setHabits(Array.isArray(data) ? data : [])
-      setFeedback(null)
+      setFeedback((prev) => (prev?.type === "danger" ? null : prev))
     } catch (error) {
       console.error("Failed to load habits", error)
       setFeedback({ type: "danger", message: "Unable to load your habits." })
@@ -198,32 +179,28 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
     }, [loadChallenge, loadHabits]),
   )
 
-  useEffect(() => {
-    if (!feedback) return undefined
-    const t = setTimeout(() => setFeedback(null), 4000)
-    return () => clearTimeout(t)
-  }, [feedback])
-
   const handleLog = async (habit, status) => {
     const habitId = habit?.id || habit?.habitId
     if (!habitId || !userId) return
     const payload = { userId, status }
     if (status === "missed") {
       const reason = promptMissedReflection(habit.title || habit.name || habit.habitName)
-      if (!reason) return
-      payload.reason = reason
+      const trimmed = reason?.trim()
+      if (!trimmed) return
+      payload.reason = trimmed
     }
 
     try {
       setLoggingState(`${habitId}-${status}`)
       await logHabitProgress(habitId, payload)
+      await loadChallenge()
       if (typeof onProgressLogged === "function") {
         await onProgressLogged()
       }
       emitDataRefresh(REFRESH_SCOPES.PROGRESS, { habitId, status })
       emitDataRefresh(REFRESH_SCOPES.ANALYTICS, { habitId, status })
       setFeedback({
-        type: "success",
+        type: status === "missed" ? "warning" : "success",
         message: `Logged ${status} for ${habit.title || habit.name || habit.habitName}.`,
       })
     } catch (error) {
@@ -303,8 +280,6 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
           {challengeError && <CAlert color="warning">{challengeError}</CAlert>}
           <DailyChallengeHighlight
             challenge={challenge}
-            onLog={handleLog}
-            loggingState={loggingState}
           />
         </CCol>
         <CCol lg={8}>
@@ -371,14 +346,14 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
                           </CButton>
                           <CButton
                             size="sm"
-                            color="warning"
+                            color="danger"
                             variant="outline"
                             className={`rounded-pill log-action log-missed${loggingState === `${habit.id}-missed` ? " is-logging" : ""}`}
                             disabled={loggingState === `${habit.id}-missed`}
                             onClick={() => handleLog(habit, "missed")}
                           >
                             <span className="d-inline-flex align-items-center gap-2">
-                              {loggingState === `${habit.id}-missed` && <CSpinner size="sm" color="warning" />}
+                              {loggingState === `${habit.id}-missed` && <CSpinner size="sm" color="danger" />}
                               <CIcon icon={cilClock} className="opacity-75" />
                               <span>
                                 {loggingState === `${habit.id}-missed` ? "Logging..." : "Log missed"}
