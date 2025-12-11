@@ -20,6 +20,16 @@ export const createHabit = async (habit) => {
   return await res.json();
 };
 
+export const generateHabitSuggestion = async (title) => {
+  const res = await fetch(`${BASE_URL}/ai-suggest`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) throw new Error("Failed to generate habit suggestion");
+  return await res.json();
+};
+
 export const updateHabit = async (id, habit) => {
   const res = await fetch(`${BASE_URL}/${id}`, {
     method: "PUT",
