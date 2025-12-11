@@ -122,8 +122,8 @@ export async function analyzeMessage(message, history = []) {
   if (ENV_CLAUDE_API_KEY) {
     try {
       const chat = new ChatAnthropic({
-        anthropicApiKey: ENV_CLAUDE_API_KEY,
-        anthropicApiUrl: CLAUDE_BASE_URL,
+        apiKey: ENV_CLAUDE_API_KEY,
+        baseURL: CLAUDE_BASE_URL,
         model: CLAUDE_CHAT_MODEL,
         temperature: 0.6,
         maxTokens: 512,
