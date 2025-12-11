@@ -18,7 +18,7 @@ import avatarRoutes from "./routes/avatarRoutes.js"; // ✅ new route
 import dailyChallengeRoutes from "./routes/dailyChallengeRoutes.js";
 import smartSchedulerRoutes from "./routes/smartSchedulerRoutes.js";
 import libraryRoutes from "./routes/libraryRoutes.js";
-import assistantRoutes from "./routes/assistantRoutes.js";
+import aiChatRoutes from "./routes/aiChatRoutes.js";
 import calendarRoutes from "./routes/calendarRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import aiRoutes from "./routes/ai.js";
@@ -60,7 +60,7 @@ app.use("/api/avatar", avatarRoutes); // ✅ avatar upload route
 app.use("/api/daily-challenge", dailyChallengeRoutes);
 app.use("/api/smart-scheduler", smartSchedulerRoutes);
 app.use("/api/library", libraryRoutes);
-app.use("/api/assistant", assistantRoutes);
+app.use("/api/ai-chat", aiChatRoutes);
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/ai", aiRoutes);
