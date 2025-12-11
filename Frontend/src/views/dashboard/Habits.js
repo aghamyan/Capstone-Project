@@ -11,6 +11,7 @@ import {
   CFormSelect,
   CFormInput,
   CFormLabel,
+  CFormCheck,
   CFormTextarea,
   CListGroup,
   CListGroupItem,
