@@ -46,6 +46,7 @@ import {
 import AddHabit from "./AddHabit"
 import HabitLibrary from "./HabitLibrary"
 import ProgressTracker from "./ProgressTracker"
+import HabitCoach from "./HabitCoach"
 import { getHabits, deleteHabit, updateHabit } from "../../services/habits"
 import { logHabitProgress, getProgressHistory } from "../../services/progress"
 import { promptMissedReflection } from "../../utils/reflection"
@@ -1008,6 +1009,8 @@ const Habits = () => {
     if (pathname.includes("/addhabit")) return "add"
     if (pathname.includes("/habit-library")) return "library"
     if (pathname.includes("/progress-tracker")) return "progress"
+    if (pathname.includes("/habit-coach")) return "coach"
+    if (pathname.includes("/ai-chat")) return "coach"
     return "my-habits"
   }, [])
 
@@ -1019,6 +1022,8 @@ const Habits = () => {
         return "/habit-library"
       case "progress":
         return "/progress-tracker"
+      case "coach":
+        return "/habit-coach"
       default:
         return "/habits"
     }
@@ -1143,6 +1148,11 @@ const Habits = () => {
           </CNavLink>
         </CNavItem>
         <CNavItem>
+          <CNavLink active={activeTab === "coach"} onClick={() => handleTabChange("coach")}>
+            HabitCoach
+          </CNavLink>
+        </CNavItem>
+        <CNavItem>
           <CNavLink active={activeTab === "insights"} onClick={() => setActiveTab("insights")}>
             Insights
           </CNavLink>
@@ -1184,6 +1194,13 @@ const Habits = () => {
           {activeTab === "progress" && (
             <div className="mt-3">
               <ProgressTracker />
+            </div>
+          )}
+        </CTabPane>
+        <CTabPane visible={activeTab === "coach"}>
+          {activeTab === "coach" && (
+            <div className="mt-3">
+              <HabitCoach />
             </div>
           )}
         </CTabPane>
