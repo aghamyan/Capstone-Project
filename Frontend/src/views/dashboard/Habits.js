@@ -33,7 +33,6 @@ import {
 } from "@coreui/react"
 import CIcon from "@coreui/icons-react"
 import {
-  cilBolt,
   cilClock,
   cilChartLine,
   cilBadge,
@@ -50,7 +49,6 @@ import HabitCoach from "./HabitCoach"
 import { getHabits, deleteHabit, updateHabit } from "../../services/habits"
 import { logHabitProgress, getProgressHistory } from "../../services/progress"
 import { promptMissedReflection } from "../../utils/reflection"
-import { getDailyChallengeSummary } from "../../services/dailyChallenge"
 import { getProgressAnalytics, formatPercent } from "../../services/analytics"
 import { emitDataRefresh, REFRESH_SCOPES, useDataRefresh } from "../../utils/refreshBus"
 
@@ -63,70 +61,10 @@ const createEditDraft = (habit) => ({
   is_daily_goal: Boolean(habit?.is_daily_goal),
 })
 
-const DailyChallengeHighlight = ({ challenge }) => {
-  const focus = challenge?.focusHabit
-  const totals = challenge?.today || { done: 0, missed: 0 }
-  const totalLogs = totals.done + totals.missed
-  const progressPercent = totalLogs ? Math.round((totals.done / totalLogs) * 100) : 0
-
-  return (
-    <CCard className="h-100 shadow-sm border-0 habits-panel challenge-card">
-      <CCardHeader className="bg-gradient-primary text-white">
-        <div className="d-flex align-items-center gap-3">
-          <CIcon icon={cilBolt} size="lg" />
-          <div>
-            <div className="text-uppercase small fw-semibold opacity-75">
-              Daily Challenge
-            </div>
-            <h5 className="mb-0">Today's overall progress</h5>
-          </div>
-        </div>
-      </CCardHeader>
-      <CCardBody className="d-flex flex-column gap-3">
-        <div className="bg-body-secondary rounded p-3">
-          <div className="d-flex justify-content-between align-items-center mb-2">
-            <span className="text-uppercase small text-muted">Today's progress</span>
-            <span className="fw-semibold">{progressPercent}% win rate</span>
-          </div>
-          <div className="d-flex gap-3 align-items-center flex-wrap">
-            <div className="d-flex align-items-center gap-2">
-              <CBadge color="success">{totals.done}</CBadge>
-              <span className="text-muted small">wins logged</span>
-            </div>
-            <div className="d-flex align-items-center gap-2">
-              <CBadge color="warning" className="text-dark">
-                {totals.missed}
-              </CBadge>
-              <span className="text-muted small">missed</span>
-            </div>
-            <div className="text-muted small">Total check-ins: {totalLogs}</div>
-          </div>
-        </div>
-        {focus && (
-          <div className="rounded border p-3 focus-habit-card">
-            <div className="d-flex align-items-center justify-content-between mb-2">
-              <div className="text-uppercase small text-muted">Focus habit</div>
-              {focus.category && (
-                <CBadge color="warning" className="text-dark">
-                  {focus.category}
-                </CBadge>
-              )}
-            </div>
-            <div className="fw-semibold">{focus.title || focus.name}</div>
-            <p className="mb-0 text-body-secondary">{focus.reason}</p>
-          </div>
-        )}
-      </CCardBody>
-    </CCard>
-  )
-}
-
 const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
   const [habits, setHabits] = useState([])
   const [loading, setLoading] = useState(true)
   const [feedback, setFeedback] = useState(null)
-  const [challenge, setChallenge] = useState(null)
-  const [challengeError, setChallengeError] = useState("")
   const [loggingState, setLoggingState] = useState(null)
   const [showEditor, setShowEditor] = useState(false)
   const [editDraft, setEditDraft] = useState(createEditDraft({}))
@@ -156,16 +94,16 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
     }
   }, [userId])
 
-  const loadChallenge = useCallback(async () => {
+  const loadHistory = useCallback(async () => {
     if (!userId) return
     try {
-      const data = await getDailyChallengeSummary(userId)
-      setChallenge(data)
-      setChallengeError("")
+      const data = await getProgressHistory(userId)
+      setHistoryEntries(Array.isArray(data) ? data : [])
+      setHistoryError("")
     } catch (error) {
-      console.error("Failed to load challenge", error)
-      setChallenge(null)
-      setChallengeError("Daily Challenge is temporarily unavailable.")
+      console.error("Failed to load progress history", error)
+      setHistoryEntries([])
+      setHistoryError("Recent history is temporarily unavailable.")
     }
   }, [userId])
 
@@ -184,17 +122,15 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
 
   useEffect(() => {
     loadHabits()
-    loadChallenge()
     loadHistory()
-  }, [loadChallenge, loadHabits, loadHistory])
+  }, [loadHabits, loadHistory])
 
   useDataRefresh(
     [REFRESH_SCOPES.HABITS, REFRESH_SCOPES.PROGRESS],
     useCallback(() => {
       loadHabits()
-      loadChallenge()
       loadHistory()
-    }, [loadChallenge, loadHabits, loadHistory]),
+    }, [loadHabits, loadHistory]),
   )
 
   const handleLog = async (habit, status) => {
@@ -211,7 +147,6 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
     try {
       setLoggingState(`${habitId}-${status}`)
       await logHabitProgress(habitId, payload)
-      await loadChallenge()
       if (typeof onProgressLogged === "function") {
         await onProgressLogged()
       }
@@ -409,13 +344,7 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
   return (
     <div className="mt-3 habits-section">
       <CRow className="g-4">
-        <CCol lg={4}>
-          {challengeError && <CAlert color="warning">{challengeError}</CAlert>}
-          <DailyChallengeHighlight
-            challenge={challenge}
-          />
-        </CCol>
-        <CCol lg={8}>
+        <CCol xs={12}>
           <CCard className="shadow-sm border-0 h-100 habits-panel">
             <CCardHeader className="d-flex align-items-center justify-content-between bg-white border-0">
               <div className="d-flex align-items-center gap-2">
