@@ -20,6 +20,28 @@ export async function getChatHistory(userId, limit = 20) {
   return records.map(mapRecord);
 }
 
+export async function saveProfileMemory(userId, about) {
+  if (!userId || !about) throw new Error("userId and about are required");
+  const record = await AssistantMemory.create({
+    user_id: userId,
+    role: "profile",
+    content: about,
+    keywords: null,
+  });
+  return { about, updatedAt: record.created_at };
+}
+
+export async function getProfileMemory(userId) {
+  if (!userId) throw new Error("userId is required");
+  const record = await AssistantMemory.findOne({
+    where: { user_id: userId, role: "profile" },
+    order: [["created_at", "DESC"]],
+  });
+
+  if (!record) return null;
+  return { about: record.content, updatedAt: record.created_at };
+}
+
 export function findPendingHabitSuggestion(history) {
   for (let i = history.length - 1; i >= 0; i -= 1) {
     const entry = history[i];
