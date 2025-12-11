@@ -8,7 +8,7 @@ const Schedule = sequelize.define(
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
 
     // your actual DB columns
-    habit_id: { type: DataTypes.INTEGER, allowNull: true },
+    habit_id: { type: DataTypes.INTEGER, allowNull: false },
 
     // Align the attribute naming with the rest of the codebase while keeping
     // compatibility with the existing `userid` column in the database.

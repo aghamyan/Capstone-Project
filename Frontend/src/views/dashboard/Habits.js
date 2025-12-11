@@ -9,9 +9,9 @@ import {
   CCardHeader,
   CCol,
   CFormSelect,
-  CFormCheck,
   CFormInput,
   CFormLabel,
+  CFormCheck,
   CFormTextarea,
   CListGroup,
   CListGroupItem,
@@ -30,6 +30,7 @@ import {
   CProgress,
   CProgressBar,
   CFormSwitch,
+  CTooltip,
 } from "@coreui/react"
 import CIcon from "@coreui/icons-react"
 import {
@@ -38,8 +39,8 @@ import {
   cilBadge,
   cilList,
   cilBolt,
-  cilPencil,
   cilPlus,
+  cilPencil,
   cilTrash,
 } from "@coreui/icons"
 
@@ -47,9 +48,8 @@ import AddHabit from "./AddHabit"
 import HabitLibrary from "./HabitLibrary"
 import ProgressTracker from "./ProgressTracker"
 import HabitCoach from "./HabitCoach"
-import { getHabits, deleteHabit, updateHabit } from "../../services/habits"
-import { logHabitProgress, getProgressHistory } from "../../services/progress"
-import { promptMissedReflection } from "../../utils/reflection"
+import { deleteHabit, getHabits, updateHabit } from "../../services/habits"
+import { getProgressHistory, updateHabitProgressCount } from "../../services/progress"
 import { getProgressAnalytics, formatPercent } from "../../services/analytics"
 import { emitDataRefresh, REFRESH_SCOPES, useDataRefresh } from "../../utils/refreshBus"
 
@@ -66,12 +66,17 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
   const [habits, setHabits] = useState([])
   const [loading, setLoading] = useState(true)
   const [feedback, setFeedback] = useState(null)
-  const [loggingState, setLoggingState] = useState(null)
   const [showEditor, setShowEditor] = useState(false)
   const [editDraft, setEditDraft] = useState(createEditDraft({}))
   const [savingEdit, setSavingEdit] = useState(false)
   const [historyEntries, setHistoryEntries] = useState([])
   const [historyError, setHistoryError] = useState("")
+  const [calendarSaving, setCalendarSaving] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
+
+  const today = useMemo(() => new Date(), [])
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth())
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear())
 
   const user = JSON.parse(localStorage.getItem("user") || "{}")
   const userId = user?.id
@@ -121,49 +126,101 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
     }, [loadHabits, loadHistory]),
   )
 
-  const handleLog = async (habit, status) => {
-    const habitId = habit?.id || habit?.habitId
-    if (!habitId || !userId) return
-    const payload = { userId, status }
-    if (status === "missed") {
-      const reason = promptMissedReflection(habit.title || habit.name || habit.habitName)
-      const trimmed = reason?.trim()
-      if (!trimmed) return
-      payload.reason = trimmed
-    }
+  const cycleStatus = useCallback((status) => {
+    if (status === "done") return "missed"
+    if (status === "missed") return null
+    return "done"
+  }, [])
 
-    try {
-      setLoggingState(`${habitId}-${status}`)
-      await logHabitProgress(habitId, payload)
-      if (typeof onProgressLogged === "function") {
-        await onProgressLogged()
+  const historyByHabit = useMemo(() => {
+    return historyEntries.reduce((acc, entry) => {
+      const habitKey = String(entry.habitId ?? entry.habit_id ?? "")
+      if (!habitKey) return acc
+      const dateKey = (entry.progressDate || entry.createdAt || "").slice(0, 10)
+      if (!dateKey) return acc
+      if (!acc[habitKey]) acc[habitKey] = {}
+      acc[habitKey][dateKey] = entry.status
+      return acc
+    }, {})
+  }, [historyEntries])
+
+  const updateCountsForDate = useCallback(
+    async (habitId, dateKey, nextStatus) => {
+      if (!userId) return
+
+      const targetCounts = {
+        done: nextStatus === "done" ? 1 : 0,
+        missed: nextStatus === "missed" ? 1 : 0,
       }
-      emitDataRefresh(REFRESH_SCOPES.PROGRESS, { habitId, status })
-      emitDataRefresh(REFRESH_SCOPES.ANALYTICS, { habitId, status })
-      await loadHistory()
-      setFeedback({
-        type: status === "missed" ? "warning" : "success",
-        message: `Logged ${status} for ${habit.title || habit.name || habit.habitName}.`,
-      })
-    } catch (error) {
-      console.error("Failed to log status", error)
-      setFeedback({ type: "danger", message: "Could not record that action." })
-    } finally {
-      setLoggingState(null)
-    }
-  }
 
-  const handleDelete = async (habitId) => {
-    try {
-      await deleteHabit(habitId)
-      setHabits((prev) => prev.filter((h) => h.id !== habitId))
-      emitDataRefresh(REFRESH_SCOPES.HABITS, { reason: "habit-deleted", habitId })
-      setFeedback({ type: "success", message: "Habit deleted." })
-    } catch (error) {
-      console.error("Failed to delete", error)
-      setFeedback({ type: "danger", message: "Unable to delete habit right now." })
-    }
-  }
+      await Promise.all([
+        updateHabitProgressCount(habitId, {
+          userId,
+          status: "done",
+          targetCount: targetCounts.done,
+          date: dateKey,
+        }),
+        updateHabitProgressCount(habitId, {
+          userId,
+          status: "missed",
+          targetCount: targetCounts.missed,
+          date: dateKey,
+        }),
+      ])
+    },
+    [userId],
+  )
+
+  const handleCalendarToggle = useCallback(
+    async (habit, dateKey) => {
+      const habitId = habit?.id || habit?.habitId
+      if (!habitId || !userId) return
+
+      const currentStatus = historyByHabit[String(habitId)]?.[dateKey] || null
+      const nextStatus = cycleStatus(currentStatus)
+
+      try {
+        setCalendarSaving(`${habitId}-${dateKey}`)
+        await updateCountsForDate(habitId, dateKey, nextStatus)
+        emitDataRefresh(REFRESH_SCOPES.PROGRESS, { habitId, status: nextStatus || "cleared", date: dateKey })
+        emitDataRefresh(REFRESH_SCOPES.ANALYTICS, { habitId, status: nextStatus || "cleared", date: dateKey })
+        setHistoryEntries((prev) => {
+          const filtered = prev.filter((entry) => {
+            const entryHabitId = String(entry.habitId ?? entry.habit_id ?? "")
+            const entryDate = (entry.progressDate || entry.createdAt || "").slice(0, 10)
+            return !(entryHabitId === String(habitId) && entryDate === dateKey)
+          })
+
+          if (!nextStatus) return filtered
+
+          const nextEntry = {
+            id: `${habitId}-${dateKey}`,
+            habitId,
+            habit_id: habitId,
+            habitTitle: habit.title || habit.name || habit.habitName || "Habit",
+            status: nextStatus,
+            progressDate: dateKey,
+            createdAt: new Date().toISOString(),
+          }
+
+          return [...filtered, nextEntry]
+        })
+        setFeedback({
+          type: nextStatus === "missed" ? "warning" : "success",
+          message:
+            nextStatus === null
+              ? `Cleared log for ${habit.title || habit.name || habit.habitName} on ${dateKey}.`
+              : `Marked ${nextStatus} for ${habit.title || habit.name || habit.habitName} on ${dateKey}.`,
+        })
+      } catch (error) {
+        console.error("Failed to update day status", error)
+        setFeedback({ type: "danger", message: "We couldn't update that day just now." })
+      } finally {
+        setCalendarSaving(null)
+      }
+    },
+    [cycleStatus, historyByHabit, updateCountsForDate, userId],
+  )
 
   const startEdit = (habit) => {
     setEditDraft(createEditDraft(habit))
@@ -202,6 +259,28 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
     }
   }
 
+  const removeHabit = async (habitId) => {
+    if (!habitId) return
+    const confirmDelete = window.confirm("Remove this habit? This cannot be undone.")
+    if (!confirmDelete) return
+
+    try {
+      setDeletingId(habitId)
+      await deleteHabit(habitId)
+      setHabits((prev) => prev.filter((habit) => habit.id !== habitId))
+      setHistoryEntries((prev) =>
+        prev.filter((entry) => String(entry.habitId ?? entry.habit_id) !== String(habitId)),
+      )
+      setFeedback({ type: "success", message: "Habit removed." })
+      emitDataRefresh(REFRESH_SCOPES.HABITS, { reason: "habit-removed", habitId })
+    } catch (error) {
+      console.error("Failed to delete habit", error)
+      setFeedback({ type: "danger", message: "Could not remove this habit." })
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   const emptyState = useMemo(
     () => (
       <div className="text-center text-body-secondary py-5">
@@ -215,38 +294,43 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
     [onAddClick],
   )
 
-  const formatDateKey = useCallback((date) => date.toISOString().split("T")[0], [])
+  const formatDateKey = useCallback((date) => {
+    return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+      .toISOString()
+      .split("T")[0]
+  }, [])
 
-  const recentDays = useMemo(() => {
-    const today = new Date()
+  const monthOptions = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, index) => ({
+        value: index,
+        label: new Date(2000, index, 1).toLocaleDateString(undefined, { month: "long" }),
+      })),
+    [],
+  )
+
+  const yearOptions = useMemo(() => {
+    const baseYear = today.getFullYear()
+    return Array.from({ length: 5 }, (_, index) => baseYear - 2 + index)
+  }, [today])
+
+  const visibleDays = useMemo(() => {
     const days = []
-    for (let i = 27; i >= 0; i -= 1) {
-      const d = new Date(today)
-      d.setDate(today.getDate() - i)
-      days.push(d)
+    const cursor = new Date(selectedYear, selectedMonth, 1)
+    while (cursor.getMonth() === selectedMonth) {
+      days.push(new Date(cursor))
+      cursor.setDate(cursor.getDate() + 1)
     }
     return days
-  }, [])
+  }, [selectedMonth, selectedYear])
 
   const weeks = useMemo(() => {
     const chunks = []
-    for (let i = 0; i < recentDays.length; i += 7) {
-      chunks.push(recentDays.slice(i, i + 7))
+    for (let i = 0; i < visibleDays.length; i += 7) {
+      chunks.push(visibleDays.slice(i, i + 7))
     }
     return chunks
-  }, [recentDays])
-
-  const historyByHabit = useMemo(() => {
-    return historyEntries.reduce((acc, entry) => {
-      const habitKey = String(entry.habitId ?? entry.habit_id ?? "")
-      if (!habitKey) return acc
-      const dateKey = (entry.progressDate || entry.createdAt || "").slice(0, 10)
-      if (!dateKey) return acc
-      if (!acc[habitKey]) acc[habitKey] = {}
-      acc[habitKey][dateKey] = entry.status
-      return acc
-    }, {})
-  }, [historyEntries])
+  }, [visibleDays])
 
   const historyByDate = useMemo(() => {
     return historyEntries.reduce((map, entry) => {
@@ -259,24 +343,27 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
     }, new Map())
   }, [historyEntries])
 
-  const recentDateKeys = useMemo(() => new Set(recentDays.map(formatDateKey)), [formatDateKey, recentDays])
+  const visibleDateKeys = useMemo(
+    () => new Set(visibleDays.map(formatDateKey)),
+    [formatDateKey, visibleDays],
+  )
 
-  const recentLogs = useMemo(
+  const visibleLogs = useMemo(
     () =>
       historyEntries.filter((entry) =>
-        recentDateKeys.has((entry.progressDate || entry.createdAt || "").slice(0, 10)),
+        visibleDateKeys.has((entry.progressDate || entry.createdAt || "").slice(0, 10)),
       ),
-    [historyEntries, recentDateKeys],
+    [historyEntries, visibleDateKeys],
   )
 
   const completionCount = useMemo(
-    () => recentLogs.filter((entry) => entry.status === "done").length,
-    [recentLogs],
+    () => visibleLogs.filter((entry) => entry.status === "done").length,
+    [visibleLogs],
   )
 
   const missedCount = useMemo(
-    () => recentLogs.filter((entry) => entry.status === "missed").length,
-    [recentLogs],
+    () => visibleLogs.filter((entry) => entry.status === "missed").length,
+    [visibleLogs],
   )
 
   const completionRate = useMemo(() => {
@@ -286,14 +373,14 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
 
   const completedHabitsCount = useMemo(() => {
     const set = new Set()
-    recentLogs.forEach((entry) => {
+    visibleLogs.forEach((entry) => {
       if (entry.status === "done") {
         const key = String(entry.habitId ?? entry.habit_id ?? entry.habitTitle ?? "")
         if (key) set.add(key)
       }
     })
     return set.size
-  }, [recentLogs])
+  }, [visibleLogs])
 
   const weeklyCompletion = useMemo(
     () =>
@@ -313,7 +400,7 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
       const statuses = historyByHabit[String(habit.id)] || {}
       let done = 0
       let total = 0
-      recentDays.forEach((day) => {
+      visibleDays.forEach((day) => {
         const status = statuses[formatDateKey(day)]
         if (status === "done") done += 1
         if (status === "done" || status === "missed") total += 1
@@ -322,12 +409,34 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
       progressMap.set(habit.id, { rate, done, total })
     })
     return progressMap
-  }, [formatDateKey, habits, historyByHabit, recentDays])
+  }, [formatDateKey, habits, historyByHabit, visibleDays])
 
   const currentMonthLabel = useMemo(
-    () => new Date().toLocaleDateString(undefined, { month: "long" }),
-    [],
+    () => new Date(selectedYear, selectedMonth, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" }),
+    [selectedMonth, selectedYear],
   )
+
+  const DayStatusCheckbox = ({ status, onToggle, disabled, inputId, title }) => {
+    const mark = status === "done" ? "✓" : status === "missed" ? "✕" : ""
+
+    return (
+      <button
+        type="button"
+        className={`month-checkbox status-${status || "empty"}${disabled ? " is-saving" : ""}`}
+        aria-label={title}
+        aria-pressed={Boolean(status)}
+        disabled={disabled}
+        onClick={onToggle}
+        title={title}
+        id={inputId}
+      >
+        <span className="month-checkbox__mark" aria-hidden="true">
+          {mark}
+        </span>
+        <span className="visually-hidden">Toggle day status</span>
+      </button>
+    )
+  }
 
   return (
     <div className="mt-3 habits-section">
@@ -350,12 +459,38 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
               {historyError && <CAlert color="warning">{historyError}</CAlert>}
 
               <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 tracker-summary">
-                <div>
-                  <div className="text-uppercase small text-muted">{currentMonthLabel}</div>
-                  <h5 className="mb-1">Recent 4-week snapshot</h5>
+                <div className="d-flex flex-column gap-2">
+                  <div className="text-uppercase small text-muted">Month view</div>
+                  <h5 className="mb-1">{currentMonthLabel}</h5>
                   <p className="text-body-secondary mb-0">
-                    Keep an eye on streaks, wins, and missed check-ins without leaving this view.
+                    Hover over a habit to see more info. Click any day to cycle done → missed → clear for that habit.
                   </p>
+                  <div className="d-flex flex-wrap gap-2 align-items-center">
+                    <CFormSelect
+                      aria-label="Select month"
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                      className="month-select"
+                    >
+                      {monthOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </CFormSelect>
+                    <CFormSelect
+                      aria-label="Select year"
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      className="year-select"
+                    >
+                      {yearOptions.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </CFormSelect>
+                  </div>
                 </div>
                 <div className="d-flex flex-wrap gap-3">
                   <div className="tracker-pill">
@@ -386,28 +521,27 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
                 emptyState
               ) : (
                 <>
-                  <div className="week-ribbon d-none d-xl-flex">
-                    <div className="habit-col-placeholder" />
-                    {weeks.map((week, index) => (
-                      <div key={`week-${index}`} className="week-label flex-grow-1">
-                        Week {index + 1}
-                      </div>
-                    ))}
-                    <div className="action-col-placeholder" />
-                  </div>
-
                   <div className="tracker-grid-wrapper">
-                    <div className="habit-tracker-grid">
-                      <div className="tracker-cell tracker-head habit-col">Habit</div>
-                      {recentDays.map((day) => (
+                    <div className="habit-tracker-grid" style={{ "--habit-day-count": visibleDays.length }}>
+                      <div className="tracker-cell tracker-head habit-col">
+                        <div className="d-flex flex-column gap-1">
+                          <span className="text-uppercase small text-muted">Our habits</span>
+                          <span className="fw-semibold">Daily tracker</span>
+                        </div>
+                      </div>
+                      {visibleDays.map((day) => (
                         <div key={`head-${formatDateKey(day)}`} className="tracker-cell tracker-head text-center">
-                          <div className="fw-semibold small">
-                            {day.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 2)}
+                          <div className="date-header">
+                            <span className="weekday-label">
+                              {day.toLocaleDateString(undefined, { weekday: "short" })}
+                            </span>
+                            <span className="tiny-date">
+                              <span>{day.toLocaleDateString(undefined, { month: "short" })}</span>
+                              <span>{day.getDate()}</span>
+                            </span>
                           </div>
-                          <div className="text-muted tiny-date">{day.getDate()}</div>
                         </div>
                       ))}
-                      <div className="tracker-cell tracker-head action-col text-center">Log</div>
 
                       {habits.map((habit) => {
                         const progress = habitProgress.get(habit.id) || { rate: 0 }
@@ -415,93 +549,86 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
                         return (
                           <React.Fragment key={habit.id}>
                             <div className="tracker-cell habit-col">
-                              <div className="d-flex flex-column gap-1">
-                                <div className="d-flex align-items-center gap-2 flex-wrap">
-                                  <span className="fw-semibold habit-title">{habit.title}</span>
-                                  {habit.category && (
-                                    <CBadge color="info" className="text-uppercase small subtle-badge">
-                                      {habit.category}
-                                    </CBadge>
-                                  )}
-                                  {habit.is_daily_goal && <CBadge color="success">Daily</CBadge>}
-                                </div>
-                                <div className="text-body-secondary small">
-                                  {habit.description || "No description"}
-                                </div>
+                                <div className="habit-meta">
+                                  <div className="d-flex align-items-center gap-2 flex-wrap">
+                                    <CTooltip
+                                      content={`${habit.description || "No description yet."}${
+                                        habit.target_reps ? ` • Target ${habit.target_reps}` : ""
+                                      }${habit.category ? ` • ${habit.category}` : ""}`}
+                                      placement="bottom"
+                                    >
+                                      <span className="fw-semibold habit-title cursor-help">{habit.title}</span>
+                                    </CTooltip>
+                                    {habit.category && (
+                                      <CBadge color="light" className="text-uppercase small habit-tag">
+                                        {habit.category}
+                                      </CBadge>
+                                    )}
+                                    {habit.is_daily_goal && <CBadge color="success">Daily</CBadge>}
+                                    <div className="habit-actions">
+                                      <CTooltip content="Edit" placement="top">
+                                        <CButton
+                                          size="sm"
+                                          color="light"
+                                          variant="ghost"
+                                          onClick={() => startEdit(habit)}
+                                        >
+                                          <CIcon icon={cilPencil} />
+                                        </CButton>
+                                      </CTooltip>
+                                      <CTooltip content="Delete" placement="top">
+                                        <CButton
+                                          size="sm"
+                                          color="danger"
+                                          variant="ghost"
+                                          disabled={deletingId === habit.id}
+                                          onClick={() => removeHabit(habit.id)}
+                                        >
+                                          {deletingId === habit.id ? (
+                                            <CSpinner size="sm" component="span" />
+                                          ) : (
+                                            <CIcon icon={cilTrash} />
+                                          )}
+                                        </CButton>
+                                      </CTooltip>
+                                    </div>
+                                  </div>
+                                {habit.description && <p className="habit-desc">{habit.description}</p>}
                                 {habit.target_reps ? (
-                                  <div className="text-body-secondary small mt-1">🎯 Target: {habit.target_reps}</div>
+                                  <p className="habit-desc text-muted mb-0">🎯 Target: {habit.target_reps}</p>
                                 ) : null}
-                                <div className="d-flex align-items-center gap-2 mt-2">
-                                  <CProgress value={progress.rate} color="primary" className="flex-grow-1" />
-                                  <small className="text-muted">{progress.rate}%</small>
+                                <div className="habit-progress-row">
+                                  <CProgress
+                                    value={progress.rate}
+                                    color="success"
+                                    className="flex-grow-1 habit-progress"
+                                  />
+                                  <span className="habit-progress-rate text-muted">{progress.rate}%</span>
                                 </div>
                               </div>
                             </div>
-                            {recentDays.map((day) => {
-                              const status = historyByHabit[habitKey]?.[formatDateKey(day)]
+                            {visibleDays.map((day) => {
+                              const dateKey = formatDateKey(day)
+                              const status = historyByHabit[habitKey]?.[dateKey]
+                              const isSaving = calendarSaving === `${habit.id}-${dateKey}`
                               return (
                                 <div
-                                  key={`${habit.id}-${formatDateKey(day)}`}
+                                  key={`${habit.id}-${dateKey}`}
                                   className={`tracker-cell day-cell status-${status || "empty"}`}
                                 >
-                                  {status === "done" ? "✓" : status === "missed" ? "•" : ""}
+                                  <DayStatusCheckbox
+                                    status={status}
+                                    disabled={isSaving}
+                                    inputId={`${habit.id}-${dateKey}`}
+                                    title={`${habit.title} on ${day.toLocaleDateString(undefined, {
+                                      month: "short",
+                                      day: "numeric",
+                                    })}`}
+                                    onToggle={() => handleCalendarToggle(habit, dateKey)}
+                                  />
                                 </div>
                               )
                             })}
-                            <div className="tracker-cell action-col">
-                              <div className="d-flex flex-column gap-2">
-                                <CButton
-                                  size="sm"
-                                  color="success"
-                                  className={`rounded-pill log-action w-100${
-                                    loggingState === `${habit.id}-done` ? " is-logging" : ""
-                                  }`}
-                                  disabled={loggingState === `${habit.id}-done`}
-                                  onClick={() => handleLog(habit, "done")}
-                                >
-                                  <span className="d-inline-flex align-items-center gap-2">
-                                    {loggingState === `${habit.id}-done` && <CSpinner size="sm" color="light" />}
-                                    <span>{loggingState === `${habit.id}-done` ? "Logging..." : "Mark done"}</span>
-                                  </span>
-                                </CButton>
-                                <CButton
-                                  size="sm"
-                                  color="danger"
-                                  variant="outline"
-                                  className={`rounded-pill log-action w-100${
-                                    loggingState === `${habit.id}-missed` ? " is-logging" : ""
-                                  }`}
-                                  disabled={loggingState === `${habit.id}-missed`}
-                                  onClick={() => handleLog(habit, "missed")}
-                                >
-                                  <span className="d-inline-flex align-items-center gap-2">
-                                    {loggingState === `${habit.id}-missed` && <CSpinner size="sm" color="danger" />}
-                                    <CIcon icon={cilClock} className="opacity-75" />
-                                    <span>{loggingState === `${habit.id}-missed` ? "Logging..." : "Missed"}</span>
-                                  </span>
-                                </CButton>
-                                <div className="d-flex gap-2">
-                                  <CButton
-                                    size="sm"
-                                    color="secondary"
-                                    variant="outline"
-                                    className="rounded-pill w-100"
-                                    onClick={() => startEdit(habit)}
-                                  >
-                                    <CIcon icon={cilPencil} className="me-1" /> Edit
-                                  </CButton>
-                                  <CButton
-                                    size="sm"
-                                    color="danger"
-                                    variant="ghost"
-                                    className="rounded-pill"
-                                    onClick={() => handleDelete(habit.id)}
-                                  >
-                                    <CIcon icon={cilTrash} />
-                                  </CButton>
-                                </div>
-                              </div>
-                            </div>
                           </React.Fragment>
                         )
                       })}
@@ -511,7 +638,7 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
                   <div className="rounded-3 bg-body-tertiary p-3">
                     <div className="d-flex justify-content-between align-items-center mb-2">
                       <span className="fw-semibold">Weekly completion</span>
-                      <span className="text-muted small">Rolling four weeks</span>
+                      <span className="text-muted small">Selected month</span>
                     </div>
                     <CRow className="g-3">
                       {weeklyCompletion.map((week) => (
