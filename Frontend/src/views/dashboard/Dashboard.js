@@ -10,9 +10,9 @@ import {
   CCol,
   CForm,
   CFormInput,
-  CFormTextarea,
   CInputGroup,
   CInputGroupText,
+  CFormTextarea,
   CListGroup,
   CListGroupItem,
   CModal,
@@ -47,7 +47,6 @@ import {
 } from "../../services/progress";
 import { formatPercent, getProgressAnalytics } from "../../services/analytics";
 import { fetchCalendarOverview } from "../../services/calendar";
-import { promptMissedReflection } from "../../utils/reflection";
 import {
   fetchAssistantProfile,
   fetchAssistantSummary,
@@ -81,6 +80,14 @@ const Dashboard = () => {
   const [patternRecommendation, setPatternRecommendation] = useState("");
   const [patternLoading, setPatternLoading] = useState(false);
   const [patternError, setPatternError] = useState("");
+  const [missedLogModal, setMissedLogModal] = useState({
+    open: false,
+    habitId: null,
+    habitTitle: "",
+  });
+  const [missedReason, setMissedReason] = useState("");
+  const [missedError, setMissedError] = useState("");
+  const [missedSaving, setMissedSaving] = useState(false);
   const navigate = useNavigate();
 
   const user = useMemo(
@@ -357,6 +364,22 @@ const Dashboard = () => {
     setEditCounts({ done: 0, missed: 0 });
   };
 
+  const startMissedLog = (habitId, habitTitle) => {
+    setMissedError("");
+    setMissedReason("");
+    setMissedLogModal({
+      open: true,
+      habitId,
+      habitTitle: habitTitle || "this habit",
+    });
+  };
+
+  const closeMissedLog = () => {
+    setMissedLogModal({ open: false, habitId: null, habitTitle: "" });
+    setMissedReason("");
+    setMissedSaving(false);
+  };
+
   const submitEdit = async (habitId) => {
     if (!user?.id) return;
     try {
@@ -381,21 +404,47 @@ const Dashboard = () => {
     }
   };
 
-  const handleQuickLog = async (habitId, status, habitTitle) => {
+  const handleQuickLog = async (habitId, status, reason) => {
     if (!user?.id) return;
-    try {
-      const payload = { userId: user.id, status };
-      if (status === "missed") {
-        const reason = promptMissedReflection(habitTitle);
-        if (!reason) return;
-        payload.reason = reason;
+
+    const payload = { userId: user.id, status };
+    if (status === "missed") {
+      const trimmed = reason?.trim();
+      if (!trimmed) {
+        throw new Error("Please share a short note about why you missed it.");
       }
-      await logHabitProgress(habitId, payload);
-      await loadTodayProgress();
-      cancelEdit();
+      payload.reason = trimmed;
+    }
+
+    await logHabitProgress(habitId, payload);
+    await loadTodayProgress();
+    cancelEdit();
+  };
+
+  const handleDoneClick = async (habitId) => {
+    try {
+      await handleQuickLog(habitId, "done");
     } catch (err) {
       console.error("❌ Server error logging progress", err);
       alert("Failed to log progress. Please try again.");
+    }
+  };
+
+  const submitMissedLog = async () => {
+    if (!missedLogModal.habitId) return;
+
+    try {
+      setMissedSaving(true);
+      setMissedError("");
+      await handleQuickLog(missedLogModal.habitId, "missed", missedReason);
+      closeMissedLog();
+    } catch (err) {
+      console.error("❌ Failed to log missed reason", err);
+      setMissedError(
+        err.message || "We couldn't save your reflection. Please try again."
+      );
+    } finally {
+      setMissedSaving(false);
     }
   };
 
@@ -864,18 +913,14 @@ const Dashboard = () => {
                               <CButton
                                 color="danger"
                                 onClick={() =>
-                                  handleQuickLog(
-                                    habit.id,
-                                    "missed",
-                                    habit.title || habit.name
-                                  )
+                                  startMissedLog(habit.id, habit.title || habit.name)
                                 }
                               >
                                 Missed
                               </CButton>
                               <CButton
                                 color="success"
-                                onClick={() => handleQuickLog(habit.id, "done")}
+                                onClick={() => handleDoneClick(habit.id)}
                               >
                                 Done
                               </CButton>
@@ -1186,6 +1231,51 @@ const Dashboard = () => {
           </CRow>
         </>
       )}
+
+      <CModal
+        alignment="center"
+        visible={missedLogModal.open}
+        onClose={closeMissedLog}
+      >
+        <CModalHeader closeButton>
+          Missed {missedLogModal.habitTitle || "today"}?
+        </CModalHeader>
+        <CModalBody>
+          <p className="mb-3 text-body-secondary">
+            Share a one-liner about what got in the way so future coaching can
+            spot patterns.
+          </p>
+          <CFormTextarea
+            rows={2}
+            maxLength={160}
+            value={missedReason}
+            placeholder="e.g., Travel day, felt sick, unexpected meeting"
+            onChange={(event) => setMissedReason(event.target.value)}
+          />
+          <div className="d-flex justify-content-between align-items-center mt-2">
+            <small className="text-body-secondary">{missedReason.length}/160</small>
+            {missedError && <div className="text-danger small">{missedError}</div>}
+          </div>
+        </CModalBody>
+        <CModalFooter className="d-flex justify-content-between">
+          <CButton color="secondary" variant="outline" onClick={closeMissedLog} disabled={missedSaving}>
+            Cancel
+          </CButton>
+          <CButton
+            color="danger"
+            onClick={submitMissedLog}
+            disabled={missedSaving || !missedReason.trim()}
+          >
+            {missedSaving ? (
+              <>
+                <CSpinner size="sm" className="me-2" /> Saving
+              </>
+            ) : (
+              "Save reason"
+            )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
 
       <CModal
         alignment="center"
