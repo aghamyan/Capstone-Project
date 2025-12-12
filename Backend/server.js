@@ -90,10 +90,19 @@ const startServer = async () => {
     );
     const hasUsersTable = tableNames.includes("users");
     const hasUserSettingsTable = tableNames.includes("user_settings");
+    const hasAssistantMemoriesTable = tableNames.includes("assistant_memories");
 
     if (hasUsersTable && hasUserSettingsTable) {
       await sequelize.query(`
         DELETE FROM user_settings
+        WHERE user_id IS NOT NULL
+        AND user_id NOT IN (SELECT id FROM users);
+      `);
+    }
+
+    if (hasUsersTable && hasAssistantMemoriesTable) {
+      await sequelize.query(`
+        DELETE FROM assistant_memories
         WHERE user_id IS NOT NULL
         AND user_id NOT IN (SELECT id FROM users);
       `);
