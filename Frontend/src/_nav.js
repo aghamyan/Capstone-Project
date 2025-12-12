@@ -22,6 +22,12 @@ const _nav = [
   },
   {
     component: CNavItem,
+    name: 'Tasks',
+    to: '/tasks',
+    icon: <CIcon icon={cilList} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
     name: 'Habits',
     to: '/habits',
     icon: <CIcon icon={cilList} customClassName="nav-icon" />,
