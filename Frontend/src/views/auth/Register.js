@@ -37,6 +37,41 @@ const Register = () => {
   const [aiDone, setAiDone] = useState(false)
   const [aiError, setAiError] = useState(null)
   const [aiCompletionNote, setAiCompletionNote] = useState("")
+  const fallbackQuestions = useMemo(
+    () => [
+      {
+        field: "primaryGoal",
+        question: "What are you hoping to improve most right now — sport, lifestyle, or productivity?",
+        suggestions: ["Sport routine", "Lifestyle balance", "Productivity boost"],
+      },
+      {
+        field: "focusArea",
+        question: "Which area should we focus on first?",
+        suggestions: ["Energy", "Focus", "Recovery", "Mindfulness"],
+      },
+      {
+        field: "dailyCommitment",
+        question: "How much time can you commit each day?",
+        suggestions: ["5 minutes", "15 minutes", "30 minutes", "Flexible"],
+      },
+      {
+        field: "experienceLevel",
+        question: "How experienced are you with building habits?",
+        suggestions: ["Just starting", "Finding my rhythm", "Leveling up", "Habit pro"],
+      },
+      {
+        field: "supportPreference",
+        question: "What style of support helps you stick with habits?",
+        suggestions: ["Gentle nudges", "Focused reminders", "Deep insights", "Celebrate wins"],
+      },
+      {
+        field: "motivation",
+        question: "What’s motivating you to start now?",
+        suggestions: ["Feel stronger", "Reduce stress", "Improve focus", "Healthier routine"],
+      },
+    ],
+    []
+  )
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -69,6 +104,19 @@ const Register = () => {
 
   const progressValue = Math.round(((step + 1) / steps.length) * 100)
   const isLastStep = step === steps.length - 1
+
+  const getFallbackQuestion = (answers = aiAnswers) => {
+    const answered = new Set((answers || []).map((item) => item.field).filter(Boolean))
+    const next = fallbackQuestions.find((item) => !answered.has(item.field))
+    return next
+      ? { done: false, field: next.field, question: next.question, suggestions: next.suggestions }
+      : {
+          done: true,
+          field: null,
+          question: "Thanks! We’ve got what we need. Ready to finish signup?",
+          suggestions: [],
+        }
+  }
 
   const handleFieldChange = (event) => {
     const { name, value } = event.target
@@ -113,7 +161,22 @@ const Register = () => {
       setAiCompletionNote("")
     } catch (err) {
       console.error("Onboarding question error", err)
-      setAiError("I couldn't load the next question. You can try again or skip.")
+      const fallback = getFallbackQuestion(answersList)
+      if (fallback.done) {
+        setAiCompletionNote(fallback.question)
+        setAiQuestion(null)
+        setAiField(null)
+        setAiSuggestions([])
+        setAiDone(true)
+      } else {
+        setAiQuestion(fallback.question)
+        setAiField(fallback.field)
+        setAiSuggestions(fallback.suggestions)
+        setAiDone(false)
+        setAiCompletionNote("")
+      }
+
+      setAiError("I couldn't load the next question online, so I'm using backup prompts. You can try again or skip.")
     } finally {
       setAiLoading(false)
     }
