@@ -25,7 +25,7 @@ import {
   CSpinner,
 } from "@coreui/react"
 import CIcon from "@coreui/icons-react"
-import { cilArrowRight, cilList, cilPlus, cilSend, cilTask, cilWatch } from "@coreui/icons"
+import { cilList, cilPlus, cilSend, cilTask, cilWatch } from "@coreui/icons"
 
 import { createTask, getTasks } from "../../services/tasks"
 import { sendReasoningRequest } from "../../services/ai"
@@ -61,6 +61,7 @@ const Tasks = () => {
   const [aiHistory, setAiHistory] = useState({})
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState(null)
+  const [draggedId, setDraggedId] = useState(null)
 
   const user = JSON.parse(localStorage.getItem("user") || "{}")
   const userId = user?.id
@@ -210,6 +211,34 @@ const Tasks = () => {
     }
   }
 
+  const moveTask = useCallback((fromId, toId) => {
+    setTasks((prev) => {
+      const fromIndex = prev.findIndex((item) => item.id === fromId)
+      const toIndex = prev.findIndex((item) => item.id === toId)
+
+      if (fromIndex === -1 || toIndex === -1) return prev
+
+      const updated = [...prev]
+      const [moved] = updated.splice(fromIndex, 1)
+      updated.splice(toIndex, 0, moved)
+      return updated
+    })
+  }, [])
+
+  const handleDragStart = (taskId) => {
+    setDraggedId(taskId)
+  }
+
+  const handleDragEnter = (targetId) => {
+    if (draggedId && draggedId !== targetId) {
+      moveTask(draggedId, targetId)
+    }
+  }
+
+  const handleDragEnd = () => {
+    setDraggedId(null)
+  }
+
   return (
     <div className="py-3">
       <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
@@ -262,64 +291,43 @@ const Tasks = () => {
               </CButton>
             </div>
           ) : (
-            <CRow className="g-3">
-              {tasks.map((task) => (
-                <CCol md={6} lg={4} key={task.id}>
-                  <CCard className="h-100 border shadow-sm">
-                    <CCardBody>
-                      <div className="d-flex align-items-start justify-content-between mb-2">
-                        <div>
-                          <div className="fw-semibold">{task.name}</div>
-                          <div className="text-body-secondary small">
-                            Created {new Date(task.created_at).toLocaleDateString()}
-                          </div>
-                        </div>
-                        {task.split_up && (
-                          <CBadge color="info" shape="rounded-pill">
-                            Split up
-                          </CBadge>
-                        )}
-                      </div>
-
-                      <div className="d-flex align-items-center gap-2 text-body-secondary small mb-2">
-                        <CIcon icon={cilWatch} className="text-primary" />
-                        <span>
-                          Duration {formatDuration(task.duration_minutes)}
-                          {task.min_duration_minutes
-                            ? ` • Min ${formatDuration(task.min_duration_minutes)}`
-                            : ""}
-                          {task.max_duration_minutes
-                            ? ` • Max ${formatDuration(task.max_duration_minutes)}`
-                            : ""}
-                        </span>
-                      </div>
-
-                      <div className="d-flex flex-wrap gap-2 small text-body-secondary">
-                        {task.hours_label && <CBadge color="light">{task.hours_label}</CBadge>}
-                        {task.schedule_after && (
-                          <CBadge color="light">
-                            Start after {new Date(task.schedule_after).toLocaleString()}
-                          </CBadge>
-                        )}
-                        {task.due_date && (
-                          <CBadge color="warning" textColor="dark">
-                            Due {new Date(task.due_date).toLocaleString()}
-                          </CBadge>
-                        )}
-                        <CButton
-                          color="light"
-                          size="sm"
-                          className="ms-auto"
-                          onClick={() => openDetails(task)}
-                        >
-                          <CIcon icon={cilArrowRight} className="me-2" /> Open
-                        </CButton>
-                      </div>
-                    </CCardBody>
-                  </CCard>
-                </CCol>
-              ))}
-            </CRow>
+            <>
+              <div className="mb-3 text-body-secondary small">
+                Drag tasks to reorder them. Click a task name to see its details.
+              </div>
+              <CListGroup className="shadow-sm">
+                {tasks.map((task) => (
+                  <CListGroupItem
+                    key={task.id}
+                    draggable
+                    onDragStart={() => handleDragStart(task.id)}
+                    onDragEnter={() => handleDragEnter(task.id)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(e) => e.preventDefault()}
+                    className={`d-flex align-items-center justify-content-between gap-3 ${
+                      draggedId === task.id ? "border-primary border-2" : ""
+                    }`}
+                  >
+                    <div className="d-flex align-items-center gap-2 flex-grow-1">
+                      <span className="text-body-secondary" style={{ cursor: "grab" }}>
+                        <CIcon icon={cilList} />
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-link text-decoration-none text-start p-0"
+                        onClick={() => openDetails(task)}
+                      >
+                        <div className="fw-semibold text-wrap">{task.name}</div>
+                      </button>
+                    </div>
+                    <div className="text-body-secondary small d-flex align-items-center gap-2">
+                      <CIcon icon={cilWatch} className="text-primary" />
+                      <span>Created {new Date(task.created_at).toLocaleDateString()}</span>
+                    </div>
+                  </CListGroupItem>
+                ))}
+              </CListGroup>
+            </>
           )}
         </CCardBody>
       </CCard>
