@@ -1,8 +1,10 @@
 import express from "express";
 
-import { generateAiChatReply } from "../services/aiChatService.js";
+import { generateAiChatReply, generateHabitCreatedReply } from "../services/aiChatService.js";
+import { createHabit } from "../services/habitService.js";
 import {
   deleteChatHistory,
+  findPendingHabitSuggestion,
   getChatHistory,
   saveMessage,
 } from "../services/memoryService.js";
@@ -45,20 +47,60 @@ router.post("/message", async (req, res) => {
   }
 
   try {
+    const history = await getChatHistory(userId, 50);
     await saveMessage({ userId, role: "user", content: message });
 
-    const { reply, context } = await generateAiChatReply({ userId, message });
+    const { reply, context, intent, habitSuggestion } = await generateAiChatReply({
+      userId,
+      message,
+      history,
+    });
+
+    let finalReply = reply;
+    let createdHabit = null;
+    let metadata = context?.dbOverview?.length
+      ? { dbOverview: context.dbOverview.map((t) => t.name) }
+      : null;
+
+    if (intent === "confirm-add") {
+      const suggestion = habitSuggestion || findPendingHabitSuggestion(history);
+      if (!suggestion) {
+        finalReply = reply;
+      } else {
+        createdHabit = await createHabit(userId, suggestion);
+        finalReply = await generateHabitCreatedReply({ habit: createdHabit, context });
+        metadata = { ...(metadata || {}), habitSuggestion: suggestion, createdHabit: true };
+
+        if (context?.userContext) {
+          const existingHabits = context.userContext.habits || [];
+          context.userContext.habits = [
+            ...existingHabits,
+            {
+              id: createdHabit.id,
+              title: createdHabit.title,
+              category: createdHabit.category,
+              goal: createdHabit.goal,
+              progressLogs: 0,
+              schedules: [],
+            },
+          ];
+        }
+      }
+    } else if (intent === "suggest" && habitSuggestion) {
+      finalReply = reply;
+      metadata = { ...(metadata || {}), habitSuggestion };
+    }
 
     await saveMessage({
       userId,
       role: "assistant",
-      content: reply,
-      metadata: { dbOverview: context.dbOverview.map((t) => t.name) },
+      content: finalReply,
+      metadata,
     });
 
-    const history = await getChatHistory(userId, 50);
+    const latestHistory = await getChatHistory(userId, 50);
 
-    return res.json({ reply, history, context });
+    return res.json({ reply: finalReply, history: latestHistory, context, createdHabit });
   } catch (error) {
     console.error("/ai-chat/message failed", error);
     return res.status(500).json({ error: "Unable to process AI chat message" });
