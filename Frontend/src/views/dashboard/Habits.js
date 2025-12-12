@@ -1119,8 +1119,8 @@ const HistoryTab = ({ entries, loading, error, onRefresh }) => {
                     {entry.status === 'done' ? 'Done' : 'Missed'}
                   </CBadge>
                   <div className="small text-muted text-end">
-                    {entry.status === 'done' ? 'Habit done' : 'Habit logged'} at{' '}
-                    {formatDate(entry.createdAt ?? entry.progressDate)} · {formatTime(entry.createdAt ?? entry.progressDate)}
+                    {entry.status === 'done' ? 'Habit done for' : 'Habit missed for'}{' '}
+                    {formatDate(entry.progressDate ?? entry.createdAt)}
                   </div>
                 </div>
               </div>
