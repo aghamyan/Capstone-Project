@@ -88,17 +88,32 @@ const startServer = async () => {
     const tableNames = tables.map((table) =>
       typeof table === "string" ? table : table.tableName || table.table_name
     );
-    const hasUsersTable = tableNames.includes("users");
-    const hasUserSettingsTable = tableNames.includes("user_settings");
-    const hasAssistantMemoriesTable = tableNames.includes("assistant_memories");
+    const hasTable = (name) => tableNames.includes(name);
 
-    if (hasUsersTable && hasUserSettingsTable) {
+    const cleanupOrphans = async (table, fkColumn, parentTable, parentColumn) => {
+      if (!hasTable(table) || !hasTable(parentTable)) return;
+
       await sequelize.query(`
-        DELETE FROM user_settings
-        WHERE user_id IS NOT NULL
-        AND user_id NOT IN (SELECT id FROM users);
+        DELETE FROM ${table}
+        WHERE ${fkColumn} IS NOT NULL
+        AND ${fkColumn} NOT IN (SELECT ${parentColumn} FROM ${parentTable});
       `);
-    }
+    };
+
+    await cleanupOrphans("user_settings", "user_id", "users", "id");
+    await cleanupOrphans("assistant_memories", "user_id", "users", "id");
+    await cleanupOrphans(
+      "group_challenge_messages",
+      "challenge_id",
+      "group_challenges",
+      "id"
+    );
+    await cleanupOrphans(
+      "group_challenge_messages",
+      "sender_id",
+      "users",
+      "id"
+    );
 
     if (hasUsersTable && hasAssistantMemoriesTable) {
       await sequelize.query(`
