@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { API_BASE } from "../../utils/apiConfig"
 import {
@@ -10,7 +10,6 @@ import {
   CContainer,
   CForm,
   CFormInput,
-  CFormTextarea,
   CInputGroup,
   CInputGroupText,
   CProgress,
@@ -18,52 +17,8 @@ import {
   CRow,
 } from "@coreui/react"
 import CIcon from "@coreui/icons-react"
-import {
-  cilClock,
-  cilCompass,
-  cilFlagAlt,
-  cilHeart,
-  cilLockLocked,
-  cilPeople,
-  cilStar,
-  cilUser,
-  cilEnvelopeClosed,
-} from "@coreui/icons"
-
-const goalOptions = [
-  { value: "Build consistency", label: "Build consistency", description: "Stay accountable to the routines that matter most." },
-  { value: "Boost energy", label: "Boost energy", description: "Create uplifting habits that energise your day." },
-  { value: "Focus & clarity", label: "Focus & clarity", description: "Design rituals that sharpen your mind and keep you centred." },
-  { value: "Balance & wellbeing", label: "Balance & wellbeing", description: "Craft a calmer schedule with time for what you love." },
-]
-
-const focusOptions = [
-  { value: "Mindfulness", label: "Mindfulness", description: "Meditation, gratitude, journaling" },
-  { value: "Fitness", label: "Fitness", description: "Movement, strength, flexibility" },
-  { value: "Productivity", label: "Productivity", description: "Planning, deep work, focus sprints" },
-  { value: "Self-care", label: "Self-care", description: "Sleep, recovery, personal growth" },
-]
-
-const experienceOptions = [
-  { value: "Just getting started", label: "Just getting started" },
-  { value: "Finding my rhythm", label: "Finding my rhythm" },
-  { value: "Leveling up", label: "Leveling up" },
-  { value: "Habit pro", label: "Habit pro" },
-]
-
-const supportOptions = [
-  { value: "Gentle nudges", label: "Gentle nudges" },
-  { value: "Focused reminders", label: "Focused reminders" },
-  { value: "Deep insights", label: "Deep insights" },
-  { value: "Celebrate my wins", label: "Celebrate my wins" },
-]
-
-const commitmentOptions = [
-  { value: "5 minutes", label: "5 minutes", description: "Quick boosts to keep momentum" },
-  { value: "15 minutes", label: "15 minutes", description: "Focused time for meaningful change" },
-  { value: "30 minutes", label: "30 minutes", description: "Build a solid daily rhythm" },
-  { value: "Flexible", label: "Flexible", description: "I’ll adapt depending on my day" },
-]
+import { cilCompass, cilFlagAlt, cilHeart, cilLockLocked, cilSpeech, cilUser, cilEnvelopeClosed } from "@coreui/icons"
+import { fetchOnboardingQuestion } from "../../services/onboarding"
 
 const Register = () => {
   const navigate = useNavigate()
@@ -73,6 +28,50 @@ const Register = () => {
   const [sendingCode, setSendingCode] = useState(false)
   const [verificationCode, setVerificationCode] = useState("")
   const [codeSent, setCodeSent] = useState(false)
+  const [aiQuestion, setAiQuestion] = useState(null)
+  const [aiSuggestions, setAiSuggestions] = useState([])
+  const [aiField, setAiField] = useState(null)
+  const [aiAnswers, setAiAnswers] = useState([])
+  const [aiInput, setAiInput] = useState("")
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiDone, setAiDone] = useState(false)
+  const [aiError, setAiError] = useState(null)
+  const [aiCompletionNote, setAiCompletionNote] = useState("")
+  const fallbackQuestions = useMemo(
+    () => [
+      {
+        field: "primaryGoal",
+        question: "What are you hoping to improve most right now — sport, lifestyle, or productivity?",
+        suggestions: ["Sport routine", "Lifestyle balance", "Productivity boost"],
+      },
+      {
+        field: "focusArea",
+        question: "Which area should we focus on first?",
+        suggestions: ["Energy", "Focus", "Recovery", "Mindfulness"],
+      },
+      {
+        field: "dailyCommitment",
+        question: "How much time can you commit each day?",
+        suggestions: ["5 minutes", "15 minutes", "30 minutes", "Flexible"],
+      },
+      {
+        field: "experienceLevel",
+        question: "How experienced are you with building habits?",
+        suggestions: ["Just starting", "Finding my rhythm", "Leveling up", "Habit pro"],
+      },
+      {
+        field: "supportPreference",
+        question: "What style of support helps you stick with habits?",
+        suggestions: ["Gentle nudges", "Focused reminders", "Deep insights", "Celebrate wins"],
+      },
+      {
+        field: "motivation",
+        question: "What’s motivating you to start now?",
+        suggestions: ["Feel stronger", "Reduce stress", "Improve focus", "Healthier routine"],
+      },
+    ],
+    []
+  )
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -89,15 +88,11 @@ const Register = () => {
     () => [
       {
         title: "Create your account",
-        description: "Let’s start with the essentials so we can welcome you back each day.",
+        description: "Start with the essentials so we can welcome you back each day.",
       },
       {
-        title: "Shape your journey",
-        description: "Choose the goal and focus areas that feel most exciting right now.",
-      },
-      {
-        title: "Personalise your support",
-        description: "Tell us how we can cheer you on and keep motivation high.",
+        title: "Quick AI setup",
+        description: "Claude will ask bite-sized questions. You can skip anytime.",
       },
       {
         title: "Verify your email",
@@ -110,13 +105,22 @@ const Register = () => {
   const progressValue = Math.round(((step + 1) / steps.length) * 100)
   const isLastStep = step === steps.length - 1
 
+  const getFallbackQuestion = (answers = aiAnswers) => {
+    const answered = new Set((answers || []).map((item) => item.field).filter(Boolean))
+    const next = fallbackQuestions.find((item) => !answered.has(item.field))
+    return next
+      ? { done: false, field: next.field, question: next.question, suggestions: next.suggestions }
+      : {
+          done: true,
+          field: null,
+          question: "Thanks! We’ve got what we need. Ready to finish signup?",
+          suggestions: [],
+        }
+  }
+
   const handleFieldChange = (event) => {
     const { name, value } = event.target
     setForm((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleOptionSelect = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }))
   }
 
   const validateStep = () => {
@@ -127,26 +131,110 @@ const Register = () => {
       }
     }
 
-    if (step === 1) {
-      if (!form.primaryGoal || !form.focusArea) {
-        setMessage({ type: "warning", text: "Choose the goal and focus that resonate with you most." })
-        return false
-      }
-    }
-
-    if (step === 2) {
-      if (!form.experienceLevel || !form.supportPreference || !form.dailyCommitment) {
-        setMessage({
-          type: "warning",
-          text: "Tell us how experienced you are, how much time you have, and the support you’d like.",
-        })
-        return false
-      }
-    }
-
     setMessage(null)
     return true
   }
+
+  const loadNextQuestion = async (answersList = aiAnswers) => {
+    setAiLoading(true)
+    setAiError(null)
+
+    try {
+      const data = await fetchOnboardingQuestion({
+        name: form.name.trim() || "friend",
+        answers: answersList,
+      })
+
+      if (data.done) {
+        setAiCompletionNote(data.question || "All set! Ready to finish signup?")
+        setAiQuestion(null)
+        setAiField(null)
+        setAiSuggestions([])
+        setAiDone(true)
+        return
+      }
+
+      setAiQuestion(data.question)
+      setAiField(data.field || null)
+      setAiSuggestions(data.suggestions || [])
+      setAiDone(false)
+      setAiCompletionNote("")
+    } catch (err) {
+      console.error("Onboarding question error", err)
+      const fallback = getFallbackQuestion(answersList)
+      if (fallback.done) {
+        setAiCompletionNote(fallback.question)
+        setAiQuestion(null)
+        setAiField(null)
+        setAiSuggestions([])
+        setAiDone(true)
+      } else {
+        setAiQuestion(fallback.question)
+        setAiField(fallback.field)
+        setAiSuggestions(fallback.suggestions)
+        setAiDone(false)
+        setAiCompletionNote("")
+      }
+
+      setAiError("I couldn't load the next question online, so I'm using backup prompts. You can try again or skip.")
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  const handleAiAnswer = async (value) => {
+    if (aiLoading) return
+    if (!aiQuestion) {
+      setAiDone(true)
+      return
+    }
+
+    const trimmed = value.trim()
+    const skipped = !trimmed
+    const entry = { question: aiQuestion, answer: skipped ? "Skipped" : trimmed, field: aiField, skipped }
+    const updatedAnswers = [...aiAnswers, entry]
+
+    if (aiField && !skipped) {
+      setForm((prev) => ({ ...prev, [aiField]: trimmed }))
+    }
+
+    setAiAnswers(updatedAnswers)
+    setAiInput("")
+    setAiCompletionNote("")
+
+    if (skipped) {
+      setAiDone(true)
+      setAiQuestion(null)
+      setAiSuggestions([])
+      return
+    }
+
+    await loadNextQuestion(updatedAnswers)
+  }
+
+  const handleSuggestionClick = (value) => {
+    setAiInput(value)
+    handleAiAnswer(value)
+  }
+
+  const handleSkipOnboarding = async () => {
+    setAiDone(true)
+    setAiQuestion(null)
+    setAiSuggestions([])
+    setAiCompletionNote("Skipping onboarding for now. You can finish signup whenever you’re ready.")
+    setAiInput("")
+    setAiError(null)
+
+    if (step === 1) {
+      await handleNext()
+    }
+  }
+
+  useEffect(() => {
+    if (step === 1 && !aiQuestion && !aiDone && !aiLoading && !aiError) {
+      loadNextQuestion(aiAnswers)
+    }
+  }, [aiAnswers, aiDone, aiError, aiLoading, aiQuestion, step])
 
   const requestVerificationCode = async () => {
     try {
@@ -253,32 +341,6 @@ const Register = () => {
     }
   }
 
-  const renderOptionButtons = (options, field) => (
-    <CRow className="g-3">
-      {options.map((option) => {
-        const isSelected = form[field] === option.value
-        return (
-          <CCol sm={6} key={option.value}>
-            <CButton
-              type="button"
-              color={isSelected ? "primary" : "light"}
-              variant={isSelected ? undefined : "outline"}
-              className="w-100 h-100 text-start p-3"
-              onClick={() => handleOptionSelect(field, option.value)}
-            >
-              <div className="d-flex flex-column">
-                <span className="fw-semibold">{option.label}</span>
-                {option.description && (
-                  <span className="small text-body-secondary mt-1">{option.description}</span>
-                )}
-              </div>
-            </CButton>
-          </CCol>
-        )
-      })}
-    </CRow>
-  )
-
   const renderStepContent = () => {
     if (step === 0) {
       return (
@@ -333,63 +395,99 @@ const Register = () => {
 
     if (step === 1) {
       return (
-        <div className="d-flex flex-column gap-4">
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <CIcon icon={cilFlagAlt} className="text-primary" />
-              <h5 className="mb-0">What brings you here?</h5>
+        <div className="d-flex flex-column gap-3">
+          <div className="p-3 bg-light rounded border">
+            <div className="d-flex align-items-center gap-2 mb-1">
+              <CIcon icon={cilSpeech} className="text-primary" />
+              <h5 className="mb-0">Claude is here to personalise things</h5>
             </div>
-            {renderOptionButtons(goalOptions, "primaryGoal")}
+            <p className="mb-0 text-body-secondary">
+              Answer in a few words, or skip any question to jump straight to verification.
+            </p>
           </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <CIcon icon={cilCompass} className="text-primary" />
-              <h5 className="mb-0">Where would you like to focus first?</h5>
-            </div>
-            {renderOptionButtons(focusOptions, "focusArea")}
-          </div>
-        </div>
-      )
-    }
 
-    if (step === 2) {
-      return (
-        <div className="d-flex flex-column gap-4">
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <CIcon icon={cilClock} className="text-primary" />
-              <h5 className="mb-0">How much time can you commit?</h5>
-            </div>
-            {renderOptionButtons(commitmentOptions, "dailyCommitment")}
-          </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <CIcon icon={cilStar} className="text-primary" />
-              <h5 className="mb-0">Where are you in your habit journey?</h5>
-            </div>
-            {renderOptionButtons(experienceOptions, "experienceLevel")}
-          </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <CIcon icon={cilPeople} className="text-primary" />
-              <h5 className="mb-0">How can we support you best?</h5>
-            </div>
-            {renderOptionButtons(supportOptions, "supportPreference")}
-          </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <CIcon icon={cilHeart} className="text-primary" />
-              <h5 className="mb-0">Share a spark of motivation</h5>
-            </div>
-            <CFormTextarea
-              name="motivation"
-              rows={3}
-              placeholder="What’s one reason you’re excited to start?"
-              value={form.motivation}
-              onChange={handleFieldChange}
-            />
-            <div className="small text-body-secondary mt-1">
-              We’ll echo this back on tough days to remind you why you began.
+          <div className="d-flex flex-column gap-3">
+            {aiAnswers.map((entry, index) => (
+              <div key={`${entry.question}-${index}`} className="p-3 border rounded bg-white">
+                <div className="small text-primary fw-semibold mb-1">Claude asked</div>
+                <div className="fw-semibold">{entry.question}</div>
+                <div className="mt-2 small text-body-secondary">You: {entry.answer}</div>
+              </div>
+            ))}
+
+            {aiCompletionNote && (
+              <CAlert color="success" className="mb-0">
+                {aiCompletionNote}
+              </CAlert>
+            )}
+
+            {aiQuestion && (
+              <div className="p-3 border rounded bg-white">
+                <div className="d-flex align-items-center gap-2 mb-1">
+                  <CIcon icon={cilFlagAlt} className="text-primary" />
+                  <span className="fw-semibold">{aiQuestion}</span>
+                </div>
+                {aiSuggestions?.length > 0 && (
+                  <div className="d-flex flex-wrap gap-2 mt-2">
+                    {aiSuggestions.map((idea) => (
+                      <CButton
+                        key={idea}
+                        color="light"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleSuggestionClick(idea)}
+                      >
+                        {idea}
+                      </CButton>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {aiError && (
+              <CAlert color="warning" className="mb-0">
+                {aiError}
+                <div>
+                  <CButton color="link" className="px-0" onClick={() => loadNextQuestion(aiAnswers)}>
+                    Try again
+                  </CButton>
+                </div>
+              </CAlert>
+            )}
+
+            <div className="p-3 border rounded bg-white">
+              <div className="d-flex gap-2 mb-2">
+                <CIcon icon={cilCompass} className="text-primary" />
+                <div>
+                  <div className="fw-semibold">Share a quick answer</div>
+                  <div className="small text-body-secondary">
+                    We’ll store it in your profile so your plan matches your goals.
+                  </div>
+                </div>
+              </div>
+              <CInputGroup className="mb-2">
+                <CFormInput
+                  value={aiInput}
+                  onChange={(event) => setAiInput(event.target.value)}
+                  placeholder="Type a few words or leave blank to skip"
+                  disabled={aiLoading || aiDone}
+                />
+                <CButton
+                  color="primary"
+                  type="button"
+                  disabled={aiLoading || aiDone || !aiQuestion}
+                  onClick={() => handleAiAnswer(aiInput)}
+                >
+                  {aiLoading ? "Thinking..." : "Send"}
+                </CButton>
+                <CButton color="secondary" variant="ghost" type="button" onClick={handleSkipOnboarding}>
+                  Skip
+                </CButton>
+              </CInputGroup>
+              <div className="small text-body-secondary">
+                Skip anytime and you’ll still be able to finish creating your account.
+              </div>
             </div>
           </div>
         </div>

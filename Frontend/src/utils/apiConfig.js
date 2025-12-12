@@ -1,9 +1,20 @@
-const defaultHost =
-  typeof window !== "undefined" && window.location.hostname
-    ? window.location.hostname
-    : "localhost";
+const resolveApiOrigin = () => {
+  // Highest priority: explicit override
+  if (import.meta.env.VITE_API_ORIGIN) return import.meta.env.VITE_API_ORIGIN;
 
-const apiOrigin = import.meta.env.VITE_API_ORIGIN || `http://${defaultHost}:5001`;
+  if (typeof window !== "undefined") {
+    // When running `npm run dev`, serve API from the backend on port 5001
+    if (window.location.port === "4000") {
+      return `http://${window.location.hostname || "localhost"}:5001`;
+    }
 
-export const API_BASE = `${apiOrigin}/api`;
-export const ASSET_BASE = apiOrigin;
+    // In production builds, default to the same origin that served the app
+    return window.location.origin;
+  }
+
+  // Server-side or unknown environment: fallback to localhost backend
+  return "http://localhost:5001";
+};
+
+export const ASSET_BASE = resolveApiOrigin();
+export const API_BASE = `${ASSET_BASE}/api`;
