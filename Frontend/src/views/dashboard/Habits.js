@@ -571,6 +571,7 @@ const MyHabitsTab = ({ onAddClick, onProgressLogged }) => {
                   <h5 className="mb-1">{currentMonthLabel}</h5>
                   <p className="text-body-secondary mb-0">
                     Hover over a habit to see more info. Click any day to cycle done → missed → clear for that habit.
+                    Doubleclick to done or missed checkbox to add description
                   </p>
                   <div className="d-flex flex-wrap gap-2 align-items-center">
                     <CFormSelect
