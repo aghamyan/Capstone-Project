@@ -238,6 +238,70 @@ const buildConversationMessages = (history) =>
     .map(toChatMessage)
     .filter(Boolean);
 
+const parseProgressDecision = (raw) => {
+  if (!raw) return null;
+
+  try {
+    const cleaned = raw.trim().replace(/```(json)?/g, "");
+    const jsonStart = cleaned.indexOf("{");
+    const jsonEnd = cleaned.lastIndexOf("}");
+    const target = jsonStart >= 0 && jsonEnd >= 0 ? cleaned.slice(jsonStart, jsonEnd + 1) : cleaned;
+    const parsed = JSON.parse(target);
+
+    if (parsed.action !== "log-progress") return null;
+
+    const habitId = Number.parseInt(parsed.habitId, 10);
+    const status = ["done", "missed"].includes(parsed.status) ? parsed.status : null;
+
+    if (!habitId || !status) return null;
+
+    return {
+      habitId,
+      status,
+      note: parsed.note?.trim() || null,
+      userReply: parsed.userReply?.trim() || null,
+    };
+  } catch (error) {
+    console.error("Failed to parse progress decision", error?.message || error);
+    return null;
+  }
+};
+
+const requestClaudeProgressDecision = async ({ message, userContext, history }) => {
+  const habits = userContext?.habits || [];
+  if (!habits.length) return null;
+
+  const habitSummaries = habits.map((h) => ({
+    id: h.id,
+    title: h.title,
+    goal: h.goal || null,
+    targetReps: h.targetReps || null,
+  }));
+
+  const systemInstruction = [
+    "You are Claude, the StepHabit AI coach that can log progress.",
+    "If the user reports doing or missing a habit, choose the best matching habitId from the provided list and decide status",
+    "based on whether they met the goal/target reps. Partial or below-goal updates should be treated as missed with a warm",
+    "note acknowledging effort.",
+    "Respond ONLY with JSON in the shape: { action: 'log-progress', habitId: number, status: 'done' | 'missed', note: str",
+    "ing | null, userReply: string }. The userReply should be a friendly one-sentence acknowledgment that you generated.",
+    "Use the note field to briefly capture what happened (e.g., partial completion) in natural language. Do not include mark",
+    "down.",
+    `Known habits: ${JSON.stringify(habitSummaries)}`,
+  ].join("\n");
+
+  const conversation = buildConversationMessages(history);
+  const prompt = new HumanMessage(
+    [
+      "Decide if this message should log progress for a known habit. If it doesn't match, respond with { action: 'none' }.",
+      `User message: ${message}`,
+    ].join("\n")
+  );
+
+  const reply = await callClaude([new SystemMessage(systemInstruction), ...conversation, prompt]);
+  return parseProgressDecision(reply);
+};
+
 const callClaude = async (messages) => {
   const apiKey = resolveApiKey();
   if (!apiKey) return null;
@@ -368,6 +432,12 @@ export const generateAiChatReply = async ({ userId, message, history: providedHi
 
   const habitAnalysis = analyzeHabitIntent(message, history);
 
+  const progressDecision = await requestClaudeProgressDecision({
+    message,
+    userContext,
+    history,
+  });
+
   const systemInstruction = [
     "You are a warm, conversational AI assistant for the StepHabit platform.",
     "Respond with short, human-feeling paragraphs (avoid bullet lists unless requested).",
@@ -378,7 +448,46 @@ export const generateAiChatReply = async ({ userId, message, history: providedHi
   ].join("\n\n");
 
   let habitSuggestion = habitAnalysis.habitSuggestion;
-  let replyFromClaude = null;
+  let replyFromClaude = progressDecision?.userReply || null;
+  let loggedProgress = null;
+  let finalIntent = habitAnalysis.intent;
+
+  if (progressDecision) {
+    try {
+      const entry = await Progress.create({
+        user_id: userId,
+        habit_id: progressDecision.habitId,
+        status: progressDecision.status,
+        reflection_reason: progressDecision.note,
+        progress_date: new Date(),
+      });
+
+      loggedProgress = {
+        id: entry.id,
+        habitId: entry.habit_id,
+        status: entry.status,
+        note: entry.reflection_reason,
+        progressDate: entry.progress_date,
+      };
+
+      finalIntent = "log-progress";
+    } catch (error) {
+      console.error("Failed to save progress from Claude decision", error?.message || error);
+    }
+  }
+
+  if (progressDecision && !replyFromClaude) {
+    const matchedHabit = (userContext?.habits || []).find((h) => h.id === progressDecision.habitId);
+    const recapPrompt = new HumanMessage(
+      [
+        "Give one short, friendly sentence confirming I logged the habit progress.",
+        `Habit: ${matchedHabit?.title || "Unknown habit"} (${progressDecision.status})`,
+        progressDecision.note ? `Note to mention: ${progressDecision.note}` : "No extra note provided.",
+      ].join("\n")
+    );
+
+    replyFromClaude = await callClaude([new SystemMessage(systemInstruction), ...buildConversationMessages(history), recapPrompt]);
+  }
 
   if (habitAnalysis.intent === "suggest") {
     habitSuggestion =
@@ -391,7 +500,7 @@ export const generateAiChatReply = async ({ userId, message, history: providedHi
         history,
       });
     }
-  } else if (habitAnalysis.intent === "chat") {
+  } else if (habitAnalysis.intent === "chat" && !loggedProgress) {
     replyFromClaude = await callClaude(buildChatMessages({ systemInstruction, history, message }));
   }
 
@@ -402,8 +511,9 @@ export const generateAiChatReply = async ({ userId, message, history: providedHi
 
   return {
     reply,
-    intent: habitAnalysis.intent,
+    intent: finalIntent,
     habitSuggestion,
+    loggedProgress,
     context: { dbOverview, userContext, history },
   };
 };
