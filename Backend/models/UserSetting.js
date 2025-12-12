@@ -48,6 +48,41 @@ const UserSetting = sequelize.define(
       allowNull: false,
       defaultValue: "light",
     },
+    ai_tone: {
+      type: DataTypes.STRING(30),
+      allowNull: false,
+      defaultValue: "balanced",
+    },
+    support_style: {
+      type: DataTypes.STRING(30),
+      allowNull: false,
+      defaultValue: "celebrate",
+    },
+    email_alerts: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    push_reminders: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    google_calendar: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    apple_calendar: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    fitness_sync: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,

@@ -131,17 +131,21 @@ const UserProfile = () => {
         setSettingsBaseline(settings)
         setPreferences({
           theme: settings.theme || "light",
-          aiTone: settings.aiTone || "balanced",
-          supportStyle: settings.supportStyle || "celebrate",
+          aiTone: settings.aiTone || settings.ai_tone || "balanced",
+          supportStyle: settings.supportStyle || settings.support_style || "celebrate",
         })
         setNotificationPrefs({
-          emailAlerts: Boolean(settings.emailAlerts ?? true),
-          pushReminders: Boolean(settings.pushReminders ?? false),
+          emailAlerts: Boolean(
+            settings.emailAlerts ?? settings.emailNotifications ?? settings.email_alerts ?? true,
+          ),
+          pushReminders: Boolean(
+            settings.pushReminders ?? settings.pushNotifications ?? settings.push_reminders ?? false,
+          ),
         })
         setConnectedApps({
-          googleCalendar: Boolean(settings.googleCalendar ?? false),
-          appleCalendar: Boolean(settings.appleCalendar ?? false),
-          fitnessSync: Boolean(settings.fitnessSync ?? false),
+          googleCalendar: Boolean(settings.googleCalendar ?? settings.google_calendar ?? false),
+          appleCalendar: Boolean(settings.appleCalendar ?? settings.apple_calendar ?? false),
+          fitnessSync: Boolean(settings.fitnessSync ?? settings.fitness_sync ?? false),
         })
         setAvatarUrl(payload.avatar ? `${ASSET_BASE}${payload.avatar}` : "/uploads/default-avatar.png")
         setError("")
@@ -256,6 +260,8 @@ const UserProfile = () => {
         supportStyle: preferences.supportStyle,
         emailAlerts: notificationPrefs.emailAlerts,
         pushReminders: notificationPrefs.pushReminders,
+        emailNotifications: notificationPrefs.emailAlerts,
+        pushNotifications: notificationPrefs.pushReminders,
         googleCalendar: connectedApps.googleCalendar,
         appleCalendar: connectedApps.appleCalendar,
         fitnessSync: connectedApps.fitnessSync,

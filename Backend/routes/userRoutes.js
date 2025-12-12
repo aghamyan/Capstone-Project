@@ -13,6 +13,13 @@ const defaultSettings = {
   push_notifications: false,
   share_activity: true,
   theme: "light",
+  ai_tone: "balanced",
+  support_style: "celebrate",
+  email_alerts: true,
+  push_reminders: false,
+  google_calendar: false,
+  apple_calendar: false,
+  fitness_sync: false,
 };
 
 const sanitizeString = (value) => {
@@ -31,6 +38,13 @@ const formatSettings = (settingsInstance) => {
       pushNotifications: defaultSettings.push_notifications,
       shareActivity: defaultSettings.share_activity,
       theme: defaultSettings.theme,
+      aiTone: defaultSettings.ai_tone,
+      supportStyle: defaultSettings.support_style,
+      emailAlerts: defaultSettings.email_alerts,
+      pushReminders: defaultSettings.push_reminders,
+      googleCalendar: defaultSettings.google_calendar,
+      appleCalendar: defaultSettings.apple_calendar,
+      fitnessSync: defaultSettings.fitness_sync,
     };
   }
 
@@ -43,6 +57,13 @@ const formatSettings = (settingsInstance) => {
     pushNotifications: settings.push_notifications,
     shareActivity: settings.share_activity,
     theme: settings.theme,
+    aiTone: settings.ai_tone,
+    supportStyle: settings.support_style,
+    emailAlerts: settings.email_alerts ?? settings.email_notifications,
+    pushReminders: settings.push_reminders ?? settings.push_notifications,
+    googleCalendar: settings.google_calendar,
+    appleCalendar: settings.apple_calendar,
+    fitnessSync: settings.fitness_sync,
   };
 };
 
@@ -340,24 +361,39 @@ router.put("/profile/:id", async (req, res) => {
       timezone: settings.timezone || defaultSettings.timezone,
       weekly_summary_day: settings.weeklySummaryDay || defaultSettings.weekly_summary_day,
       theme: settings.theme || defaultSettings.theme,
+      ai_tone: settings.aiTone || defaultSettings.ai_tone,
+      support_style: settings.supportStyle || defaultSettings.support_style,
+      email_notifications: Boolean(
+        typeof settings.emailNotifications === "boolean"
+          ? settings.emailNotifications
+          : settings.emailAlerts ?? defaultSettings.email_notifications
+      ),
+      push_notifications: Boolean(
+        typeof settings.pushNotifications === "boolean"
+          ? settings.pushNotifications
+          : settings.pushReminders ?? defaultSettings.push_notifications
+      ),
+      share_activity: Boolean(
+        typeof settings.shareActivity === "boolean"
+          ? settings.shareActivity
+          : defaultSettings.share_activity
+      ),
+      email_alerts: Boolean(
+        typeof settings.emailAlerts === "boolean"
+          ? settings.emailAlerts
+          : settings.emailNotifications ?? defaultSettings.email_alerts
+      ),
+      push_reminders: Boolean(
+        typeof settings.pushReminders === "boolean"
+          ? settings.pushReminders
+          : settings.pushNotifications ?? defaultSettings.push_reminders
+      ),
+      google_calendar: Boolean(settings.googleCalendar ?? defaultSettings.google_calendar),
+      apple_calendar: Boolean(settings.appleCalendar ?? defaultSettings.apple_calendar),
+      fitness_sync: Boolean(settings.fitnessSync ?? defaultSettings.fitness_sync),
     };
 
     updates.daily_reminder_time = settings.dailyReminderTime || null;
-    updates.email_notifications = Boolean(
-      typeof settings.emailNotifications === "boolean"
-        ? settings.emailNotifications
-        : defaultSettings.email_notifications
-    );
-    updates.push_notifications = Boolean(
-      typeof settings.pushNotifications === "boolean"
-        ? settings.pushNotifications
-        : defaultSettings.push_notifications
-    );
-    updates.share_activity = Boolean(
-      typeof settings.shareActivity === "boolean"
-        ? settings.shareActivity
-        : defaultSettings.share_activity
-    );
 
     await settingsRecord.update(updates);
 
