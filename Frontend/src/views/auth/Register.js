@@ -10,7 +10,6 @@ import {
   CContainer,
   CForm,
   CFormInput,
-  CFormTextarea,
   CInputGroup,
   CInputGroupText,
   CProgress,
@@ -18,52 +17,7 @@ import {
   CRow,
 } from "@coreui/react"
 import CIcon from "@coreui/icons-react"
-import {
-  cilClock,
-  cilCompass,
-  cilFlagAlt,
-  cilHeart,
-  cilLockLocked,
-  cilPeople,
-  cilStar,
-  cilUser,
-  cilEnvelopeClosed,
-} from "@coreui/icons"
-
-const goalOptions = [
-  { value: "Build consistency", label: "Build consistency", description: "Stay accountable to the routines that matter most." },
-  { value: "Boost energy", label: "Boost energy", description: "Create uplifting habits that energise your day." },
-  { value: "Focus & clarity", label: "Focus & clarity", description: "Design rituals that sharpen your mind and keep you centred." },
-  { value: "Balance & wellbeing", label: "Balance & wellbeing", description: "Craft a calmer schedule with time for what you love." },
-]
-
-const focusOptions = [
-  { value: "Mindfulness", label: "Mindfulness", description: "Meditation, gratitude, journaling" },
-  { value: "Fitness", label: "Fitness", description: "Movement, strength, flexibility" },
-  { value: "Productivity", label: "Productivity", description: "Planning, deep work, focus sprints" },
-  { value: "Self-care", label: "Self-care", description: "Sleep, recovery, personal growth" },
-]
-
-const experienceOptions = [
-  { value: "Just getting started", label: "Just getting started" },
-  { value: "Finding my rhythm", label: "Finding my rhythm" },
-  { value: "Leveling up", label: "Leveling up" },
-  { value: "Habit pro", label: "Habit pro" },
-]
-
-const supportOptions = [
-  { value: "Gentle nudges", label: "Gentle nudges" },
-  { value: "Focused reminders", label: "Focused reminders" },
-  { value: "Deep insights", label: "Deep insights" },
-  { value: "Celebrate my wins", label: "Celebrate my wins" },
-]
-
-const commitmentOptions = [
-  { value: "5 minutes", label: "5 minutes", description: "Quick boosts to keep momentum" },
-  { value: "15 minutes", label: "15 minutes", description: "Focused time for meaningful change" },
-  { value: "30 minutes", label: "30 minutes", description: "Build a solid daily rhythm" },
-  { value: "Flexible", label: "Flexible", description: "I’ll adapt depending on my day" },
-]
+import { cilHeart, cilLockLocked, cilUser, cilEnvelopeClosed } from "@coreui/icons"
 
 const Register = () => {
   const navigate = useNavigate()
@@ -77,27 +31,13 @@ const Register = () => {
     name: "",
     email: "",
     password: "",
-    primaryGoal: "",
-    focusArea: "",
-    experienceLevel: "",
-    supportPreference: "",
-    dailyCommitment: "",
-    motivation: "",
   })
 
   const steps = useMemo(
     () => [
       {
         title: "Create your account",
-        description: "Let’s start with the essentials so we can welcome you back each day.",
-      },
-      {
-        title: "Shape your journey",
-        description: "Choose the goal and focus areas that feel most exciting right now.",
-      },
-      {
-        title: "Personalise your support",
-        description: "Tell us how we can cheer you on and keep motivation high.",
+        description: "Start with the essentials so we can welcome you back each day.",
       },
       {
         title: "Verify your email",
@@ -115,31 +55,10 @@ const Register = () => {
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleOptionSelect = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }))
-  }
-
   const validateStep = () => {
     if (step === 0) {
       if (!form.name.trim() || !form.email.trim() || !form.password) {
         setMessage({ type: "danger", text: "Please add your name, email, and a password to continue." })
-        return false
-      }
-    }
-
-    if (step === 1) {
-      if (!form.primaryGoal || !form.focusArea) {
-        setMessage({ type: "warning", text: "Choose the goal and focus that resonate with you most." })
-        return false
-      }
-    }
-
-    if (step === 2) {
-      if (!form.experienceLevel || !form.supportPreference || !form.dailyCommitment) {
-        setMessage({
-          type: "warning",
-          text: "Tell us how experienced you are, how much time you have, and the support you’d like.",
-        })
         return false
       }
     }
@@ -159,14 +78,6 @@ const Register = () => {
           name: form.name.trim(),
           email: form.email.trim(),
           password: form.password,
-          onboarding: {
-            primaryGoal: form.primaryGoal,
-            focusArea: form.focusArea,
-            experienceLevel: form.experienceLevel,
-            supportPreference: form.supportPreference,
-            dailyCommitment: form.dailyCommitment,
-            motivation: form.motivation,
-          },
         }),
       })
 
@@ -253,32 +164,6 @@ const Register = () => {
     }
   }
 
-  const renderOptionButtons = (options, field) => (
-    <CRow className="g-3">
-      {options.map((option) => {
-        const isSelected = form[field] === option.value
-        return (
-          <CCol sm={6} key={option.value}>
-            <CButton
-              type="button"
-              color={isSelected ? "primary" : "light"}
-              variant={isSelected ? undefined : "outline"}
-              className="w-100 h-100 text-start p-3"
-              onClick={() => handleOptionSelect(field, option.value)}
-            >
-              <div className="d-flex flex-column">
-                <span className="fw-semibold">{option.label}</span>
-                {option.description && (
-                  <span className="small text-body-secondary mt-1">{option.description}</span>
-                )}
-              </div>
-            </CButton>
-          </CCol>
-        )
-      })}
-    </CRow>
-  )
-
   const renderStepContent = () => {
     if (step === 0) {
       return (
@@ -328,71 +213,6 @@ const Register = () => {
             Use at least 8 characters with a mix of letters and numbers.
           </div>
         </>
-      )
-    }
-
-    if (step === 1) {
-      return (
-        <div className="d-flex flex-column gap-4">
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <CIcon icon={cilFlagAlt} className="text-primary" />
-              <h5 className="mb-0">What brings you here?</h5>
-            </div>
-            {renderOptionButtons(goalOptions, "primaryGoal")}
-          </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <CIcon icon={cilCompass} className="text-primary" />
-              <h5 className="mb-0">Where would you like to focus first?</h5>
-            </div>
-            {renderOptionButtons(focusOptions, "focusArea")}
-          </div>
-        </div>
-      )
-    }
-
-    if (step === 2) {
-      return (
-        <div className="d-flex flex-column gap-4">
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <CIcon icon={cilClock} className="text-primary" />
-              <h5 className="mb-0">How much time can you commit?</h5>
-            </div>
-            {renderOptionButtons(commitmentOptions, "dailyCommitment")}
-          </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <CIcon icon={cilStar} className="text-primary" />
-              <h5 className="mb-0">Where are you in your habit journey?</h5>
-            </div>
-            {renderOptionButtons(experienceOptions, "experienceLevel")}
-          </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <CIcon icon={cilPeople} className="text-primary" />
-              <h5 className="mb-0">How can we support you best?</h5>
-            </div>
-            {renderOptionButtons(supportOptions, "supportPreference")}
-          </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <CIcon icon={cilHeart} className="text-primary" />
-              <h5 className="mb-0">Share a spark of motivation</h5>
-            </div>
-            <CFormTextarea
-              name="motivation"
-              rows={3}
-              placeholder="What’s one reason you’re excited to start?"
-              value={form.motivation}
-              onChange={handleFieldChange}
-            />
-            <div className="small text-body-secondary mt-1">
-              We’ll echo this back on tough days to remind you why you began.
-            </div>
-          </div>
-        </div>
       )
     }
 
