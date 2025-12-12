@@ -7,8 +7,6 @@ import {
   CCardBody,
   CCardHeader,
   CCol,
-  CFormInput,
-  CInputGroup,
   CListGroup,
   CListGroupItem,
   CProgress,
@@ -33,47 +31,9 @@ import { formatPercent, getProgressAnalytics } from "../../services/analytics";
 import {
   getTodayProgressLogs,
   logHabitProgress,
-  updateHabitProgressCount,
 } from "../../services/progress";
 import { promptMissedReflection } from "../../utils/reflection";
 import { useDataRefresh, REFRESH_SCOPES } from "../../utils/refreshBus";
-
-const CountAdjuster = ({
-  label,
-  value,
-  color,
-  disabled,
-  onIncrement,
-  onDecrement,
-}) => (
-  <div className="d-flex flex-column gap-2 flex-fill">
-    <div className="d-flex justify-content-between align-items-center">
-      <span className="text-body-secondary text-uppercase small">{label}</span>
-      <CBadge color={color} className="px-3 py-2 fw-semibold">
-        {value}
-      </CBadge>
-    </div>
-    <CInputGroup size="sm">
-      <CButton
-        color={color}
-        variant="outline"
-        disabled={disabled || value === 0}
-        onClick={onDecrement}
-      >
-        −
-      </CButton>
-      <CFormInput value={value} readOnly className="text-center" />
-      <CButton
-        color={color}
-        variant="outline"
-        disabled={disabled}
-        onClick={onIncrement}
-      >
-        +
-      </CButton>
-    </CInputGroup>
-  </div>
-);
 
 const formatDate = (date) => {
   if (!date) return "—";
@@ -97,20 +57,6 @@ const ProgressTracker = () => {
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userId = user?.id;
-
-  const todayIso = useMemo(
-    () => new Date().toISOString().split("T")[0],
-    []
-  );
-  const todayLabel = useMemo(
-    () =>
-      new Date().toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-        weekday: "short",
-      }),
-    []
-  );
 
   const loadHabits = useCallback(async () => {
     if (!userId) {
@@ -242,39 +188,6 @@ const ProgressTracker = () => {
     } finally {
       setSaving(false);
     }
-  };
-
-  const updateCount = async (habitId, status, nextValue) => {
-    if (!userId) return;
-    try {
-      setSaving(true);
-      const payload = await updateHabitProgressCount(habitId, {
-        userId,
-        status,
-        targetCount: nextValue,
-        date: todayIso,
-      });
-      setTodayCounts((prev) => ({
-        ...prev,
-        [habitId]: payload.counts,
-      }));
-      setProgress((prev) => ({ ...prev, [habitId]: status }));
-      await loadAnalytics({ showSpinner: false });
-      setErr("");
-    } catch (updateErr) {
-      console.error("Failed to adjust progress", updateErr);
-      setErr("Failed to adjust today's count");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const changeCountByDelta = (habitId, status, delta) => {
-    const currentCounts = todayCounts[habitId] || { done: 0, missed: 0 };
-    const currentValue = currentCounts[status] || 0;
-    const nextValue = Math.max(0, currentValue + delta);
-    if (nextValue === currentValue) return;
-    updateCount(habitId, status, nextValue);
   };
 
   const statusBadgeColor = (rate) => {
@@ -547,41 +460,6 @@ const ProgressTracker = () => {
                           <div className="d-flex justify-content-between text-body-secondary small mt-1">
                             <span>{stats.totals?.done ?? 0} completed</span>
                             <span>{stats.totals?.missed ?? 0} missed</span>
-                          </div>
-
-                          <div className="border-top pt-3 mt-3">
-                            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                              <div className="fw-semibold">Today's check-ins</div>
-                              <div className="text-body-secondary small">
-                                {todayLabel}
-                              </div>
-                            </div>
-                            <div className="d-flex flex-column flex-md-row gap-3">
-                              <CountAdjuster
-                                label="Completed"
-                                value={counts.done}
-                                color="success"
-                                disabled={saving}
-                                onIncrement={() =>
-                                  changeCountByDelta(habit.id, "done", 1)
-                                }
-                                onDecrement={() =>
-                                  changeCountByDelta(habit.id, "done", -1)
-                                }
-                              />
-                              <CountAdjuster
-                                label="Missed"
-                                value={counts.missed}
-                                color="danger"
-                                disabled={saving}
-                                onIncrement={() =>
-                                  changeCountByDelta(habit.id, "missed", 1)
-                                }
-                                onDecrement={() =>
-                                  changeCountByDelta(habit.id, "missed", -1)
-                                }
-                              />
-                            </div>
                           </div>
 
                           <div className="d-flex justify-content-between align-items-center mt-3">
