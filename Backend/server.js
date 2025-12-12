@@ -88,6 +88,12 @@ const startServer = async () => {
 
     const hasTable = (name) => tableNames.includes(name);
 
+    // 🔥 CRITICAL FIX: drop legacy user_settings table
+    if (hasTable("user_settings")) {
+      await queryInterface.dropTable("user_settings");
+      console.log("🧹 Dropped legacy user_settings table");
+    }
+
     // ---- Generic orphan cleanup helper ----
     const cleanupOrphans = async (table, fkColumn, parentTable, parentColumn) => {
       if (!hasTable(table) || !hasTable(parentTable)) return;
@@ -99,7 +105,7 @@ const startServer = async () => {
       `);
     };
 
-    // ---- Run ALL orphan cleanups BEFORE sync ----
+    // ---- Run orphan cleanups BEFORE sync ----
     await cleanupOrphans("assistant_memories", "user_id", "users", "id");
     await cleanupOrphans("calendar_events", "user_id", "users", "id");
     await cleanupOrphans("calendar_integrations", "user_id", "users", "id");
@@ -110,7 +116,7 @@ const startServer = async () => {
     await cleanupOrphans("friends", "user_id", "users", "id");
     await cleanupOrphans("friends", "friend_id", "users", "id");
 
-    // ---- Ensure optional columns exist safely ----
+    // ---- Ensure optional columns exist ----
     if (hasTable("users")) {
       const userDef = await queryInterface.describeTable("users");
       if (!userDef.avatar) {
@@ -121,7 +127,7 @@ const startServer = async () => {
       }
     }
 
-    // ---- Sync schema safely ----
+    // ---- FINAL SAFE SYNC ----
     await sequelize.sync({ alter: true });
 
     app.listen(PORT, () => {
