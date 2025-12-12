@@ -115,6 +115,14 @@ const startServer = async () => {
       "id"
     );
 
+    if (hasUsersTable && hasAssistantMemoriesTable) {
+      await sequelize.query(`
+        DELETE FROM assistant_memories
+        WHERE user_id IS NOT NULL
+        AND user_id NOT IN (SELECT id FROM users);
+      `);
+    }
+
     // Ensure any new columns or tables introduced in the models are available
     // without requiring a manual migration step. This keeps features such as
     // user profile preferences in sync across environments where the schema
