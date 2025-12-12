@@ -52,6 +52,7 @@ import {
   fetchAssistantSummary,
   saveAssistantProfile,
 } from "../../services/assistant";
+import { sendReasoningRequest } from "../../services/ai";
 import { useDataRefresh, REFRESH_SCOPES } from "../../utils/refreshBus";
 
 const Dashboard = () => {
@@ -80,14 +81,6 @@ const Dashboard = () => {
   const [patternRecommendation, setPatternRecommendation] = useState("");
   const [patternLoading, setPatternLoading] = useState(false);
   const [patternError, setPatternError] = useState("");
-  const [missedLogModal, setMissedLogModal] = useState({
-    open: false,
-    habitId: null,
-    habitTitle: "",
-  });
-  const [missedReason, setMissedReason] = useState("");
-  const [missedError, setMissedError] = useState("");
-  const [missedSaving, setMissedSaving] = useState(false);
   const navigate = useNavigate();
 
   const user = useMemo(
@@ -517,17 +510,13 @@ const Dashboard = () => {
     return String(date);
   };
 
-  const analyzeHabitPatterns = useCallback(() => {
-    setPatternModalOpen(true);
-    setPatternLoading(true);
-    setPatternError("");
-
+  const deriveLocalPattern = useCallback(() => {
     if (!analytics || !Array.isArray(analytics?.habits) || analytics.habits.length === 0) {
-      setPatternInsights([]);
-      setPatternRecommendation("");
-      setPatternError("We need more habit history before patterns can be detected.");
-      setPatternLoading(false);
-      return;
+      return {
+        insights: [],
+        recommendation: "",
+        error: "We need more habit history before patterns can be detected.",
+      };
     }
 
     const recentDays = (analytics?.summary?.dailyTrend ?? []).slice(-14);
@@ -593,10 +582,80 @@ const Dashboard = () => {
       recommendation = `Protect your ${strongStreakHabit.habitName} streak by pairing it with a calendar block and keeping the setup ready the night before.`;
     }
 
-    setPatternInsights(insights);
-    setPatternRecommendation(recommendation);
-    setPatternLoading(false);
+    return { insights, recommendation, bestDay, weakHabit, strongStreakHabit, missedHeavy };
   }, [analytics]);
+
+  const parseAiPatternResponse = (reply) => {
+    if (!reply) return { insights: [], recommendation: "" };
+
+    try {
+      const parsed = JSON.parse(reply);
+      const parsedInsights = Array.isArray(parsed?.insights) ? parsed.insights.filter(Boolean) : [];
+      const parsedRecommendation = typeof parsed?.recommendation === "string" ? parsed.recommendation : "";
+
+      if (parsedInsights.length || parsedRecommendation) {
+        return { insights: parsedInsights, recommendation: parsedRecommendation };
+      }
+    } catch (err) {
+      // fall through to text parsing
+    }
+
+    const lines = reply
+      .split(/\n+/)
+      .map((line) => line.trim().replace(/^[-•]\s*/, ""))
+      .filter(Boolean);
+
+    const recommendation = lines.pop() || "";
+    return { insights: lines, recommendation };
+  };
+
+  const analyzeHabitPatterns = useCallback(async () => {
+    setPatternModalOpen(true);
+    setPatternLoading(true);
+    setPatternError("");
+
+    const localPattern = deriveLocalPattern();
+    if (localPattern.error) {
+      setPatternInsights([]);
+      setPatternRecommendation("");
+      setPatternError(localPattern.error);
+      setPatternLoading(false);
+      return;
+    }
+
+    try {
+      const snapshot = {
+        habits: analytics?.habits ?? [],
+        dailyTrend: (analytics?.summary?.dailyTrend ?? []).slice(-21),
+        streaks: analytics?.summary?.streakLeader ?? null,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      };
+
+      const response = await sendReasoningRequest({
+        snapshot,
+        insightText:
+          "Analyze the habit history to flag missed days, strong streaks, best completion windows, and weak habits. Respond as JSON with {\"insights\":[short bullets],\"recommendation\":\"one actionable tip\"}.",
+        history: [
+          {
+            role: "user",
+            content: "Detect habit patterns from analytics and propose one action to improve consistency.",
+          },
+        ],
+      });
+
+      const aiPattern = parseAiPatternResponse(response?.reply);
+
+      setPatternInsights(aiPattern.insights.length ? aiPattern.insights : localPattern.insights);
+      setPatternRecommendation(aiPattern.recommendation || localPattern.recommendation);
+    } catch (err) {
+      console.error("⚠️ Unable to fetch AI pattern detection", err);
+      setPatternError(err?.message || "We couldn't get AI-generated patterns right now.");
+      setPatternInsights(localPattern.insights);
+      setPatternRecommendation(localPattern.recommendation);
+    } finally {
+      setPatternLoading(false);
+    }
+  }, [analytics?.habits, analytics?.summary?.dailyTrend, analytics?.summary?.streakLeader, deriveLocalPattern]);
 
   const streakSnapshot = analytics?.summary?.streakLeader?.streak;
 
@@ -1231,51 +1290,6 @@ const Dashboard = () => {
           </CRow>
         </>
       )}
-
-      <CModal
-        alignment="center"
-        visible={missedLogModal.open}
-        onClose={closeMissedLog}
-      >
-        <CModalHeader closeButton>
-          Missed {missedLogModal.habitTitle || "today"}?
-        </CModalHeader>
-        <CModalBody>
-          <p className="mb-3 text-body-secondary">
-            Share a one-liner about what got in the way so future coaching can
-            spot patterns.
-          </p>
-          <CFormTextarea
-            rows={2}
-            maxLength={160}
-            value={missedReason}
-            placeholder="e.g., Travel day, felt sick, unexpected meeting"
-            onChange={(event) => setMissedReason(event.target.value)}
-          />
-          <div className="d-flex justify-content-between align-items-center mt-2">
-            <small className="text-body-secondary">{missedReason.length}/160</small>
-            {missedError && <div className="text-danger small">{missedError}</div>}
-          </div>
-        </CModalBody>
-        <CModalFooter className="d-flex justify-content-between">
-          <CButton color="secondary" variant="outline" onClick={closeMissedLog} disabled={missedSaving}>
-            Cancel
-          </CButton>
-          <CButton
-            color="danger"
-            onClick={submitMissedLog}
-            disabled={missedSaving || !missedReason.trim()}
-          >
-            {missedSaving ? (
-              <>
-                <CSpinner size="sm" className="me-2" /> Saving
-              </>
-            ) : (
-              "Save reason"
-            )}
-          </CButton>
-        </CModalFooter>
-      </CModal>
 
       <CModal
         alignment="center"
