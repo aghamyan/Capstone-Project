@@ -581,16 +581,20 @@ const MySchedule = () => {
                   Upload a .ics file
                 </CFormLabel>
                 <div className="d-flex align-items-center gap-2 flex-wrap position-relative">
-                  <CButton component="label" color="secondary" variant="outline">
+                  <label
+                    htmlFor="calendarUpload"
+                    className="btn btn-outline-secondary mb-0 d-inline-flex align-items-center"
+                  >
                     Choose file
-                    <CFormInput
-                      type="file"
-                      accept=".ics,text/calendar"
-                      onChange={handleCalendarFile}
-                      ref={calendarFileInputRef}
-                      className="d-none"
-                    />
-                  </CButton>
+                  </label>
+                  <input
+                    id="calendarUpload"
+                    type="file"
+                    accept=".ics,text/calendar"
+                    onChange={handleCalendarFile}
+                    ref={calendarFileInputRef}
+                    className="d-none"
+                  />
                   {calendarFileName && (
                     <div className="small text-success">Selected: {calendarFileName}</div>
                   )}
