@@ -7,6 +7,7 @@ DROP TABLE IF EXISTS user_achievements CASCADE;
 DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS progress CASCADE;
 DROP TABLE IF EXISTS busy_schedules CASCADE;
+DROP TABLE IF EXISTS tasks CASCADE;
 DROP TABLE IF EXISTS schedules CASCADE;
 DROP TABLE IF EXISTS habits CASCADE;
 DROP TABLE IF EXISTS group_challenges CASCADE;
@@ -57,6 +58,23 @@ CREATE TABLE schedules (
     notes TEXT,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ======================
+-- TASKS
+-- ======================
+CREATE TABLE tasks (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    duration_minutes INT DEFAULT 60,
+    min_duration_minutes INT,
+    max_duration_minutes INT,
+    split_up BOOLEAN DEFAULT FALSE,
+    hours_label VARCHAR(120),
+    schedule_after TIMESTAMP,
+    due_date TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ======================

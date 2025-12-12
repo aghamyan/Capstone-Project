@@ -14,6 +14,7 @@ import groupChallengeRoutes from "./routes/groupChallengeRoutes.js";
 import achievementRoutes from "./routes/achievementRoutes.js";
 import friendRoutes from "./routes/friendRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
+import taskRoutes from "./routes/taskRoutes.js";
 import avatarRoutes from "./routes/avatarRoutes.js"; // ✅ new route
 import dailyChallengeRoutes from "./routes/dailyChallengeRoutes.js";
 import smartSchedulerRoutes from "./routes/smartSchedulerRoutes.js";
@@ -57,6 +58,7 @@ app.use("/api/group-challenges", groupChallengeRoutes);
 app.use("/api/achievements", achievementRoutes);
 app.use("/api/friends", friendRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/tasks", taskRoutes);
 app.use("/api/avatar", avatarRoutes); // ✅ avatar upload route
 app.use("/api/daily-challenge", dailyChallengeRoutes);
 app.use("/api/smart-scheduler", smartSchedulerRoutes);
