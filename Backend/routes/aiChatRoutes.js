@@ -1,6 +1,6 @@
 import express from "express";
 
-import { generateAiChatReply } from "../services/aiChatService.js";
+import { generateAiChatReply, generateHabitCreatedReply } from "../services/aiChatService.js";
 import { createHabit } from "../services/habitService.js";
 import {
   deleteChatHistory,
@@ -65,10 +65,10 @@ router.post("/message", async (req, res) => {
     if (intent === "confirm-add") {
       const suggestion = habitSuggestion || findPendingHabitSuggestion(history);
       if (!suggestion) {
-        finalReply = "I couldn't find the habit details. Tell me the habit and I'll add it.";
+        finalReply = reply;
       } else {
         createdHabit = await createHabit(userId, suggestion);
-        finalReply = `Added "${createdHabit.title}" to your habits. Want to adjust anything?`;
+        finalReply = await generateHabitCreatedReply({ habit: createdHabit, context });
         metadata = { ...(metadata || {}), habitSuggestion: suggestion, createdHabit: true };
 
         if (context?.userContext) {
@@ -87,7 +87,7 @@ router.post("/message", async (req, res) => {
         }
       }
     } else if (intent === "suggest" && habitSuggestion) {
-      finalReply = `${reply} Want me to add it or change anything first?`;
+      finalReply = reply;
       metadata = { ...(metadata || {}), habitSuggestion };
     }
 

@@ -160,7 +160,7 @@ const analyzeHabitIntent = (message, history = []) => {
     return {
       intent: "confirm-add",
       habitSuggestion: pendingSuggestion,
-      reply: `Want me to add "${pendingSuggestion.title}" as a habit or tweak it first?`,
+      reply: null,
     };
   }
 
@@ -230,6 +230,13 @@ const buildChatMessages = ({ systemInstruction, history, message }) => {
 
   return [new SystemMessage(systemInstruction), ...conversation];
 };
+
+const buildConversationMessages = (history) =>
+  (history || [])
+    .filter((entry) => ["user", "assistant"].includes(entry.role))
+    .slice(-MESSAGE_HISTORY_LIMIT)
+    .map(toChatMessage)
+    .filter(Boolean);
 
 const callClaude = async (messages) => {
   const apiKey = resolveApiKey();
@@ -308,6 +315,48 @@ const requestClaudeHabitSuggestion = async ({ message, userContext }) => {
   return parseHabitJson(reply);
 };
 
+const generateClaudeSuggestionReply = async ({
+  habitSuggestion,
+  systemInstruction,
+  history,
+}) => {
+  if (!habitSuggestion) return null;
+
+  const conversation = buildConversationMessages(history);
+  const prompt = new HumanMessage(
+    [
+      "Share this starter habit with the user in one short, warm paragraph.",
+      "Encourage them and ask if they'd like to add it or adjust details.",
+      "Habit details:",
+      JSON.stringify(habitSuggestion),
+    ].join("\n"),
+  );
+
+  return callClaude([new SystemMessage(systemInstruction), ...conversation, prompt]);
+};
+
+export const generateHabitCreatedReply = async ({ habit, context }) => {
+  const { dbOverview, userContext, history } = context || {};
+
+  const systemInstruction = [
+    "You are a warm, conversational AI assistant for the StepHabit platform.",
+    "A habit was just saved for the user. Acknowledge it briefly and invite tweaks or next steps.",
+    "Keep replies short and natural.",
+    "Database overview:\n" + formatTableSummary(dbOverview || []),
+    "User context:\n" + JSON.stringify(userContext || {}, null, 2),
+  ].join("\n\n");
+
+  const conversation = buildConversationMessages(history);
+  const prompt = new HumanMessage(
+    `Confirm the habit creation to the user in a friendly sentence and offer help adjusting it: ${JSON.stringify(habit)}`,
+  );
+
+  return (
+    (await callClaude([new SystemMessage(systemInstruction), ...conversation, prompt])) ||
+    "Your habit was saved. Want to adjust anything?"
+  );
+};
+
 export const generateAiChatReply = async ({ userId, message, history: providedHistory = null }) => {
   const [dbOverview, userContext, history] = await Promise.all([
     describeTables(),
@@ -334,15 +383,20 @@ export const generateAiChatReply = async ({ userId, message, history: providedHi
   if (habitAnalysis.intent === "suggest") {
     habitSuggestion =
       (await requestClaudeHabitSuggestion({ message, userContext })) || buildHabitSuggestion(message);
+
+    if (habitSuggestion) {
+      replyFromClaude = await generateClaudeSuggestionReply({
+        habitSuggestion,
+        systemInstruction,
+        history,
+      });
+    }
   } else if (habitAnalysis.intent === "chat") {
     replyFromClaude = await callClaude(buildChatMessages({ systemInstruction, history, message }));
   }
 
   const reply =
     habitAnalysis.reply ||
-    (habitAnalysis.intent === "suggest" && habitSuggestion
-      ? `${habitSuggestion.summary || `${habitSuggestion.title} — ${habitSuggestion.description}`} Want me to add it or adjust it first?`
-      : null) ||
     replyFromClaude ||
     fallbackReply({ message, userContext, dbOverview, history });
 
