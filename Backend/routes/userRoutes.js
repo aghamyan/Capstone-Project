@@ -2,7 +2,7 @@ import express from "express";
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import { Op } from "sequelize";
-import { RegistrationVerification, UserSetting } from "../models/index.js";
+import { PasswordReset, RegistrationVerification, UserSetting } from "../models/index.js";
 import { EmailConfigError, sendEmail } from "../utils/emailService.js";
 
 const defaultSettings = {
@@ -13,6 +13,13 @@ const defaultSettings = {
   push_notifications: false,
   share_activity: true,
   theme: "light",
+  ai_tone: "balanced",
+  support_style: "celebrate",
+  email_alerts: true,
+  push_reminders: false,
+  google_calendar: false,
+  apple_calendar: false,
+  fitness_sync: false,
 };
 
 const sanitizeString = (value) => {
@@ -31,6 +38,13 @@ const formatSettings = (settingsInstance) => {
       pushNotifications: defaultSettings.push_notifications,
       shareActivity: defaultSettings.share_activity,
       theme: defaultSettings.theme,
+      aiTone: defaultSettings.ai_tone,
+      supportStyle: defaultSettings.support_style,
+      emailAlerts: defaultSettings.email_alerts,
+      pushReminders: defaultSettings.push_reminders,
+      googleCalendar: defaultSettings.google_calendar,
+      appleCalendar: defaultSettings.apple_calendar,
+      fitnessSync: defaultSettings.fitness_sync,
     };
   }
 
@@ -43,6 +57,13 @@ const formatSettings = (settingsInstance) => {
     pushNotifications: settings.push_notifications,
     shareActivity: settings.share_activity,
     theme: settings.theme,
+    aiTone: settings.ai_tone,
+    supportStyle: settings.support_style,
+    emailAlerts: settings.email_alerts ?? settings.email_notifications,
+    pushReminders: settings.push_reminders ?? settings.push_notifications,
+    googleCalendar: settings.google_calendar,
+    appleCalendar: settings.apple_calendar,
+    fitnessSync: settings.fitness_sync,
   };
 };
 
@@ -76,6 +97,9 @@ const ensureUserSettings = async (userId) => {
 const router = express.Router();
 
 const VERIFICATION_EXPIRATION_MINUTES = 15;
+const PASSWORD_REQUIREMENTS_MESSAGE = "Password must be at least 8 characters and include letters and numbers.";
+
+const isPasswordStrong = (password) => /^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(password);
 
 const generateVerificationCode = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -105,6 +129,10 @@ router.post("/register", async (req, res) => {
   try {
     const { name, email, password, onboarding = {} } = req.body;
     if (!name || !email || !password) return res.status(400).json({ error: "All fields required" });
+
+    if (!isPasswordStrong(password)) {
+      return res.status(400).json({ error: PASSWORD_REQUIREMENTS_MESSAGE });
+    }
 
     const existing = await User.findOne({ where: { email } });
     if (existing) return res.status(400).json({ error: "Email already exists" });
@@ -149,6 +177,10 @@ router.post("/register/request-code", async (req, res) => {
   try {
     const { name, email, password, onboarding = {} } = req.body;
     if (!name || !email || !password) return res.status(400).json({ error: "All fields required" });
+
+    if (!isPasswordStrong(password)) {
+      return res.status(400).json({ error: PASSWORD_REQUIREMENTS_MESSAGE });
+    }
 
     const existing = await User.findOne({ where: { email } });
     if (existing) return res.status(400).json({ error: "Email already exists" });
@@ -236,6 +268,79 @@ router.post("/register/verify", async (req, res) => {
   } catch (err) {
     console.error("Verification error:", err);
     res.status(500).json({ error: "Verification failed" });
+  }
+});
+
+router.post("/password/reset/request", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: "Email is required" });
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) return res.status(404).json({ error: "No account found for that email" });
+
+    const code = generateVerificationCode();
+    const codeHash = await bcrypt.hash(code, 10);
+    const expiresAt = new Date(Date.now() + VERIFICATION_EXPIRATION_MINUTES * 60 * 1000);
+
+    await PasswordReset.upsert({ email, code_hash: codeHash, expires_at: expiresAt });
+
+    await sendEmail({
+      to: email,
+      subject: "Reset your StepHabit password",
+      text: `Use this 6-digit code to reset your password: ${code}\n\nThe code expires in ${VERIFICATION_EXPIRATION_MINUTES} minutes. If you didn't request this, you can ignore the email.`,
+    });
+
+    res.json({ message: "Reset code sent" });
+  } catch (err) {
+    console.error("Password reset request error:", err);
+    if (err instanceof EmailConfigError) {
+      return res.status(503).json({
+        error: "Email service is not configured. Please set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS.",
+        code: err.code,
+      });
+    }
+
+    res.status(500).json({ error: "Unable to send reset code. Please try again." });
+  }
+});
+
+router.post("/password/reset/verify", async (req, res) => {
+  try {
+    const { email, code, newPassword } = req.body;
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({ error: "Email, code, and new password are required" });
+    }
+
+    if (!isPasswordStrong(newPassword)) {
+      return res.status(400).json({ error: PASSWORD_REQUIREMENTS_MESSAGE });
+    }
+
+    const request = await PasswordReset.findOne({ where: { email } });
+    if (!request) return res.status(400).json({ error: "No reset request found for this email" });
+
+    if (new Date(request.expires_at) < new Date()) {
+      await request.destroy();
+      return res.status(400).json({ error: "Reset code has expired" });
+    }
+
+    const isValid = await bcrypt.compare(code, request.code_hash);
+    if (!isValid) return res.status(400).json({ error: "Invalid reset code" });
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      await request.destroy();
+      return res.status(404).json({ error: "No account found for that email" });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await user.update({ password: hashed });
+    await request.destroy();
+
+    res.json({ message: "Password updated successfully" });
+  } catch (err) {
+    console.error("Password reset verify error:", err);
+    res.status(500).json({ error: "Unable to reset password right now" });
   }
 });
 
@@ -340,24 +445,39 @@ router.put("/profile/:id", async (req, res) => {
       timezone: settings.timezone || defaultSettings.timezone,
       weekly_summary_day: settings.weeklySummaryDay || defaultSettings.weekly_summary_day,
       theme: settings.theme || defaultSettings.theme,
+      ai_tone: settings.aiTone || defaultSettings.ai_tone,
+      support_style: settings.supportStyle || defaultSettings.support_style,
+      email_notifications: Boolean(
+        typeof settings.emailNotifications === "boolean"
+          ? settings.emailNotifications
+          : settings.emailAlerts ?? defaultSettings.email_notifications
+      ),
+      push_notifications: Boolean(
+        typeof settings.pushNotifications === "boolean"
+          ? settings.pushNotifications
+          : settings.pushReminders ?? defaultSettings.push_notifications
+      ),
+      share_activity: Boolean(
+        typeof settings.shareActivity === "boolean"
+          ? settings.shareActivity
+          : defaultSettings.share_activity
+      ),
+      email_alerts: Boolean(
+        typeof settings.emailAlerts === "boolean"
+          ? settings.emailAlerts
+          : settings.emailNotifications ?? defaultSettings.email_alerts
+      ),
+      push_reminders: Boolean(
+        typeof settings.pushReminders === "boolean"
+          ? settings.pushReminders
+          : settings.pushNotifications ?? defaultSettings.push_reminders
+      ),
+      google_calendar: Boolean(settings.googleCalendar ?? defaultSettings.google_calendar),
+      apple_calendar: Boolean(settings.appleCalendar ?? defaultSettings.apple_calendar),
+      fitness_sync: Boolean(settings.fitnessSync ?? defaultSettings.fitness_sync),
     };
 
     updates.daily_reminder_time = settings.dailyReminderTime || null;
-    updates.email_notifications = Boolean(
-      typeof settings.emailNotifications === "boolean"
-        ? settings.emailNotifications
-        : defaultSettings.email_notifications
-    );
-    updates.push_notifications = Boolean(
-      typeof settings.pushNotifications === "boolean"
-        ? settings.pushNotifications
-        : defaultSettings.push_notifications
-    );
-    updates.share_activity = Boolean(
-      typeof settings.shareActivity === "boolean"
-        ? settings.shareActivity
-        : defaultSettings.share_activity
-    );
 
     await settingsRecord.update(updates);
 

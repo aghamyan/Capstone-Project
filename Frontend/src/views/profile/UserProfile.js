@@ -23,6 +23,7 @@ import {
   CProgressBar,
   CRow,
   CSpinner,
+  useColorModes,
 } from "@coreui/react"
 import CIcon from "@coreui/icons-react"
 import {
@@ -48,21 +49,37 @@ import { HabitContext } from "../../context/HabitContext"
 import { fetchUserSettings, saveUserSettings } from "../../services/settings"
 import { getProgressAnalytics } from "../../services/analytics"
 import { API_BASE, ASSET_BASE } from "../../utils/apiConfig"
+import ResetPasswordModal from "../../components/auth/ResetPasswordModal"
+
+const THEME_STORAGE_KEY = "coreui-free-react-admin-template-theme"
+
+const mapThemeToColorMode = (theme) => {
+  if (theme === "dark") return "dark"
+  if (theme === "system") return "auto"
+  return "light"
+}
+
+const mapColorModeToTheme = (colorMode) => {
+  if (colorMode === "dark") return "dark"
+  if (colorMode === "auto") return "system"
+  return "light"
+}
 
 const UserProfile = () => {
-  const { user, login } = useContext(AuthContext)
+  const { user, login, logout } = useContext(AuthContext)
   const habitContext = useContext(HabitContext)
   const habits = habitContext?.habits || []
   const location = useLocation()
   const navigate = useNavigate()
+  const { colorMode, setColorMode } = useColorModes(THEME_STORAGE_KEY)
 
   const [activeTab, setActiveTab] = useState(location.state?.tab || "account")
   const [profile, setProfile] = useState({ name: "", email: "", gender: "" })
-  const [preferences, setPreferences] = useState({
-    theme: "light",
+  const [preferences, setPreferences] = useState(() => ({
+    theme: mapColorModeToTheme(colorMode),
     aiTone: "balanced",
     supportStyle: "celebrate",
-  })
+  }))
   const [notificationPrefs, setNotificationPrefs] = useState({
     emailAlerts: true,
     pushReminders: true,
@@ -80,6 +97,7 @@ const UserProfile = () => {
   const [error, setError] = useState("")
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [settingsBaseline, setSettingsBaseline] = useState({})
+  const [resetModalOpen, setResetModalOpen] = useState(false)
   const fileInputRef = useRef(null)
   const loginRef = useRef(login)
 
@@ -128,20 +146,33 @@ const UserProfile = () => {
           gender: payload.gender || "",
         })
         const settings = payload.settings || {}
+        const storedColorMode =
+          typeof window !== "undefined" ? localStorage.getItem(THEME_STORAGE_KEY) : null
+        const mappedColorModeTheme = mapColorModeToTheme(colorMode)
+        const mappedSettingsTheme = settings.theme
+        const resolvedTheme =
+          mappedSettingsTheme && storedColorMode !== null
+            ? mappedColorModeToTheme(storedColorMode)
+            : mappedSettingsTheme || mappedColorModeTheme
+
         setSettingsBaseline(settings)
         setPreferences({
-          theme: settings.theme || "light",
-          aiTone: settings.aiTone || "balanced",
-          supportStyle: settings.supportStyle || "celebrate",
+          theme: resolvedTheme || "light",
+          aiTone: settings.aiTone || settings.ai_tone || "balanced",
+          supportStyle: settings.supportStyle || settings.support_style || "celebrate",
         })
         setNotificationPrefs({
-          emailAlerts: Boolean(settings.emailAlerts ?? true),
-          pushReminders: Boolean(settings.pushReminders ?? false),
+          emailAlerts: Boolean(
+            settings.emailAlerts ?? settings.emailNotifications ?? settings.email_alerts ?? true,
+          ),
+          pushReminders: Boolean(
+            settings.pushReminders ?? settings.pushNotifications ?? settings.push_reminders ?? false,
+          ),
         })
         setConnectedApps({
-          googleCalendar: Boolean(settings.googleCalendar ?? false),
-          appleCalendar: Boolean(settings.appleCalendar ?? false),
-          fitnessSync: Boolean(settings.fitnessSync ?? false),
+          googleCalendar: Boolean(settings.googleCalendar ?? settings.google_calendar ?? false),
+          appleCalendar: Boolean(settings.appleCalendar ?? settings.apple_calendar ?? false),
+          fitnessSync: Boolean(settings.fitnessSync ?? settings.fitness_sync ?? false),
         })
         setAvatarUrl(payload.avatar ? `${ASSET_BASE}${payload.avatar}` : "/uploads/default-avatar.png")
         setError("")
@@ -164,6 +195,17 @@ const UserProfile = () => {
       controller.abort()
     }
   }, [user?.id])
+
+  useEffect(() => {
+    setColorMode(mapThemeToColorMode(preferences.theme))
+  }, [preferences.theme, setColorMode])
+
+  useEffect(() => {
+    const mappedTheme = mapColorModeToTheme(colorMode)
+    setPreferences((prev) =>
+      prev.theme === mappedTheme ? prev : { ...prev, theme: mappedTheme },
+    )
+  }, [colorMode])
 
   useEffect(() => {
     const loadAnalytics = async () => {
@@ -256,6 +298,8 @@ const UserProfile = () => {
         supportStyle: preferences.supportStyle,
         emailAlerts: notificationPrefs.emailAlerts,
         pushReminders: notificationPrefs.pushReminders,
+        emailNotifications: notificationPrefs.emailAlerts,
+        pushNotifications: notificationPrefs.pushReminders,
         googleCalendar: connectedApps.googleCalendar,
         appleCalendar: connectedApps.appleCalendar,
         fitnessSync: connectedApps.fitnessSync,
@@ -282,7 +326,15 @@ const UserProfile = () => {
   }
 
   const handlePasswordReset = () => {
-    setStatus("Password reset instructions will be sent to your email.")
+    setStatus("")
+    setResetModalOpen(true)
+  }
+
+  const handleResetSuccess = () => {
+    if (typeof logout === "function") {
+      logout()
+    }
+    navigate("/login")
   }
 
   const renderAccountTab = () => (
@@ -849,6 +901,12 @@ const UserProfile = () => {
       </div>
 
       <CForm onSubmit={handleSave} className="profile-content">{renderTabContent()}</CForm>
+      <ResetPasswordModal
+        visible={resetModalOpen}
+        onClose={() => setResetModalOpen(false)}
+        initialEmail={profile.email}
+        onSuccess={handleResetSuccess}
+      />
     </CContainer>
   )
 }
