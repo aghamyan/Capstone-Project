@@ -20,6 +20,7 @@ import {
   CListGroupItem,
   CRow,
   CSpinner,
+  useColorModes,
 } from "@coreui/react";
 import CIcon from "@coreui/icons-react";
 import {
@@ -37,8 +38,21 @@ import {
 import { AuthContext } from "../../context/AuthContext";
 import { fetchUserSettings, saveUserSettings } from "../../services/settings";
 
+const THEME_STORAGE_KEY = "coreui-free-react-admin-template-theme";
+
+const mapThemeToColorMode = (theme) => {
+  if (theme === "dark") return "dark";
+  return "light";
+};
+
+const mapColorModeToTheme = (colorMode) => {
+  if (colorMode === "dark") return "dark";
+  return "light";
+};
+
 const Settings = () => {
   const { user, login } = useContext(AuthContext);
+  const { colorMode, setColorMode } = useColorModes(THEME_STORAGE_KEY);
   const [profile, setProfile] = useState({
     name: "",
     email: "",
@@ -53,7 +67,7 @@ const Settings = () => {
     emailNotifications: true,
     pushNotifications: false,
     shareActivity: true,
-    theme: "light",
+    theme: mapColorModeToTheme(colorMode),
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -89,6 +103,13 @@ const Settings = () => {
   );
 
   useEffect(() => {
+    const mappedTheme = mapColorModeToTheme(colorMode);
+    setPreferences((prev) =>
+      prev.theme === mappedTheme ? prev : { ...prev, theme: mappedTheme }
+    );
+  }, [colorMode]);
+
+  useEffect(() => {
     const loadSettings = async () => {
       if (!user) {
         setLoading(false);
@@ -114,7 +135,7 @@ const Settings = () => {
           emailNotifications: Boolean(payload.settings?.emailNotifications ?? true),
           pushNotifications: Boolean(payload.settings?.pushNotifications ?? false),
           shareActivity: Boolean(payload.settings?.shareActivity ?? true),
-          theme: payload.settings?.theme || "light",
+          theme: payload.settings?.theme || mapColorModeToTheme(colorMode),
         });
       } catch (err) {
         console.error(err);
@@ -125,7 +146,7 @@ const Settings = () => {
     };
 
     loadSettings();
-  }, [user]);
+  }, [colorMode, user]);
 
   const handleProfileChange = (field, value) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
@@ -138,6 +159,10 @@ const Settings = () => {
   const handleBooleanPreference = (field) => {
     setPreferences((prev) => ({ ...prev, [field]: !prev[field] }));
   };
+
+  useEffect(() => {
+    setColorMode(mapThemeToColorMode(preferences.theme));
+  }, [preferences.theme, setColorMode]);
 
   const handleSave = async (event) => {
     event.preventDefault();
@@ -175,7 +200,7 @@ const Settings = () => {
         emailNotifications: Boolean(updated.settings?.emailNotifications ?? true),
         pushNotifications: Boolean(updated.settings?.pushNotifications ?? false),
         shareActivity: Boolean(updated.settings?.shareActivity ?? true),
-        theme: updated.settings?.theme || "light",
+        theme: updated.settings?.theme || mapColorModeToTheme(colorMode),
       });
 
       if (login) {
