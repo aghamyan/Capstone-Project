@@ -39,6 +39,7 @@ import { AuthContext } from "../../context/AuthContext";
 import { fetchUserSettings, saveUserSettings } from "../../services/settings";
 
 const THEME_STORAGE_KEY = "coreui-free-react-admin-template-theme";
+const COLOR_MODE_EVENT = "coreui-color-mode-updated";
 
 const mapThemeToColorMode = (theme) => {
   if (theme === "dark") return "dark";
@@ -110,6 +111,20 @@ const Settings = () => {
   }, [colorMode]);
 
   useEffect(() => {
+    const handleColorModeChange = (event) => {
+      if (!event.detail) return;
+      const mappedTheme = mapColorModeToTheme(event.detail);
+      setPreferences((prev) =>
+        prev.theme === mappedTheme ? prev : { ...prev, theme: mappedTheme }
+      );
+      setColorMode(event.detail);
+    };
+
+    window.addEventListener(COLOR_MODE_EVENT, handleColorModeChange);
+    return () => window.removeEventListener(COLOR_MODE_EVENT, handleColorModeChange);
+  }, [setColorMode]);
+
+  useEffect(() => {
     const loadSettings = async () => {
       if (!user) {
         setLoading(false);
@@ -161,7 +176,13 @@ const Settings = () => {
   };
 
   useEffect(() => {
-    setColorMode(mapThemeToColorMode(preferences.theme));
+    const nextColorMode = mapThemeToColorMode(preferences.theme);
+    setColorMode(nextColorMode);
+    window.dispatchEvent(
+      new CustomEvent(COLOR_MODE_EVENT, {
+        detail: nextColorMode,
+      })
+    );
   }, [preferences.theme, setColorMode]);
 
   const handleSave = async (event) => {
