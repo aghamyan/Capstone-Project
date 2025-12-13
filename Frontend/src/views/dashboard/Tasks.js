@@ -24,7 +24,7 @@ import {
   CSpinner,
 } from "@coreui/react"
 import CIcon from "@coreui/icons-react"
-import { cilCalendar, cilEye, cilList, cilLowVision, cilPlus, cilTask, cilTrash } from "@coreui/icons"
+import { cilCalendar, cilList, cilLowVision, cilPlus, cilTask, cilTrash } from "@coreui/icons"
 
 import { createTask, deleteTask, getTasks } from "../../services/tasks"
 
@@ -760,7 +760,7 @@ const Tasks = () => {
                             onClick={() => handleToggleHideCompleted(list.id)}
                             title={list.hideCompleted ? "Show checked items" : "Hide checked items"}
                           >
-                            <CIcon icon={list.hideCompleted ? cilEye : cilLowVision} />
+                            <CIcon icon={list.hideCompleted ? cilLowVision : cilList} />
                           </CButton>
                           <CButton
                             size="sm"
