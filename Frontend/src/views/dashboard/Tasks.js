@@ -358,17 +358,29 @@ const Tasks = () => {
                         style={{ lineHeight: 0 }}
                       >
                         <span
-                          className="rounded-circle position-relative"
+                          className="rounded-circle position-relative shadow-sm"
                           style={{
                             width: 20,
                             height: 20,
                             display: "inline-block",
                             cursor: "pointer",
                             border: `2px solid ${task.color || "#d1d5db"}`,
-                            backgroundColor: task.status === "done" ? task.color : "transparent",
+                            backgroundColor: task.status === "done" ? "#eef2ff" : "transparent",
                             opacity: task.status === "missed" ? 0.35 : 1,
                           }}
                         >
+                          {task.status === "done" ? (
+                            <span
+                              className="position-absolute top-50 start-50 translate-middle"
+                              style={{
+                                fontSize: 14,
+                                fontWeight: 700,
+                                color: "#111827",
+                              }}
+                            >
+                              ✓
+                            </span>
+                          ) : null}
                           {task.status === "missed" ? (
                             <span
                               className="position-absolute top-50 start-50 translate-middle text-secondary"
@@ -390,7 +402,10 @@ const Tasks = () => {
                             {stripTags(task.notes)}
                           </div>
                         ) : null}
-                        <div className="text-body-secondary small mt-1" style={{ opacity: 0.7 }}>
+                        <div
+                          className="text-body-secondary"
+                          style={{ opacity: 0.55, fontSize: "0.75rem", letterSpacing: 0.2 }}
+                        >
                           Created {new Date(task.created_at).toLocaleDateString()}
                         </div>
                       </button>
@@ -568,33 +583,59 @@ const Tasks = () => {
         <CModalBody className="pt-2">
           {selectedTask && (
             <CForm className="d-flex flex-column gap-3">
-              <div className="d-flex align-items-center gap-2 small text-body-secondary flex-wrap">
-                <span className="text-uppercase fw-semibold">Format</span>
-                <CButton color="light" size="sm" variant="outline" onClick={() => applyFormat("fontSize", 2)}>
+              <div className="p-2 rounded-3 border bg-white shadow-sm d-flex align-items-center flex-wrap gap-2">
+                <span className="text-uppercase text-secondary fw-semibold small me-1">Format</span>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                  onClick={() => applyFormat("fontSize", 2)}
+                >
                   A-
-                </CButton>
-                <CButton color="light" size="sm" variant="outline" onClick={() => applyFormat("fontSize", 3)}>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                  onClick={() => applyFormat("fontSize", 3)}
+                >
                   A
-                </CButton>
-                <CButton color="light" size="sm" variant="outline" onClick={() => applyFormat("fontSize", 4)}>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                  onClick={() => applyFormat("fontSize", 4)}
+                >
                   A+
-                </CButton>
-                <CButton color="light" size="sm" variant="outline" onClick={() => applyFormat("insertUnorderedList")}
-                  >
-                  • List
-                </CButton>
-                <CButton color="light" size="sm" variant="outline" onClick={() => applyFormat("indent")}
-                  >
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary rounded-pill px-3 d-flex align-items-center gap-1"
+                  onClick={() => applyFormat("insertUnorderedList")}
+                >
+                  <span style={{ fontSize: 18, lineHeight: 1 }}>•</span>
+                  <span>List</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                  onClick={() => applyFormat("indent")}
+                >
                   ↳
-                </CButton>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                  onClick={() => applyFormat("outdent")}
+                >
+                  ↰
+                </button>
               </div>
               <div>
                 <CFormLabel className="text-medium-emphasis">Notes</CFormLabel>
                 <div
                   ref={editorRef}
                   contentEditable
-                  className="bg-body-secondary border rounded p-3"
-                  style={{ minHeight: 180, borderColor: "#e5e7eb" }}
+                  className="border rounded-3 p-3 shadow-sm"
+                  style={{ minHeight: 200, borderColor: "#e5e7eb", backgroundColor: "#f8fafc" }}
                   placeholder="Capture ideas, subpoints, and quick thoughts."
                   dangerouslySetInnerHTML={{ __html: editNotes }}
                   onInput={(e) => setEditNotes(e.currentTarget.innerHTML)}
