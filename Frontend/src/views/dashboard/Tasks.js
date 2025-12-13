@@ -64,6 +64,8 @@ const Tasks = () => {
   const [editDescription, setEditDescription] = useState("")
   const [editChecklists, setEditChecklists] = useState([])
   const [checklistInputs, setChecklistInputs] = useState({})
+  const checklistDateInputs = useRef({})
+  const itemDateInputs = useRef({})
 
   const user = JSON.parse(localStorage.getItem("user") || "{}")
   const userId = user?.id
@@ -353,6 +355,29 @@ const Tasks = () => {
       ...list,
       dueDate: value,
     }))
+  }
+
+  const openChecklistDatePicker = (listId) => {
+    const input = checklistDateInputs.current[listId]
+    if (input) {
+      if (typeof input.showPicker === "function") {
+        input.showPicker()
+      } else {
+        input.click()
+      }
+    }
+  }
+
+  const openItemDatePicker = (listId, itemId) => {
+    const key = `${listId}-${itemId}`
+    const input = itemDateInputs.current[key]
+    if (input) {
+      if (typeof input.showPicker === "function") {
+        input.showPicker()
+      } else {
+        input.click()
+      }
+    }
   }
 
   const handleDeleteItem = (listId, itemId) => {
@@ -741,22 +766,32 @@ const Tasks = () => {
                           className="flex-grow-1"
                         />
                         <div className="d-flex gap-2 align-items-center flex-shrink-0">
-                          <CInputGroup size="sm" className="flex-shrink-0" style={{ maxWidth: 160 }}>
-                            <CInputGroupText className="bg-white border-end-0 py-1 px-2">
-                              <CIcon icon={cilCalendar} className="text-secondary" />
-                            </CInputGroupText>
-                            <CFormInput
-                              type="date"
-                              value={list.dueDate}
-                              onChange={(e) => handleChecklistDateChange(list.id, e.target.value)}
-                              className="bg-white border-start-0 py-1"
-                            />
-                          </CInputGroup>
+                          <input
+                            type="date"
+                            value={list.dueDate}
+                            onChange={(e) => handleChecklistDateChange(list.id, e.target.value)}
+                            ref={(node) => {
+                              if (node) {
+                                checklistDateInputs.current[list.id] = node
+                              }
+                            }}
+                            className="visually-hidden"
+                            aria-hidden
+                            tabIndex={-1}
+                          />
                           <CButton
                             size="sm"
                             color="light"
-                            variant="ghost"
-                            className="border text-secondary"
+                            className="p-2 border-0 text-secondary"
+                            onClick={() => openChecklistDatePicker(list.id)}
+                            title="Set due date"
+                          >
+                            <CIcon icon={cilCalendar} />
+                          </CButton>
+                          <CButton
+                            size="sm"
+                            color="light"
+                            className="p-2 border-0 text-secondary"
                             onClick={() => handleToggleHideCompleted(list.id)}
                             title={list.hideCompleted ? "Show checked items" : "Hide checked items"}
                           >
@@ -765,8 +800,7 @@ const Tasks = () => {
                           <CButton
                             size="sm"
                             color="light"
-                            variant="ghost"
-                            className="border text-danger"
+                            className="p-2 border-0 text-danger"
                             onClick={() => handleDeleteChecklist(list.id)}
                             title="Delete checklist"
                           >
@@ -802,22 +836,32 @@ const Tasks = () => {
                                 {item.text}
                               </div>
                               <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                                <CInputGroup size="sm" className="flex-shrink-0" style={{ maxWidth: 150 }}>
-                                  <CInputGroupText className="bg-white border-end-0 py-1 px-2">
-                                    <CIcon icon={cilCalendar} className="text-secondary" />
-                                  </CInputGroupText>
-                                  <CFormInput
-                                    type="date"
-                                    value={item.dueDate}
-                                    onChange={(e) => handleItemDateChange(list.id, item.id, e.target.value)}
-                                    className="bg-white border-start-0 py-1"
-                                  />
-                                </CInputGroup>
+                                <input
+                                  type="date"
+                                  value={item.dueDate}
+                                  onChange={(e) => handleItemDateChange(list.id, item.id, e.target.value)}
+                                  ref={(node) => {
+                                    if (node) {
+                                      itemDateInputs.current[`${list.id}-${item.id}`] = node
+                                    }
+                                  }}
+                                  className="visually-hidden"
+                                  aria-hidden
+                                  tabIndex={-1}
+                                />
                                 <CButton
                                   size="sm"
                                   color="light"
-                                  variant="ghost"
-                                  className="border text-danger"
+                                  className="p-2 border-0 text-secondary"
+                                  onClick={() => openItemDatePicker(list.id, item.id)}
+                                  title="Set due date"
+                                >
+                                  <CIcon icon={cilCalendar} />
+                                </CButton>
+                                <CButton
+                                  size="sm"
+                                  color="light"
+                                  className="p-2 border-0 text-danger"
                                   onClick={() => handleDeleteItem(list.id, item.id)}
                                   title="Delete item"
                                 >
