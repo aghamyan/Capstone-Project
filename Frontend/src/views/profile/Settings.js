@@ -28,6 +28,7 @@ import {
   cilCalendar,
   cilCheckCircle,
   cilClock,
+  cilContrast,
   cilEnvelopeClosed,
   cilList,
   cilMoon,
@@ -43,11 +44,13 @@ const COLOR_MODE_EVENT = "coreui-color-mode-updated";
 
 const mapThemeToColorMode = (theme) => {
   if (theme === "dark") return "dark";
+  if (theme === "auto") return "auto";
   return "light";
 };
 
 const mapColorModeToTheme = (colorMode) => {
   if (colorMode === "dark") return "dark";
+  if (colorMode === "auto") return "auto";
   return "light";
 };
 
@@ -143,15 +146,15 @@ const Settings = () => {
           gender: payload.gender || "",
           bio: payload.bio || "",
         });
-        setPreferences({
-          timezone: payload.settings?.timezone || "UTC",
-          dailyReminderTime: payload.settings?.dailyReminderTime || "",
-          weeklySummaryDay: payload.settings?.weeklySummaryDay || "Sunday",
-          emailNotifications: Boolean(payload.settings?.emailNotifications ?? true),
-          pushNotifications: Boolean(payload.settings?.pushNotifications ?? false),
-          shareActivity: Boolean(payload.settings?.shareActivity ?? true),
-          theme: payload.settings?.theme || mapColorModeToTheme(colorMode),
-        });
+      setPreferences({
+        timezone: payload.settings?.timezone || "UTC",
+        dailyReminderTime: payload.settings?.dailyReminderTime || "",
+        weeklySummaryDay: payload.settings?.weeklySummaryDay || "Sunday",
+        emailNotifications: Boolean(payload.settings?.emailNotifications ?? true),
+        pushNotifications: Boolean(payload.settings?.pushNotifications ?? false),
+        shareActivity: Boolean(payload.settings?.shareActivity ?? true),
+        theme: mapColorModeToTheme(payload.settings?.theme || colorMode),
+      });
       } catch (err) {
         console.error(err);
         setError("We couldn't load your settings. Please try again.");
@@ -413,8 +416,20 @@ const Settings = () => {
               <CListGroup flush className="small border-top pt-3">
                 <CListGroupItem className="border-0 px-0 d-flex justify-content-between align-items-center">
                   Theme preference
-                  <CBadge color={preferences.theme === "dark" ? "dark" : "primary"}>
-                    {preferences.theme === "dark" ? "Dark" : "Light"}
+                  <CBadge
+                    color={
+                      preferences.theme === "dark"
+                        ? "dark"
+                        : preferences.theme === "auto"
+                        ? "secondary"
+                        : "primary"
+                    }
+                  >
+                    {preferences.theme === "dark"
+                      ? "Dark"
+                      : preferences.theme === "auto"
+                      ? "Auto"
+                      : "Light"}
                   </CBadge>
                 </CListGroupItem>
                 <CListGroupItem className="border-0 px-0 d-flex justify-content-between align-items-center">
@@ -518,6 +533,19 @@ const Settings = () => {
                   label={
                     <span className="d-flex align-items-center">
                       <CIcon icon={cilMoon} className="me-2 text-primary" /> Deep focus
+                    </span>
+                  }
+                />
+                <CFormCheck
+                  type="radio"
+                  name="theme"
+                  id="theme-auto"
+                  value="auto"
+                  checked={preferences.theme === "auto"}
+                  onChange={(event) => handlePreferenceChange("theme", event.target.value)}
+                  label={
+                    <span className="d-flex align-items-center">
+                      <CIcon icon={cilContrast} className="me-2 text-body-secondary" /> Auto
                     </span>
                   }
                 />
