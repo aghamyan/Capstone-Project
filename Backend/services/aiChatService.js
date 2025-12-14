@@ -453,6 +453,24 @@ const parseScheduleJson = (raw) => {
       };
     }
 
+    if (parsed.action === "delete-event") {
+      const id = Number.parseInt(parsed.id, 10);
+      const title = parsed.title?.trim() || null;
+      const day = parsed.day?.trim() || null;
+      const starttime = parsed.starttime?.trim() || null;
+
+      if (!Number.isFinite(id) && !title && !day && !starttime) return null;
+
+      return {
+        action: "delete-event",
+        id: Number.isFinite(id) ? id : null,
+        title,
+        day,
+        starttime,
+        userReply: parsed.userReply?.trim() || null,
+      };
+    }
+
     if (parsed.action !== "create-event") return null;
 
     const title = parsed.title?.trim();
@@ -783,6 +801,7 @@ const requestClaudeScheduleDecision = async ({ message, userContext, history }) 
     "You are Claude, an encouraging habit coach that can also add calendar events and one-off tasks.",
     "Decide whether the user wants a habit/routine, a scheduled calendar event, or a task/to-do.",
     "If it's a habit or routine request, respond ONLY with { action: 'habit' }.",
+    "If they want to delete or cancel an existing scheduled event, respond ONLY with JSON: { action: 'delete-event', id (prefer id from busySchedules), title (string|null), day (YYYY-MM-DD|null), starttime (HH:mm|null), userReply (short tailored confirmation) }.",
     "If it's a task (a to-do without a precise meeting time), respond ONLY with JSON: { action: 'create-task', name, dueDate (YYYY-MM-DD|null), scheduleAfter (YYYY-MM-DD|null), durationMinutes (integer minutes), minDuration (integer|null), maxDuration (integer|null), splitUp (boolean), hoursLabel (string|null), color (string|null), status ('pending'|'done'|'missed'), userReply (short confirmation sentence tailored to the request) }.",
     "If it's a calendar event and the user provided a clear title AND an explicit start time, respond ONLY with JSON: { action: 'create-event', title, day (YYYY-MM-DD), starttime (HH:mm, 24h), endtime (HH:mm|null), enddate (YYYY-MM-DD|null, required when repeat is not 'once'), repeat ('once'|'daily'|'weekly'|'custom'), customdays (comma-separated weekdays when repeat='custom' or to pin specific weekdays), notes (string|null), userReply (short confirmation sentence tailored to the request) }.",
     "Convert relative dates to YYYY-MM-DD. Support recurring ranges like 'every Monday in October' by filling repeat, customdays, and enddate. Never make up times; if any timing or title detail is missing or ambiguous, respond with { action: 'clarify', target: 'event'|'task'|null, question: 'follow-up to ask for missing details' }.",
@@ -876,6 +895,28 @@ const generateScheduleCreatedReply = async ({ schedule, context }) => {
   );
 };
 
+const generateScheduleDeletedReply = async ({ schedule, context }) => {
+  const { dbOverview, userContext, history } = context || {};
+
+  const systemInstruction = [
+    "You are a warm, conversational AI assistant for the StepHabit platform.",
+    "A calendar event was just removed. Confirm the deletion briefly and ask if they want to clear anything else.",
+    "Keep replies short and natural.",
+    "Database overview:\n" + formatTableSummary(dbOverview || []),
+    "User context:\n" + JSON.stringify(userContext || {}, null, 2),
+  ].join("\n\n");
+
+  const conversation = buildConversationMessages(history);
+  const prompt = new HumanMessage(
+    `Confirm the event deletion in a friendly sentence and invite further changes: ${JSON.stringify(schedule)}`
+  );
+
+  return (
+    (await callClaude([new SystemMessage(systemInstruction), ...conversation, prompt])) ||
+    "Got it—I've deleted that event. Want me to clear or reschedule anything else?"
+  );
+};
+
 const generateTaskCreatedReply = async ({ task, context }) => {
   const { dbOverview, userContext, history } = context || {};
 
@@ -955,6 +996,52 @@ const generateScheduleConflictReply = async ({ scheduleDecision, conflictInfo, c
   );
 };
 
+const deleteScheduleEvent = async ({ userId, decision }) => {
+  try {
+    const where = { user_id: userId };
+
+    if (decision.id) where.id = decision.id;
+    if (decision.day) where.day = decision.day;
+    if (decision.starttime) where.starttime = decision.starttime;
+    if (decision.title) where.title = { [Op.iLike]: `%${decision.title}%` };
+
+    const target = await BusySchedule.findOne({ where, order: [["day", "ASC"], ["starttime", "ASC"], ["id", "ASC"]] });
+    if (!target) return null;
+
+    const plain = target.get({ plain: true });
+    await target.destroy();
+    return plain;
+  } catch (error) {
+    console.error("Failed to delete schedule", error?.message || error);
+    return null;
+  }
+};
+
+const generateScheduleNotFoundReply = async ({ decision, context }) => {
+  const { dbOverview, userContext, history } = context || {};
+
+  const systemInstruction = [
+    "You are a warm, conversational AI assistant for the StepHabit platform.",
+    "The user asked to delete a calendar event, but no matching item was found. Ask for the missing details succinctly.",
+    "Keep replies short, specific, and avoid markdown.",
+    "Database overview:\n" + formatTableSummary(dbOverview || []),
+    "User context:\n" + JSON.stringify(userContext || {}, null, 2),
+  ].join("\n\n");
+
+  const conversation = buildConversationMessages(history);
+  const prompt = new HumanMessage(
+    [
+      "Craft one sentence explaining you couldn't find the event to delete and ask for a specific title, date, or start time.",
+      `User request details: ${JSON.stringify(decision)}`,
+    ].join("\n")
+  );
+
+  return (
+    (await callClaude([new SystemMessage(systemInstruction), ...conversation, prompt])) ||
+    "I couldn't find that event—can you share the title, date, or start time so I delete the right one?"
+  );
+};
+
 export const generateAiChatReply = async ({ userId, message, history: providedHistory = null }) => {
   const [dbOverview, userContext, history] = await Promise.all([
     describeTables(),
@@ -992,6 +1079,7 @@ export const generateAiChatReply = async ({ userId, message, history: providedHi
   let loggedProgress = null;
   let createdSchedule = null;
   let createdTask = null;
+  let deletedSchedule = null;
   let finalIntent = habitAnalysis.intent;
   let scheduleClarification = null;
   let scheduleConflict = null;
@@ -1092,6 +1180,27 @@ export const generateAiChatReply = async ({ userId, message, history: providedHi
     }
   }
 
+  if (!loggedProgress && planDecision?.action === "delete-event") {
+    try {
+      const removed = await deleteScheduleEvent({ userId, decision: planDecision });
+      finalIntent = "delete-schedule";
+
+      if (removed) {
+        deletedSchedule = removed;
+        replyFromClaude =
+          planDecision.userReply ||
+          (await generateScheduleDeletedReply({ schedule: removed, context: { dbOverview, userContext, history } }));
+      } else {
+        replyFromClaude = await generateScheduleNotFoundReply({
+          decision: planDecision,
+          context: { dbOverview, userContext, history },
+        });
+      }
+    } catch (error) {
+      console.error("Failed to delete schedule from Claude decision", error?.message || error);
+    }
+  }
+
   if (!loggedProgress && planDecision?.action === "create-event") {
     scheduleConflict = await detectScheduleConflict({ userId, scheduleDecision: planDecision });
 
@@ -1161,6 +1270,7 @@ export const generateAiChatReply = async ({ userId, message, history: providedHi
     loggedProgress,
     createdSchedule,
     createdTask,
+    deletedSchedule,
     scheduleConflict,
     context: { dbOverview, userContext, history },
   };
