@@ -65,19 +65,34 @@ const describeTables = async () => {
   return definitions;
 };
 
-const mapHabit = (habit) => ({
-  id: habit.id,
-  title: habit.title,
-  category: habit.category,
-  goal: habit.goal,
-  progressLogs: (habit.progressLogs || []).length,
-  schedules: (habit.schedules || []).map((s) => ({
-    id: s.id,
-    day: s.day,
-    starttime: s.starttime,
-    endtime: s.endtime,
-  })),
-});
+const mapHabit = (habit) => {
+  const progressLogs = habit.progressLogs || [];
+  const recentNotes = progressLogs
+    .filter((log) => log.reflection_reason)
+    .map((log) => ({
+      id: log.id,
+      date: log.progress_date || log.created_at,
+      status: log.status,
+      note: log.reflection_reason,
+    }))
+    .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+    .slice(0, 5);
+
+  return {
+    id: habit.id,
+    title: habit.title,
+    category: habit.category,
+    goal: habit.goal,
+    progressLogs: progressLogs.length,
+    recentNotes,
+    schedules: (habit.schedules || []).map((s) => ({
+      id: s.id,
+      day: s.day,
+      starttime: s.starttime,
+      endtime: s.endtime,
+    })),
+  };
+};
 
 const mapTask = (task) => ({
   id: task.id,
@@ -301,6 +316,11 @@ const requestClaudeProgressDecision = async ({ message, userContext, history }) 
     title: h.title,
     goal: h.goal || null,
     targetReps: h.targetReps || null,
+    recentNotes: (h.recentNotes || []).map((note) => ({
+      date: note.date,
+      status: note.status,
+      note: note.note,
+    })),
   }));
 
   const systemInstruction = [
@@ -312,6 +332,7 @@ const requestClaudeProgressDecision = async ({ message, userContext, history }) 
     "ing | null, userReply: string }. The userReply should be a friendly one-sentence acknowledgment that you generated.",
     "Use the note field to briefly capture what happened (e.g., partial completion) in natural language. Do not include mark",
     "down.",
+    "Each habit includes recentNotes so you can append new reflections or reference past ones when logging progress.",
     `Known habits: ${JSON.stringify(habitSummaries)}`,
   ].join("\n");
 
