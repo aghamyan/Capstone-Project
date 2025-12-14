@@ -211,6 +211,7 @@ const UserProfile = () => {
         overview?.integrations || overview?.overview?.integrations || overview?.data?.integrations || []
       const providersMap =
         overview?.summary?.providers || overview?.overview?.summary?.providers || overview?.data?.providers || {}
+      const hasEventData = Array.isArray(overview?.events) && overview.events.length > 0
 
       const hasGoogleIntegration = integrations.some((integration) => {
         const provider = (integration.provider || integration.type || "").toLowerCase()
@@ -227,7 +228,8 @@ const UserProfile = () => {
 
       setConnectedApps((prev) => ({
         ...prev,
-        googleCalendar: hasGoogleIntegration || hasGoogleProviderCount || prev.googleCalendar,
+        googleCalendar:
+          hasGoogleIntegration || hasGoogleProviderCount || hasEventData || prev.googleCalendar,
       }))
     } catch (err) {
       console.error("Failed to refresh calendar integrations", err)
