@@ -424,26 +424,26 @@ const parseScheduleJson = (raw) => {
   }
 };
 
-const requestClaudeScheduleDecision = async ({ message, userContext }) => {
+const requestClaudeScheduleDecision = async ({ message, userContext, history }) => {
   const systemInstruction = [
     "You are Claude, an encouraging habit coach that can also add calendar events.",
-    "Decide if the user's message is asking to add a one-time or repeating event (like meetings, appointments, classes).",
-    "If it sounds like a habit or routine to build, respond with { action: 'habit' }.",
-    "If it's an event to schedule and the user provided a clear title AND a specific start time, respond ONLY with JSON: { action: 'create-event', title, day (YYYY-MM-DD), starttime (HH:mm), endtime (HH:mm|null), repeat ('once'|'daily'|'weekly'|'custom'), notes (string|null), userReply (short confirmation sentence) }.",
-    "If the time or title is missing/uncertain, do NOT invent defaults. Instead, respond with { action: 'clarify-event', question: 'follow-up to ask for missing details' }.",
-    "You may infer the date (e.g., 'today' or 'tomorrow'), but never fabricate a time—always ask when in doubt.",
+    "Decide whether the user wants to schedule a calendar event or create a habit.",
+    "If it's a habit or routine request, respond ONLY with { action: 'habit' }.",
+    "If it's a calendar event and the user provided a clear title AND an explicit start time, respond ONLY with JSON: { action: 'create-event', title, day (YYYY-MM-DD), starttime (HH:mm, 24h), endtime (HH:mm|null), repeat ('once'|'daily'|'weekly'|'custom'), notes (string|null), userReply (short confirmation sentence) }.",
+    "Convert relative dates to YYYY-MM-DD. Never make up times; if any timing or title detail is missing or ambiguous, respond with { action: 'clarify-event', question: 'follow-up to ask for missing details' }.",
+    "Keep the reply strictly JSON with no markdown. Use recent conversation context when helpful.",
     `User context: ${JSON.stringify(userContext || {})}`,
   ].join("\n");
 
   const prompt = new HumanMessage(
     [
-      "Determine if this should be a scheduled event or a habit idea.",
-      "If event details are unclear, make best-effort defaults (starttime required).",
+      "Based on the last few messages, decide if this is an event to schedule or a habit idea.",
+      "If you can't find a concrete start time and title for an event, ask a clarifying question instead of creating one.",
       `User message: ${message}`,
     ].join("\n")
   );
 
-  const reply = await callClaude([new SystemMessage(systemInstruction), prompt]);
+  const reply = await callClaude([new SystemMessage(systemInstruction), ...buildConversationMessages(history), prompt]);
   return parseScheduleJson(reply);
 };
 
@@ -531,6 +531,7 @@ export const generateAiChatReply = async ({ userId, message, history: providedHi
   const scheduleDecision = await requestClaudeScheduleDecision({
     message,
     userContext,
+    history,
   });
 
   const systemInstruction = [
@@ -558,10 +559,6 @@ export const generateAiChatReply = async ({ userId, message, history: providedHi
     if (finalIntent === "chat") {
       finalIntent = "clarify-schedule";
     }
-  }
-
-  if (scheduleDecision?.action === "habit" && finalIntent === "chat") {
-    finalIntent = "suggest";
   }
 
   if (progressDecision) {
