@@ -163,7 +163,8 @@ const MySchedule = () => {
   }, [loadHabits])
 
   // ✅ Load user's schedules
-  const loadSchedules = async () => {
+  const loadSchedules = useCallback(async () => {
+    if (!user?.id) return
     try {
       setLoading(true)
       const res = await fetch(`${API_BASE}/schedules/user/${user.id}`)
@@ -176,11 +177,11 @@ const MySchedule = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user?.id])
 
   useEffect(() => {
     if (user?.id) loadSchedules()
-  }, [user?.id])
+  }, [user?.id, loadSchedules])
 
   // ✅ Load calendar events connected to the account (e.g. Google Calendar)
   const loadCalendarEvents = useCallback(async () => {
@@ -204,6 +205,11 @@ const MySchedule = () => {
   useEffect(() => {
     loadCalendarEvents()
   }, [loadCalendarEvents])
+
+  const refreshSchedulesAndCalendar = useCallback(() => {
+    loadSchedules()
+    loadCalendarEvents()
+  }, [loadCalendarEvents, loadSchedules])
 
   // ✅ Add new schedule
   const handleAdd = async () => {
@@ -443,6 +449,7 @@ const MySchedule = () => {
   }
 
   useDataRefresh([REFRESH_SCOPES.HABITS], loadHabits)
+  useDataRefresh([REFRESH_SCOPES.SCHEDULES], refreshSchedulesAndCalendar)
 
   return (
     <>
