@@ -48,6 +48,7 @@ import { AuthContext } from "../../context/AuthContext"
 import { HabitContext } from "../../context/HabitContext"
 import { fetchUserSettings, saveUserSettings } from "../../services/settings"
 import { getProgressAnalytics } from "../../services/analytics"
+import { fetchCalendarOverview } from "../../services/calendar"
 import { API_BASE, ASSET_BASE } from "../../utils/apiConfig"
 import ResetPasswordModal from "../../components/auth/ResetPasswordModal"
 
@@ -199,6 +200,36 @@ const UserProfile = () => {
   useEffect(() => {
     setColorMode(mapThemeToColorMode(preferences.theme))
   }, [preferences.theme, setColorMode])
+
+  useEffect(() => {
+    if (!user?.id) return
+
+    let isActive = true
+
+    const detectCalendarConnections = async () => {
+      try {
+        const overview = await fetchCalendarOverview(user.id, { days: 7 })
+        const hasGoogleCalendar =
+          overview?.integrations?.some((integration) => integration.provider === "google") ||
+          false
+
+        if (!isActive) return
+
+        if (hasGoogleCalendar) {
+          setConnectedApps((prev) => ({ ...prev, googleCalendar: true }))
+        }
+      } catch (err) {
+        if (!isActive) return
+        console.error("Failed to check calendar integrations", err)
+      }
+    }
+
+    detectCalendarConnections()
+
+    return () => {
+      isActive = false
+    }
+  }, [user?.id])
 
   useEffect(() => {
     const mappedTheme = mapColorModeToTheme(colorMode)
