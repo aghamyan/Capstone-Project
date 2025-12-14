@@ -407,18 +407,23 @@ const MySchedule = () => {
         endtime: editValues.endtime || null,
       }
 
-      const res = await fetch(`${API_BASE}/schedules/${editSchedule.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
+      const res = await fetch(
+        `${API_BASE}/schedules/${editSchedule.id}${editSchedule.type ? `?type=${editSchedule.type}` : ""}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      )
 
       if (!res.ok) throw new Error("Failed to update schedule")
+
+      const updatedSchedule = await res.json()
 
       setSchedules((prev) =>
         prev.map((schedule) =>
           String(schedule.id) === String(editSchedule.id)
-            ? { ...schedule, ...payload }
+            ? { ...schedule, ...updatedSchedule }
             : schedule,
         ),
       )
@@ -666,28 +671,6 @@ const MySchedule = () => {
               </CButton>
             </CForm>
 
-            <CCard className="border-0 schedule-preview-card mt-4">
-              <CCardBody>
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <span className="fw-semibold">Preview</span>
-                  <CBadge color="info" shape="rounded-pill">
-                    {getRepeatDisplay(newSchedule.repeat, newSchedule.customdays)}
-                  </CBadge>
-                </div>
-                <div className="text-muted small">
-                  <div className="mb-1">
-                    <strong>
-                      {selectedHabit?.title || newSchedule.custom_title || "Untitled schedule"}
-                    </strong>
-                  </div>
-                  <div>{newSchedule.day || "Pick a day"}</div>
-                  <div>
-                    {newSchedule.starttime || "Start time"} – {newSchedule.endtime || "End time"}
-                  </div>
-                  {newSchedule.notes && <div className="mt-1">{newSchedule.notes}</div>}
-                </div>
-              </CCardBody>
-            </CCard>
           </CCardBody>
         </CCard>
       </CCol>
