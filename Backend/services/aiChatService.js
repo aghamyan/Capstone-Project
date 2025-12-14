@@ -94,6 +94,27 @@ const mapHabit = (habit) => {
   };
 };
 
+const buildRecentNotesDigest = (habits = []) => {
+  const sections = [];
+
+  for (const habit of habits) {
+    const notes = habit.recentNotes || [];
+    if (!notes.length) continue;
+
+    const entries = notes
+      .map((note) => {
+        const statusLabel = note.status ? `(${note.status})` : "";
+        const dateLabel = note.date ? ` ${note.date}` : "";
+        return `${statusLabel}${dateLabel}: ${note.note}`;
+      })
+      .join("; ");
+
+    sections.push(`${habit.title || "Habit"}: ${entries}`);
+  }
+
+  return sections.length ? sections.join("\n") : "No recent habit notes recorded.";
+};
+
 const mapTask = (task) => ({
   id: task.id,
   name: task.name,
@@ -1091,8 +1112,10 @@ export const generateAiChatReply = async ({ userId, message, history: providedHi
     "Respond with short, human-feeling paragraphs (avoid bullet lists unless requested).",
     "You can see the database overview and the current user's context—use them naturally in conversation.",
     "Stay encouraging and keep the chat flowing with one clear next step in each reply.",
+    "When users ask why a habit is missed or succeeds, study the recentNotes on that habit to describe patterns or reasons.",
     "Database overview:\n" + formatTableSummary(dbOverview),
     "User context:\n" + JSON.stringify(userContext || {}, null, 2),
+    "Recent habit notes:\n" + buildRecentNotesDigest(userContext?.habits || []),
   ].join("\n\n");
 
   let habitSuggestion = habitAnalysis.habitSuggestion;
