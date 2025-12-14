@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import {
   CAlert,
   CAvatar,
@@ -50,6 +50,7 @@ import { fetchUserSettings, saveUserSettings } from "../../services/settings"
 import { getProgressAnalytics } from "../../services/analytics"
 import { fetchCalendarOverview } from "../../services/calendar"
 import { API_BASE, ASSET_BASE } from "../../utils/apiConfig"
+import { useDataRefresh, REFRESH_SCOPES } from "../../utils/refreshBus"
 import ResetPasswordModal from "../../components/auth/ResetPasswordModal"
 
 const THEME_STORAGE_KEY = "coreui-free-react-admin-template-theme"
@@ -201,35 +202,25 @@ const UserProfile = () => {
     setColorMode(mapThemeToColorMode(preferences.theme))
   }, [preferences.theme, setColorMode])
 
-  useEffect(() => {
+  const refreshCalendarConnection = useCallback(async () => {
     if (!user?.id) return
+    try {
+      const overview = await fetchCalendarOverview(user.id, { days: 7 })
+      const hasGoogleCalendar =
+        overview?.integrations?.some((integration) => integration.provider === "google") ||
+        false
 
-    let isActive = true
-
-    const detectCalendarConnections = async () => {
-      try {
-        const overview = await fetchCalendarOverview(user.id, { days: 7 })
-        const hasGoogleCalendar =
-          overview?.integrations?.some((integration) => integration.provider === "google") ||
-          false
-
-        if (!isActive) return
-
-        if (hasGoogleCalendar) {
-          setConnectedApps((prev) => ({ ...prev, googleCalendar: true }))
-        }
-      } catch (err) {
-        if (!isActive) return
-        console.error("Failed to check calendar integrations", err)
-      }
-    }
-
-    detectCalendarConnections()
-
-    return () => {
-      isActive = false
+      setConnectedApps((prev) => ({ ...prev, googleCalendar: hasGoogleCalendar }))
+    } catch (err) {
+      console.error("Failed to refresh calendar integrations", err)
     }
   }, [user?.id])
+
+  useEffect(() => {
+    refreshCalendarConnection()
+  }, [refreshCalendarConnection])
+
+  useDataRefresh([REFRESH_SCOPES.INTEGRATIONS], refreshCalendarConnection)
 
   useEffect(() => {
     const mappedTheme = mapColorModeToTheme(colorMode)
