@@ -206,11 +206,29 @@ const UserProfile = () => {
     if (!user?.id) return
     try {
       const overview = await fetchCalendarOverview(user.id, { days: 7 })
-      const hasGoogleCalendar =
-        overview?.integrations?.some((integration) => integration.provider === "google") ||
-        false
 
-      setConnectedApps((prev) => ({ ...prev, googleCalendar: hasGoogleCalendar }))
+      const integrations =
+        overview?.integrations || overview?.overview?.integrations || overview?.data?.integrations || []
+      const providersMap =
+        overview?.summary?.providers || overview?.overview?.summary?.providers || overview?.data?.providers || {}
+
+      const hasGoogleIntegration = integrations.some((integration) => {
+        const provider = (integration.provider || integration.type || "").toLowerCase()
+        const label = (integration.label || "").toLowerCase()
+        return provider === "google" || label.includes("google")
+      })
+
+      const hasGoogleProviderCount = Boolean(
+        Object.entries(providersMap || {}).some(([key, count]) => {
+          const normalizedKey = key.toLowerCase()
+          return normalizedKey === "google" && Number(count || 0) > 0
+        }),
+      )
+
+      setConnectedApps((prev) => ({
+        ...prev,
+        googleCalendar: hasGoogleIntegration || hasGoogleProviderCount || prev.googleCalendar,
+      }))
     } catch (err) {
       console.error("Failed to refresh calendar integrations", err)
     }
