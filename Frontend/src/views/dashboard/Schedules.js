@@ -165,6 +165,7 @@ const MySchedule = () => {
   // ✅ Load user's schedules
   const loadSchedules = async () => {
     try {
+      setLoading(true)
       const res = await fetch(`${API_BASE}/schedules/user/${user.id}`)
       if (!res.ok) throw new Error("Failed to fetch schedules")
       const data = await res.json()
@@ -427,6 +428,7 @@ const MySchedule = () => {
             : schedule,
         ),
       )
+      await loadSchedules()
       emitDataRefresh(REFRESH_SCOPES.SCHEDULES, {
         reason: "schedule-updated",
         scheduleId: editSchedule.id,
