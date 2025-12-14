@@ -50,7 +50,15 @@ router.post("/message", async (req, res) => {
     const history = await getChatHistory(userId, 50);
     await saveMessage({ userId, role: "user", content: message });
 
-    const { reply, context, intent, habitSuggestion, loggedProgress, createdSchedule } = await generateAiChatReply({
+    const {
+      reply,
+      context,
+      intent,
+      habitSuggestion,
+      loggedProgress,
+      createdSchedule,
+      scheduleConflict,
+    } = await generateAiChatReply({
       userId,
       message,
       history,
@@ -93,6 +101,8 @@ router.post("/message", async (req, res) => {
       metadata = { ...(metadata || {}), loggedProgress };
     } else if (intent === "create-schedule" && createdSchedule) {
       metadata = { ...(metadata || {}), createdSchedule };
+    } else if (intent === "schedule-conflict" && scheduleConflict) {
+      metadata = { ...(metadata || {}), scheduleConflict };
     }
 
     await saveMessage({
@@ -111,6 +121,7 @@ router.post("/message", async (req, res) => {
       createdHabit,
       loggedProgress,
       createdSchedule,
+      scheduleConflict,
     });
   } catch (error) {
     console.error("/ai-chat/message failed", error);
