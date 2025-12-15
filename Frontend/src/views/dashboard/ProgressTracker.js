@@ -215,11 +215,10 @@ const ProgressTracker = () => {
     const missed = timeframeSeries.reduce((sum, day) => sum + day.missed, 0);
     const total = done + missed;
     const completionRate = total ? Math.round((done / total) * 100) : 0;
-    return { done, missed, total, completionRate };
+    const activeDays = timeframeSeries.filter((day) => day.completed || day.missed)
+      .length;
+    return { done, missed, total, completionRate, activeDays };
   }, [timeframeSeries]);
-
-  const summary = analytics?.summary;
-  const leaderboard = summary?.habitLeaderboard ?? [];
 
   const statusBadgeColor = (rate) => {
     if (rate >= 80) return "success";
@@ -297,15 +296,15 @@ const ProgressTracker = () => {
                       <CCard className="h-100 bg-body-tertiary">
                         <CCardBody className="text-center">
                           <div className="text-body-secondary small">
-                            Overall completion
+                            {TIMEFRAMES[timeframe]?.label} completion
                           </div>
                           <div className="display-6">
-                            {formatPercent(summary?.completionRate ?? 0)}
+                            {formatPercent(timeframeTotals.completionRate ?? 0)}
                           </div>
                           <div className="text-body-secondary small">
-                            {summary?.totalCheckIns
-                              ? `${summary.totalDone} done · ${summary.totalMissed} missed`
-                              : "Log a check-in to begin"}
+                            {timeframeTotals.total
+                              ? `${timeframeTotals.done} done · ${timeframeTotals.missed} missed`
+                              : "Track this habit in the selected range"}
                           </div>
                         </CCardBody>
                       </CCard>
@@ -314,17 +313,15 @@ const ProgressTracker = () => {
                       <CCard className="h-100 bg-body-tertiary">
                         <CCardBody className="text-center">
                           <div className="text-body-secondary small">
-                            Longest streak
+                            {selectedHabitName} streak
                           </div>
                           <div className="display-6">
-                            {summary?.streakLeader
-                              ? `${summary.streakLeader.streak.best} days`
+                            {selectedHabitStats?.streak?.current
+                              ? `${selectedHabitStats.streak.current} days`
                               : "0 days"}
                           </div>
                           <div className="text-body-secondary small">
-                            {summary?.streakLeader
-                              ? summary.streakLeader.habitName
-                              : "Stay consistent to build streaks"}
+                            Best: {selectedHabitStats?.streak?.best ?? 0} days
                           </div>
                         </CCardBody>
                       </CCard>
@@ -333,17 +330,31 @@ const ProgressTracker = () => {
                       <CCard className="h-100 bg-body-tertiary">
                         <CCardBody className="text-center">
                           <div className="text-body-secondary small">
-                            Most productive day
+                            Most productive day ({TIMEFRAMES[timeframe]?.label})
                           </div>
                           <div className="display-6">
-                            {summary?.peakDay
-                              ? formatDate(summary.peakDay.date)
-                              : "—"}
+                            {(() => {
+                              const productiveDay = timeframeSeries.reduce(
+                                (best, day) =>
+                                  day.completed > (best?.completed ?? 0) ? day : best,
+                                null
+                              );
+                              return productiveDay?.completed
+                                ? formatDate(productiveDay.date)
+                                : "—";
+                            })()}
                           </div>
                           <div className="text-body-secondary small">
-                            {summary?.peakDay
-                              ? `${summary.peakDay.completed} completions`
-                              : "Track activity to discover yours"}
+                            {(() => {
+                              const productiveDay = timeframeSeries.reduce(
+                                (best, day) =>
+                                  day.completed > (best?.completed ?? 0) ? day : best,
+                                null
+                              );
+                              return productiveDay?.completed
+                                ? `${productiveDay.completed} completions`
+                                : "Log more days to uncover this";
+                            })()}
                           </div>
                         </CCardBody>
                       </CCard>
@@ -352,15 +363,15 @@ const ProgressTracker = () => {
                       <CCard className="h-100 bg-body-tertiary">
                         <CCardBody className="text-center">
                           <div className="text-body-secondary small">
-                            Active habits
+                            Active days in range
                           </div>
                           <div className="display-6">
-                            {summary?.totalHabits ?? habits.length}
+                            {timeframeTotals.activeDays ?? 0}
                           </div>
                           <div className="text-body-secondary small">
-                            {habits.length
-                              ? `${habits.length} tracked`
-                              : "Add a habit to get started"}
+                            {timeframeSeries.length}
+                            {" "}
+                            days monitored · {selectedHabitName}
                           </div>
                         </CCardBody>
                       </CCard>
@@ -423,20 +434,30 @@ const ProgressTracker = () => {
                     </CCol>
                     <CCol xs={12} lg={5}>
                       <CCard className="h-100">
-                        <CCardHeader className="fw-semibold">
-                          Consistency leaders
+                        <CCardHeader className="fw-semibold d-flex justify-content-between align-items-center">
+                          <span>Habit consistency snapshot</span>
+                          <span className="text-body-secondary small">
+                            {TIMEFRAMES[timeframe]?.description}
+                          </span>
                         </CCardHeader>
                         <CCardBody style={{ height: 280 }}>
-                          {leaderboard.length ? (
+                          {selectedHabitId && timeframeSeries.length ? (
                             <ResponsiveContainer
                               width="100%"
                               height="100%"
                               minWidth={200}
                               minHeight={200}
                             >
-                              <BarChart data={leaderboard}>
+                              <BarChart
+                                data={[
+                                  {
+                                    habitName: selectedHabitName,
+                                    successRate: timeframeTotals.completionRate,
+                                  },
+                                ]}
+                              >
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="habitName" hide />
+                                <XAxis dataKey="habitName" />
                                 <YAxis domain={[0, 100]} />
                                 <Tooltip
                                   formatter={(value) => `${value}% success`}
@@ -453,7 +474,8 @@ const ProgressTracker = () => {
                             </ResponsiveContainer>
                           ) : (
                             <div className="text-body-secondary text-center my-5">
-                              Complete habits to populate your leaderboard.
+                              Select a habit and log days in this range to see its
+                              consistency.
                             </div>
                           )}
                         </CCardBody>
