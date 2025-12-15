@@ -4,6 +4,9 @@ import path from 'node:path'
 import autoprefixer from 'autoprefixer'
 
 export default defineConfig(() => {
+  const devPort = Number(process.env.VITE_DEV_PORT || 5173)
+  const apiTarget = process.env.VITE_API_ORIGIN || 'http://localhost:4000'
+
   return {
     base: './',
     build: {
@@ -41,9 +44,16 @@ export default defineConfig(() => {
     },
     server: {
       host: process.env.VITE_DEV_HOST || '0.0.0.0',
-      port: 4000,
+      port: devPort,
       proxy: {
-        // https://vitejs.dev/config/server-options.html
+        '/api': {
+          target: apiTarget,
+          changeOrigin: true,
+        },
+        '/uploads': {
+          target: apiTarget,
+          changeOrigin: true,
+        },
       },
     },
     preview: {
