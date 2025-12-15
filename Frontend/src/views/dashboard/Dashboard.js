@@ -69,6 +69,7 @@ const Dashboard = () => {
   const [aiSummary, setAiSummary] = useState("");
   const [aiSummaryAgent, setAiSummaryAgent] = useState(null);
   const [aiSummaryError, setAiSummaryError] = useState("");
+  const [selectedHabitId, setSelectedHabitId] = useState("all");
   const [patternModalOpen, setPatternModalOpen] = useState(false);
   const [patternInsights, setPatternInsights] = useState([]);
   const [patternRecommendation, setPatternRecommendation] = useState("");
@@ -292,14 +293,72 @@ const Dashboard = () => {
     [analytics]
   );
 
-  const trend = useMemo(
-    () => analytics?.summary?.dailyTrend?.slice(-10) ?? [],
-    [analytics]
-  );
+  const habitOptions = useMemo(() => {
+    const baseOptions = [
+      {
+        id: "all",
+        name: "All habits",
+      },
+    ];
+
+    const analyticHabits = analytics?.habits ?? [];
+    const mappedHabits = analyticHabits
+      .filter((habit) => habit?.habitId)
+      .map((habit) => ({ id: habit.habitId, name: habit.habitName || "Habit" }));
+
+    return baseOptions.concat(mappedHabits);
+  }, [analytics?.habits]);
+
+  useEffect(() => {
+    if (!habitOptions.some((option) => option.id === selectedHabitId)) {
+      setSelectedHabitId(habitOptions[0]?.id || "all");
+    }
+  }, [habitOptions, selectedHabitId]);
+
+  const cycleHabitSelection = useCallback(() => {
+    if (!habitOptions.length) return;
+
+    setSelectedHabitId((current) => {
+      const currentIndex = habitOptions.findIndex((option) => option.id === current);
+      const nextIndex = (currentIndex + 1) % habitOptions.length;
+      return habitOptions[nextIndex].id;
+    });
+  }, [habitOptions]);
+
+  const selectedHabitLabel = useMemo(() => {
+    return habitOptions.find((option) => option.id === selectedHabitId)?.name || "All habits";
+  }, [habitOptions, selectedHabitId]);
+
+  const trendSource = useMemo(() => {
+    if (selectedHabitId !== "all") {
+      const specific = analytics?.habits?.find((habit) => habit.habitId === selectedHabitId);
+      if (specific?.dailyTrend) {
+        return specific.dailyTrend;
+      }
+    }
+
+    return analytics?.summary?.dailyTrend ?? [];
+  }, [analytics?.habits, analytics?.summary?.dailyTrend, selectedHabitId]);
+
+  const weeklyMomentumTrend = useMemo(() => {
+    return trendSource.slice(-7).map((day) => {
+      const completed = Number(day.completed) || 0;
+      const missed = Number(day.missed) || 0;
+      const total = completed + missed;
+      const completedRate = total ? completed / total : 0;
+      const missedRate = total ? missed / total : 0;
+
+      return {
+        ...day,
+        completedRate,
+        missedRate,
+      };
+    });
+  }, [trendSource]);
 
   const weeklyTrend = useMemo(() => {
     let streak = 0;
-    return trend.slice(-7).map((day) => {
+    return trendSource.slice(-7).map((day) => {
       const completed = Number(day.completed) || 0;
       const missed = Number(day.missed) || 0;
       const total = completed + missed;
@@ -310,7 +369,7 @@ const Dashboard = () => {
         runningStreak: streak,
       };
     });
-  }, [trend]);
+  }, [trendSource]);
 
   const upcomingPlans = useMemo(() => {
     const schedulePlans = schedules
@@ -1049,26 +1108,39 @@ const Dashboard = () => {
 
             <CCol xs={12} lg={5}>
               <CCard className="h-100 elevated-card">
-                <CCardHeader className="fw-semibold">Momentum Trend</CCardHeader>
+                <CCardHeader className="fw-semibold d-flex justify-content-between align-items-center gap-3">
+                  <span>Momentum Trend</span>
+                  <div className="d-flex align-items-center gap-2">
+                    <div className="small text-body-secondary text-nowrap">
+                      {selectedHabitLabel} · Week view
+                    </div>
+                    <CButton size="sm" color="secondary" variant="outline" onClick={cycleHabitSelection}>
+                      Change habit
+                    </CButton>
+                  </div>
+                </CCardHeader>
                 <CCardBody style={{ height: 320 }}>
-                  {trend.length ? (
+                  {weeklyMomentumTrend.length ? (
                     <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
-                      <AreaChart data={trend}>
+                      <AreaChart data={weeklyMomentumTrend}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="date" />
-                        <YAxis allowDecimals={false} />
-                        <Tooltip />
+                        <YAxis domain={[0, 1]} ticks={[0, 1]} allowDecimals={false} />
+                        <Tooltip
+                          formatter={(value) => `${Math.round(Number(value) * 100)}%`}
+                          labelFormatter={(label) => label}
+                        />
                         <Legend />
                         <Area
                           type="monotone"
-                          dataKey="completed"
+                          dataKey="completedRate"
                           name="Completed"
                           stroke="#2eb85c"
                           fill="rgba(46, 184, 92, 0.2)"
                         />
                         <Area
                           type="monotone"
-                          dataKey="missed"
+                          dataKey="missedRate"
                           name="Missed"
                           stroke="#e55353"
                           fill="rgba(229, 83, 83, 0.2)"
@@ -1091,8 +1163,12 @@ const Dashboard = () => {
 
             <CCol xs={12} lg={5}>
               <CCard className="h-100 elevated-card">
-                <CCardHeader className="fw-semibold">
-                  Weekly streak & completion
+                <CCardHeader className="fw-semibold d-flex justify-content-between align-items-center">
+                  <div className="d-flex flex-column">
+                    <span className="text-body-secondary small">Habit</span>
+                    <span>{selectedHabitLabel}</span>
+                  </div>
+                  <div className="text-body-secondary small">Weekly streak & completion</div>
                 </CCardHeader>
                 <CCardBody style={{ height: 280 }}>
                   {weeklyTrend.length ? (
