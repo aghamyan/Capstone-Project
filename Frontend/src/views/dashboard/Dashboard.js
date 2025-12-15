@@ -356,20 +356,21 @@ const Dashboard = () => {
     });
   }, [trendSource]);
 
-  const weeklyTrend = useMemo(() => {
-    let streak = 0;
-    return trendSource.slice(-7).map((day) => {
-      const completed = Number(day.completed) || 0;
-      const missed = Number(day.missed) || 0;
-      const total = completed + missed;
-      streak = missed > 0 ? 0 : total > 0 ? streak + 1 : streak;
+  const weeklyHabitStats = useMemo(() => {
+    const analyticHabits = analytics?.habits ?? [];
+
+    return analyticHabits.map((habit) => {
+      const completionRate = Math.round(
+        habit?.recent?.completionRate ?? habit?.successRate ?? 0,
+      );
+
       return {
-        ...day,
-        completionRate: total ? Math.round((completed / total) * 100) : 0,
-        runningStreak: streak,
+        habitId: habit.habitId,
+        habitName: habit.habitName || "Habit",
+        completionRate,
       };
     });
-  }, [trendSource]);
+  }, [analytics?.habits]);
 
   const upcomingPlans = useMemo(() => {
     const schedulePlans = schedules
@@ -1166,41 +1167,30 @@ const Dashboard = () => {
                 <CCardHeader className="fw-semibold d-flex justify-content-between align-items-center">
                   <div className="d-flex flex-column">
                     <span className="text-body-secondary small">Habit</span>
-                    <span>{selectedHabitLabel}</span>
+                    <span>Weekly success</span>
                   </div>
-                  <div className="text-body-secondary small">Weekly streak & completion</div>
+                  <div className="text-body-secondary small">Success rate for each habit (last 7 days)</div>
                 </CCardHeader>
                 <CCardBody style={{ height: 280 }}>
-                  {weeklyTrend.length ? (
+                  {weeklyHabitStats.length ? (
                     <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
-                      <ComposedChart data={weeklyTrend}>
+                      <ComposedChart data={weeklyHabitStats}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis yAxisId="left" domain={[0, 100]} />
-                        <YAxis yAxisId="right" orientation="right" allowDecimals={false} />
-                        <Tooltip />
+                        <XAxis dataKey="habitName" interval={0} angle={-20} textAnchor="end" height={60} />
+                        <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} />
+                        <Tooltip formatter={(value) => `${value}%` } />
                         <Legend />
                         <Bar
-                          yAxisId="left"
                           dataKey="completionRate"
-                          name="Completion %"
+                          name="Weekly success %"
                           fill="#39f"
                           radius={[6, 6, 0, 0]}
-                        />
-                        <Line
-                          yAxisId="right"
-                          type="monotone"
-                          dataKey="runningStreak"
-                          name="Running streak"
-                          stroke="#2eb85c"
-                          strokeWidth={3}
-                          dot={false}
                         />
                       </ComposedChart>
                     </ResponsiveContainer>
                   ) : (
                     <div className="text-body-secondary text-center my-5">
-                      Complete check-ins this week to unlock your streak graph.
+                      Complete check-ins this week to see success for each habit.
                     </div>
                   )}
                 </CCardBody>
