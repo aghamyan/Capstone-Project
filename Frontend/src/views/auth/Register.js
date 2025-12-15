@@ -404,7 +404,7 @@ const Register = () => {
 
     return (
       <div className="d-flex flex-column gap-3">
-        <div className="p-3 bg-light rounded border">
+        <div className="p-3 rounded border text-white" style={{ backgroundColor: "#000" }}>
           <div className="d-flex align-items-center gap-2 mb-1">
             <CIcon icon={cilEnvelopeClosed} className="text-primary" />
             <h5 className="mb-0">Check your inbox</h5>
