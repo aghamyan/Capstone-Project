@@ -316,18 +316,23 @@ const Dashboard = () => {
     return habitOptions.find((option) => option.id === selectedHabitId)?.name || "Select a habit";
   }, [habitOptions, selectedHabitId]);
 
+  const overallTrend = useMemo(
+    () => analytics?.summary?.dailyTrend ?? [],
+    [analytics?.summary?.dailyTrend],
+  );
+
   const trendSource = useMemo(() => {
     if (selectedHabitId) {
       const specific = analytics?.habits?.find(
         (habit) => String(habit.habitId) === selectedHabitId,
       );
-      if (specific?.dailyTrend) {
+      if (specific?.dailyTrend?.length) {
         return specific.dailyTrend;
       }
     }
 
-    return [];
-  }, [analytics?.habits, selectedHabitId]);
+    return overallTrend;
+  }, [analytics?.habits, overallTrend, selectedHabitId]);
 
   const weeklyMomentumTrend = useMemo(() => {
     return trendSource.slice(-7).map((day) => {
@@ -1098,9 +1103,8 @@ const Dashboard = () => {
 
             <CCol xs={12} lg={5}>
               <CCard className="h-100 elevated-card">
-                  <CCardHeader className="fw-semibold">
+                <CCardHeader className="fw-semibold">
                   <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <span>Momentum Trend</span>
                     <div className="d-flex flex-column flex-md-row align-items-md-center gap-2">
                       <div className="text-body-secondary small">Focused habit</div>
                       <CFormSelect
@@ -1153,7 +1157,9 @@ const Dashboard = () => {
                     </ResponsiveContainer>
                   ) : (
                     <div className="text-body-secondary text-center">
-                      Select a habit to view its weekly momentum trend.
+                      {selectedHabitId
+                        ? `No weekly data yet for ${selectedHabitLabel}. Keep logging this habit.`
+                        : "Select a habit to view its weekly momentum trend."}
                     </div>
                   )}
                   {analyticsError && (
