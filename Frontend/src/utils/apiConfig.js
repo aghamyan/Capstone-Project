@@ -3,7 +3,7 @@ const defaultHost =
     ? window.location.hostname
     : "localhost";
 
-const apiOrigin = import.meta.env.VITE_API_ORIGIN || `http://${defaultHost}:4000`;
+const apiOrigin = import.meta.env.VITE_API_ORIGIN || `http://${defaultHost}:5001`;
 
 // Always use relative paths in the browser
 export const API_BASE = "/api";
