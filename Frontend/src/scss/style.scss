@@ -369,6 +369,11 @@ body {
   .text-body-secondary.small:hover {
     color: #000 !important;
   }
+
+  /* Keep option helper text readable when the button is hovered */
+  .btn.btn-outline-light.w-100.h-100.text-start.p-3:hover .small.text-body-secondary.mt-1 {
+    color: #000 !important;
+  }
 }
 
 // ===== Enhanced surfaces =====
