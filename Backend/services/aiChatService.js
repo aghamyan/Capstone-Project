@@ -319,7 +319,19 @@ const analyzeHabitIntent = (message, history = []) => {
   const lower = normalized.toLowerCase();
   const pendingSuggestion = findPendingHabitSuggestion(history);
 
+  const reflectionQuery =
+    /\bwhy\b/.test(lower) ||
+    /\breason\b/.test(lower) ||
+    /\bstruggl/.test(lower) ||
+    /\bfail/.test(lower) ||
+    /\bmiss/.test(lower) ||
+    /\bskip/.test(lower);
+
   if (!normalized) {
+    return { intent: "chat", habitSuggestion: null, reply: null };
+  }
+
+  if (reflectionQuery) {
     return { intent: "chat", habitSuggestion: null, reply: null };
   }
 
@@ -1276,7 +1288,7 @@ export const generateAiChatReply = async ({ userId, message, history: providedHi
     "Respond with short, human-feeling paragraphs (avoid bullet lists unless requested).",
     "You can see the database overview and the current user's context—use them naturally in conversation.",
     "Stay encouraging and keep the chat flowing with one clear next step in each reply.",
-    "When users ask why a habit is missed or succeeds, study the recentNotes on that habit to describe patterns or reasons.",
+    "When users ask why a habit is missed or succeeds, study the recentNotes on that habit and the reflected reasons from the progress table to describe patterns or reasons before suggesting new habits.",
     "Database overview:\n" + formatTableSummary(dbOverview),
     "User context:\n" + JSON.stringify(userContext || {}, null, 2),
     "Recent habit notes:\n" + buildRecentNotesDigest(userContext?.habits || []),
