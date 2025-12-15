@@ -379,7 +379,7 @@ const ProgressTracker = () => {
                   </CRow>
 
                   <CRow className="g-4 mb-4">
-                    <CCol xs={12} lg={7}>
+                    <CCol xs={12} lg={8}>
                       <CCard className="h-100">
                         <CCardHeader className="fw-semibold d-flex justify-content-between align-items-center flex-wrap gap-2">
                           <span>
@@ -404,7 +404,7 @@ const ProgressTracker = () => {
                               <AreaChart data={timeframeSeries}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="date" tickFormatter={formatDate} />
-                                <YAxis allowDecimals={false} />
+                                <YAxis allowDecimals={false} domain={[0, 1]} ticks={[0, 1]} />
                                 <Tooltip labelFormatter={formatDate} />
                                 <Legend />
                                 <Area
@@ -432,7 +432,7 @@ const ProgressTracker = () => {
                         </CCardBody>
                       </CCard>
                     </CCol>
-                    <CCol xs={12} lg={5}>
+                    <CCol xs={12} lg={4}>
                       <CCard className="h-100">
                         <CCardHeader className="fw-semibold d-flex justify-content-between align-items-center">
                           <span>Habit consistency snapshot</span>
