@@ -949,13 +949,19 @@ body {
 .day-cell__controls {
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 100%;
+  justify-self: center;
   gap: 6px;
 }
 
 .month-checkbox {
-  width: calc(100% - 8px);
+  width: 90%;
+  max-width: 60px;
   aspect-ratio: 1 / 1;
   min-height: 56px;
+  margin-inline: auto;
+  margin-left: 1px;
   display: grid;
   place-items: center;
   padding: 0.35rem;
