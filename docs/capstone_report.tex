@@ -190,92 +190,72 @@ performance, scalability, maintainability, and ease of future extension across a
 layers of the system. Each technology was selected to support rapid development while
 maintaining architectural clarity and long-term sustainability.
 
-Frontend
-React (Vite):
-A modern JavaScript library used to build responsive and interactive user interfaces.
-Vite is employed as the build tool to enable fast development cycles and optimized
-production bundles.
-CoreUI:
-A component-based UI framework used to implement consistent layouts, navigation
-structures, dashboards, and data visualization elements across the application.
+\subsubsection{Frontend}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{React with Vite}: Builds responsive and interactive user interfaces while
+  leveraging Vite for fast development cycles and optimized production bundles.
+  \item \textbf{CoreUI}: Provides component-based layouts, navigation structures,
+  dashboards, and visualization patterns used across the application.
+\end{itemize}
 
-Backend
-Node.js with Express:
-Node.js serves as the runtime environment for the backend, while Express provides a
-lightweight and flexible framework for handling HTTP requests, routing, and middleware
-composition.
-Sequelize ORM:
-Used to manage relational data interactions with PostgreSQL, providing model
-definitions, associations, and schema synchronization.
-JWT (JSON Web Tokens):
-Employed for secure authentication and authorization, ensuring that protected API
-endpoints are accessible only to authenticated users.
-Bcrypt:
-Used for secure password hashing and credential protection.
-Socket-Based Messaging (Planned):
-The architecture supports real-time features such as notifications and messaging,
-allowing future integration of WebSocket-based communication if required.
+\subsubsection{Backend}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Node.js with Express}: Supplies the runtime and HTTP framework used for
+  routing, middleware composition, and request handling.
+  \item \textbf{Sequelize ORM}: Manages relational interactions with PostgreSQL through
+  model definitions, associations, and schema synchronization.
+  \item \textbf{JWT (JSON Web Tokens)}: Secures authentication and authorization so
+  protected API endpoints remain accessible only to authenticated users.
+  \item \textbf{Bcrypt}: Protects credentials through password hashing.
+  \item \textbf{Socket-Based Messaging (Planned)}: Supports future integration of
+  WebSocket-powered notifications and messaging.
+\end{itemize}
 
-Database
-PostgreSQL:
-A robust open-source relational database used to store structured data, including user
-profiles, habits, tasks, schedules, progress logs, achievements, notifications, and
-social relationships. PostgreSQL’s reliability and relational capabilities support
-data integrity and complex querying needs.
+\subsubsection{Database}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{PostgreSQL}: Stores structured data for profiles, habits, tasks,
+  schedules, progress logs, achievements, notifications, and social relationships while
+  preserving integrity for analytics and dashboard queries.
+\end{itemize}
 
-AI Integration
-LangChain with Large Language Models (Anthropic):
-Used to implement AI-assisted habit coaching, including habit plan generation, idea
-refinement, and contextual guidance. LangChain provides an abstraction layer that
-simplifies prompt management, model configuration, and future AI provider replacement.
+\subsubsection{AI Integration}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{LangChain with Large Language Models (Anthropic)}: Powers AI-assisted
+  habit coaching, plan generation, idea refinement, and contextual guidance through a
+  flexible abstraction layer for prompt management and provider configuration.
+\end{itemize}
 
-Environment-Based Configuration:
-Sensitive credentials and environment-specific variables are managed through
-environment files, supporting secure and flexible configuration across development
-and production environments.
+\subsubsection{Configuration Management}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Environment-Based Configuration}: Uses environment files to secure
+  sensitive credentials and adapt deployments across development and production
+  environments.
+\end{itemize}
 \subsection{Development and DevOps Tools}
 The development of the StepHabit platform relied on a set of modern development and
 DevOps tools to support efficient implementation, testing, collaboration, and
 deployment. These tools contributed to code quality, system reliability, and
 developer productivity throughout the project lifecycle.
 
-Visual Studio Code (VS Code):
-Used as the primary integrated development environment for both frontend and backend
-development. VS Code provides rich language support, debugging tools, and extensions
-that streamline full-stack development.
-
-Postman:
-Employed extensively during backend development for testing RESTful API endpoints,
-validating request and response payloads, and debugging authentication and business
-logic workflows.
-
-Git and GitHub:
-Used for version control, source code management, and collaboration. Git enables
-systematic tracking of code changes, while GitHub supports repository hosting, issue
-tracking, and pull-request-based development workflows.
-
-Docker and Docker Desktop:
-Used to containerize the application’s backend services, frontend client, and
-database, ensuring consistent environments across local development and deployment.
-Docker Compose simplifies orchestration of multi-container setups.
-
-Navicat:
-Utilized as a database administration and visualization tool for managing the
-PostgreSQL database, inspecting tables and relationships, and validating data
-integrity during development and testing.
-
-ESLint and Prettier:
-Applied to enforce consistent coding standards, detect potential issues early, and
-maintain readability and maintainable code across the project.
-
-Email and Notification Monitoring Tools:
-Used to test and monitor email-based features such as account verification and
-notification delivery, ensuring reliability and correctness of user-facing
-communication workflows.
-
-API Documentation Tools (Swagger UI):
-Used to document and interactively test API endpoints, improving transparency of the
-API surface and simplifying development, debugging, and future system integration.
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Visual Studio Code (VS Code)}: Primary IDE for frontend and backend
+  development, providing language support, debugging, and extension-based tooling for
+  full-stack workflows.
+  \item \textbf{Postman}: Used to test RESTful API endpoints, validate payloads, and
+  debug authentication and business logic.
+  \item \textbf{Git and GitHub}: Supports version control, repository hosting, issue
+  tracking, and pull-request-driven collaboration.
+  \item \textbf{Docker and Docker Desktop}: Containerizes backend services, the frontend
+  client, and the database; Docker Compose orchestrates multi-container environments.
+  \item \textbf{Navicat}: Provides database administration, table inspection, and data
+  validation for PostgreSQL during development and testing.
+  \item \textbf{ESLint and Prettier}: Enforce coding standards, detect issues early, and
+  maintain readability across the codebase.
+  \item \textbf{Email and Notification Monitoring Tools}: Verify account verification and
+  notification delivery workflows for user-facing communication.
+  \item \textbf{API Documentation Tools (Swagger UI)}: Document and interactively test API
+  endpoints to keep the surface area transparent for development and integration.
+\end{itemize}
 
 
 \newpage
@@ -690,127 +670,69 @@ The user registration workflow in StepHabit is designed to ensure account integr
 data validity, and protection against unauthorized access. The process is divided
 into three structured stages, each incorporating validation rules and security
 mechanisms to maintain platform reliability.
+\begin{enumerate}[label=\textbf{Step \arabic*:}, leftmargin=*]
+  \item \textbf{Account Information Entry}\\
+  The registration process begins with the user providing the required account
+  fields: username, email address, and password. The system enforces validation to
+  keep usernames unique, reject invalid or duplicate email addresses, and require a
+  minimum password length of six characters. If any rule fails, descriptive errors
+  block progression until the input is corrected.
 
-\subsubsection*{ Account Information Entry}
-
-The registration process begins with the user providing the following required
-information:
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.8\textwidth]{images/registration_step1_form.png}
-\caption{StepHabit registration form for entering account information}
-\end{figure}
-
-\begin{itemize}
-  \item Username
-  \item Email address
-  \item Password
-\end{itemize}
-
-The system enforces the following validation constraints at this stage:
-
-\begin{itemize}
-  \item The username must be unique across the platform.
-  \item The email address must follow a valid email format (e.g., \texttt{user@example.com}).
-  \item Duplicate email registrations are not permitted.
-  \item The password must contain a minimum of six characters to ensure basic security.
-\end{itemize}
-
-If any validation rule fails, the system returns descriptive error messages and
-prevents progression to the next step until valid input is provided.
-
-
-\subsubsection*{ Goal and Focus Area Selection}
-
-After the initial account credentials are validated, the user proceeds to the
-second onboarding step, where StepHabit begins shaping a personalized experience.
-This step is designed to capture the user’s motivation and preferred focus areas,
-which directly influence habit recommendations, dashboard configuration, and
-AI-assisted coaching behavior.
-
-The user is first asked to identify what brought them to the platform. Available
-options include building consistency, boosting energy, improving focus and clarity,
-or achieving balance and wellbeing. The selected option represents the user’s
-primary motivation and is stored as part of the user profile.
-
-Next, the user selects an initial focus area, such as mindfulness, fitness,
-productivity, or self-care. This selection determines the category of habits and
-templates that will be prioritized during early usage of the platform.
-
-All selections made during this step are persisted in the database and later used
-by the scheduling engine and AI coaching services to personalize recommendations.
-
-\begin{figure}[H]
-\centering
-\begin{minipage}[t]{0.48\textwidth}
+  \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{images/onboarding_step2_goal.png}
-  \caption{Selection of primary motivation and personal goal}
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.48\textwidth}
+  \includegraphics[width=0.75\textwidth]{images/registration_step1_form.png}
+  \caption{StepHabit registration form for entering account information}
+  \end{figure}
+
+  \item \textbf{Goal and Focus Area Selection}\\
+  After credentials are validated, onboarding captures the user’s motivation and
+  preferred focus areas to personalize recommendations, dashboards, and AI coaching.
+  Users select a primary motivation (e.g., building consistency, boosting energy,
+  improving focus and clarity, achieving balance and wellbeing) and an initial focus
+  area (e.g., mindfulness, fitness, productivity, self-care). These selections are
+  stored for downstream scheduling and coaching.
+
+  \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{images/onboarding_step2_focus.png}
-  \caption{Selection of initial focus area}
-\end{minipage}
-\end{figure}
+  \begin{minipage}[t]{0.47\textwidth}
+    \centering
+    \includegraphics[width=0.82\textwidth]{images/onboarding_step2_goal.png}
+    \caption{Selection of primary motivation and personal goal}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[t]{0.47\textwidth}
+    \centering
+    \includegraphics[width=0.82\textwidth]{images/onboarding_step2_focus.png}
+    \caption{Selection of initial focus area}
+  \end{minipage}
+  \end{figure}
 
+  \item \textbf{Commitment Level and Support Preferences}\\
+  The third onboarding stage captures time commitment, experience level, and support
+  style so habit intensity, reminder frequency, and AI tone match the user’s
+  expectations. Users choose daily time dedication (e.g., five, fifteen, thirty
+  minutes, or flexible), indicate their habit-building stage from beginner to
+  advanced, and pick a support style such as gentle nudges, focused reminders, deep
+  insights, or celebratory feedback. An optional motivational statement is persisted
+  for future AI reference.
 
-\subsubsection*{Commitment Level and Support Preferences}
+  \item \textbf{Verification Code Validation}\\
+  After account details are submitted, StepHabit sends a time-limited verification
+  code to confirm email ownership. The validation workflow is rate-limited to protect
+  against brute-force attacks and unauthorized account creation attempts.
 
-In the third onboarding step, StepHabit collects information related to time
-commitment, experience level, and preferred support style. This data allows the
-system to adapt habit intensity, reminder frequency, and AI feedback tone to the
-user’s lifestyle and expectations.
+  \begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\textwidth]{images/registration_step3_profile.png}
+  \caption{Optional profile initialization for personalized habit coaching}
+  \end{figure}
 
-The user specifies how much time they are willing to dedicate daily, choosing
-between predefined options such as five minutes, fifteen minutes, thirty minutes,
-or a flexible schedule. This value is stored and later used to scale habit goals and
-task durations.
-
-The user then indicates their current stage in the habit-building journey, ranging
-from beginner to advanced. This selection helps the AI assistant calibrate the
-complexity of recommendations and avoid overwhelming new users.
-
-Finally, the user selects a preferred support style, such as gentle nudges,
-focused reminders, deep insights, or celebratory feedback. This preference is
-persisted in the database and influences notification tone and AI-generated
-coaching responses.
-
-An optional motivational input allows the user to express a personal reason for
-starting, which is stored as a short textual motivation statement and may be
-referenced by the AI assistant in future interactions.
-
-
-\subsubsection*{Step 3: Verification Code Validation}
-
-Once the initial account details are successfully submitted, StepHabit initiates
-a verification process to confirm ownership of the provided email address. A
-time-limited verification code is sent to the user via email.
-
-The following security measures are applied:
-This mechanism protects against brute-force attacks and unauthorized account
-creation attempts.
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.8\textwidth]{images/registration_step3_profile.png}
-\caption{Optional profile initialization for personalized habit coaching}
-\end{figure}
-\subsubsection*{Step 3: Profile Initialization}
-
-After successful verification, the user account is activated and the user may
-optionally complete initial profile preferences. These preferences help tailor
-the StepHabit experience and AI-assisted coaching features.
-
-Optional profile data may include:
-
-\begin{itemize}
-  \item Primary goal and focus area
-  \item Daily commitment level
-  \item Preferred support and coaching style
-\end{itemize}
-
+  \item \textbf{Profile Initialization}\\
+  Once verification succeeds, the account is activated and the user can optionally
+  set profile preferences that tailor the StepHabit experience and AI coaching. Users
+  may provide a primary goal and focus area, daily commitment level, and preferred
+  support or coaching style.
+\end{enumerate}
 
 \subsubsection*{Registration Completion}
 
@@ -819,7 +741,7 @@ and granted full access to the platform’s core functionality, including habit
 creation, task planning, scheduling, and AI-assisted coaching.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth]{images/dashboard.png}
+\includegraphics[width=0.75\textwidth]{images/dashboard.png}
 \caption{Successful registration and initial access to the StepHabit dashboard}
 \end{figure}
 
@@ -839,7 +761,7 @@ and a \textit{Daily AI Tip}. Together, these components guide the user toward
 consistent daily execution while maintaining visibility into progress.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/dashboard_overview.png}
+\includegraphics[width=0.82\textwidth]{images/dashboard_overview.png}
 \caption{StepHabit Dashboard (Personal Hub) with progress indicators, quick actions, and AI guidance}
 \end{figure}
 
@@ -855,7 +777,7 @@ status. Users can create new time blocks, synchronize external calendars, or nav
 directly to their saved schedules.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/planner_overview.png}
+\includegraphics[width=0.82\textwidth]{images/planner_overview.png}
 \caption{Unified Planner overview with planning health indicators and schedule controls}
 \end{figure}
 The core of the Planner is the routine view, which combines a monthly calendar
@@ -865,7 +787,7 @@ and scheduling conflicts. Selecting a specific day reveals all associated routin
 and busy periods for that date.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/planner_calendar_day.png}
+\includegraphics[width=0.82\textwidth]{images/planner_calendar_day.png}
 \caption{Calendar overview and daily schedule with saved time blocks}
 \end{figure}
 Users can add new schedule entries through the \textit{Add Schedule} interface.
@@ -876,7 +798,7 @@ tracking. Busy events, on the other hand, inform the system about unavailable
 time windows and are not treated as completion-based activities.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/planner_add_schedule.png}
+\includegraphics[width=0.82\textwidth]{images/planner_add_schedule.png}
 \caption{Creating and managing schedule entries and busy time blocks}
 \end{figure}
 The Planner also supports calendar synchronization through external providers
@@ -886,7 +808,7 @@ and schedules but are displayed alongside them to prevent conflicts and enable
 smarter time allocation.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/planner_calendar_sync.png}
+\includegraphics[width=0.82\textwidth]{images/planner_calendar_sync.png}
 \caption{External calendar integration and upcoming event synchronization}
 \end{figure}
 All planner data, including schedules, busy blocks, and calendar events, is
@@ -907,7 +829,7 @@ interface, users can view their tasks, create new ones, and track progress at a
 high level.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth]{images/tasks_empty_board.png}
+\includegraphics[width=0.75\textwidth]{images/tasks_empty_board.png}
 \caption{Initial task board view when no tasks are present}
 \end{figure}
 When no tasks exist, the system displays a clear call-to-action prompting the user
@@ -918,7 +840,7 @@ modal form. This form collects structured task metadata required for intelligent
 scheduling and planning.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth]{images/add_task_modal.png}
+\includegraphics[width=0.75\textwidth]{images/add_task_modal.png}
 \caption{Task creation modal with duration and scheduling constraints}
 \end{figure}
 The task creation form includes the following configurable fields:
@@ -939,7 +861,7 @@ successful creation. Tasks are displayed in a reorderable list, allowing users t
 prioritize items manually.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth]{images/task_created_list.png}
+\includegraphics[width=0.75\textwidth]{images/task_created_list.png}
 \caption{Task board after successful task creation}
 \end{figure}
 Tasks can be reordered via drag-and-drop, marked as completed or missed, or opened
@@ -950,7 +872,7 @@ descriptions and actionable checklists. This enables breaking down complex tasks
 into smaller, trackable steps.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth]{images/task_details_modal.png}
+\includegraphics[width=0.75\textwidth]{images/task_details_modal.png}
 \caption{Task detail view with checklist and progress tracking}
 \end{figure}
 Each checklist item can be individually marked as complete, with the interface
@@ -969,7 +891,7 @@ the total number of active habits. From this page, users can navigate to habit c
 the habit library, progress analytics, AI coaching, insights, and historical logs.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/habits_overview.png}
+\includegraphics[width=0.82\textwidth]{images/habits_overview.png}
 \caption{Habits overview dashboard showing summary statistics and navigation tabs}
 \end{figure}
 \subsubsection*{Habit Creation}
@@ -979,7 +901,7 @@ repetitions. An AI-powered habit rewriter is also available, allowing users to i
 ideas and receive refined habit definitions.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/add_habit_form.png}
+\includegraphics[width=0.82\textwidth]{images/add_habit_form.png}
 \caption{Habit creation interface with AI habit rewriting and live preview}
 \end{figure}
 \subsubsection*{Habit Library}
@@ -988,7 +910,7 @@ to their routine with a single click. Habits are categorized by focus area, diff
 and time of day. Popular and trending habits are highlighted to assist users in discovery.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/habit_library.png}
+\includegraphics[width=0.82\textwidth]{images/habit_library.png}
 \caption{Habit library with filters, curated habits, and trending recommendations}
 \end{figure}
 \subsubsection*{Progress Tracking}
@@ -997,7 +919,7 @@ monthly, or yearly completion rates, monitor streaks, and identify their most pr
 days. This data-driven view reinforces consistency and helps users adjust their routines.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/habit_progress.png}
+\includegraphics[width=0.82\textwidth]{images/habit_progress.png}
 \caption{Habit progress tracker with completion rates and streak analysis}
 \end{figure}
 \subsubsection*{Insights and Analytics}
@@ -1006,7 +928,7 @@ high-performing habits, identifies habits needing attention, and provides recomm
 for optimization. Insights are refreshed dynamically as users log progress.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/habit_insights.png}
+\includegraphics[width=0.82\textwidth]{images/habit_insights.png}
 \caption{Insights dashboard showing habit performance analysis and recommendations}
 \end{figure}
 \subsubsection*{Habit History}
@@ -1015,7 +937,7 @@ including optional reflections. Users can filter by habit and date range or expo
 for external analysis.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/habit_history.png}
+\includegraphics[width=0.82\textwidth]{images/habit_history.png}
 \caption{Habit history view with filters and export functionality}
 \end{figure}
 \subsection{HabitCoach(AI Assistant) Module}
@@ -1065,7 +987,7 @@ making the system accessible even for users who prefer not to interact with comp
 interfaces.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/habitcoach_chat.png}
+\includegraphics[width=0.82\textwidth]{images/habitcoach_chat.png}
 \caption{HabitCoach scheduling a recurring class and configuring a smart reminder through conversation}
 \end{figure}
 \subsection{Communiy Module}
@@ -1083,7 +1005,7 @@ and progress are visible. This enables accountability partnerships without compr
 personal boundaries.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/community_friends.png}
+\includegraphics[width=0.82\textwidth]{images/community_friends.png}
 \caption{Community friends view with pending requests, search, and sharing controls}
 \end{figure}
 \subsubsection*{Private Messaging}
@@ -1095,7 +1017,7 @@ discussions rather than high-volume social interaction. Messages are private and
 only to authenticated participants in the conversation.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/community_messages.png}
+\includegraphics[width=0.82\textwidth]{images/community_messages.png}
 \caption{Direct messaging interface between connected users}
 \end{figure}
 \subsubsection*{Group Challenges}
@@ -1107,7 +1029,7 @@ dedicated challenge chat. This structure encourages social motivation while keep
 focus on shared objectives rather than competition.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/community_challenges.png}
+\includegraphics[width=0.82\textwidth]{images/community_challenges.png}
 \caption{Group challenges overview with joinable challenges and challenge creation}
 \end{figure}
 \subsubsection*{Challenge Chat}
@@ -1134,7 +1056,7 @@ Sensitive operations such as password updates are protected by authentication an
 server-side validation.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/profile_account.png}
+\includegraphics[width=0.82\textwidth]{images/profile_account.png}
 \caption{Profile account management with completion progress and avatar upload}
 \end{figure}
 \subsubsection*{User Preferences}
@@ -1145,7 +1067,7 @@ These settings directly influence how HabitCoach communicates, ensuring that fee
 and suggestions match the user’s motivational style.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/profile_preferences.png}
+\includegraphics[width=0.82\textwidth]{images/profile_preferences.png}
 \caption{User preference controls for theme, AI tone, and support style}
 \end{figure}
 \subsubsection*{Notification Settings}
@@ -1156,7 +1078,7 @@ behavior. For example, critical events may trigger earlier reminders, while rout
 habits generate lighter prompts closer to execution time.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/profile_notifications.png}
+\includegraphics[width=0.82\textwidth]{images/profile_notifications.png}
 \caption{Notification preferences with smart reminder controls}
 \end{figure}
 \subsubsection*{Connected Applications}
@@ -1168,7 +1090,7 @@ design allows the system to remain extensible without disrupting the current use
 experience.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/profile_connected_apps.png}
+\includegraphics[width=0.82\textwidth]{images/profile_connected_apps.png}
 \caption{Connected applications for calendar and fitness synchronization}
 \end{figure}
 \subsubsection*{Help and Support}
@@ -1179,7 +1101,7 @@ Support content is integrated directly into the platform to minimize disruption 
 maintain user trust.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/profile_help_support.png}
+\includegraphics[width=0.82\textwidth]{images/profile_help_support.png}
 \caption{Help center and contact options within the profile module}
 \end{figure}
 \subsubsection*{Role of Profile Data in AI Personalization}
@@ -1205,7 +1127,7 @@ This design ensures clarity and reduces cognitive load, especially for users man
 multiple habits, schedules, and reminders.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/notification_center_overview.png}
+\includegraphics[width=0.82\textwidth]{images/notification_center_overview.png}
 \caption{Notification Center overview with status indicators and filtering options}
 \end{figure}
 \newpage
