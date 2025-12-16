@@ -14,6 +14,14 @@ DROP TABLE IF EXISTS group_challenges CASCADE;
 DROP TABLE IF EXISTS achievements CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS calendar_integrations CASCADE;
+DROP TABLE IF EXISTS group_challenge_messages CASCADE;
+DROP TABLE IF EXISTS calendar_events CASCADE;
+DROP TABLE IF EXISTS calendar_integrations CASCADE;
+DROP TABLE IF EXISTS assistant_memories CASCADE;
+DROP TABLE IF EXISTS chat_messages CASCADE;
+DROP TABLE IF EXISTS user_settings CASCADE;
+DROP TABLE IF EXISTS registration_verifications CASCADE;
+DROP TABLE IF EXISTS password_resets CASCADE;
 
 -- ======================
 -- USERS
@@ -171,6 +179,108 @@ CREATE TABLE notifications (
     message TEXT NOT NULL,
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- ASSISTANT MEMORIES
+CREATE TABLE assistant_memories (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role VARCHAR(20) NOT NULL,
+    content TEXT NOT NULL,
+    keywords JSON,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CHAT MESSAGES
+CREATE TABLE chat_messages (
+    id SERIAL PRIMARY KEY,
+    sender_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    receiver_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    read_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CALENDAR INTEGRATIONS
+CREATE TABLE calendar_integrations (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(30) NOT NULL,
+    label VARCHAR(120) NOT NULL,
+    source_type VARCHAR(20) NOT NULL DEFAULT 'manual',
+    source_url VARCHAR(255),
+    external_id VARCHAR(120),
+    metadata JSON,
+    last_synced_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CALENDAR EVENTS
+CREATE TABLE calendar_events (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    integration_id INT NOT NULL REFERENCES calendar_integrations(id) ON DELETE CASCADE,
+    title VARCHAR(160) NOT NULL,
+    description TEXT,
+    location VARCHAR(200),
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP,
+    timezone VARCHAR(60),
+    all_day BOOLEAN DEFAULT FALSE,
+    source VARCHAR(40) NOT NULL DEFAULT 'calendar',
+    external_event_id VARCHAR(160),
+    metadata JSON,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- GROUP CHALLENGE MESSAGES
+CREATE TABLE group_challenge_messages (
+    id SERIAL PRIMARY KEY,
+    challenge_id INT NOT NULL REFERENCES group_challenges(id) ON DELETE CASCADE,
+    sender_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- USER SETTINGS
+CREATE TABLE user_settings (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    timezone VARCHAR(80) NOT NULL DEFAULT 'UTC',
+    daily_reminder_time VARCHAR(10),
+    weekly_summary_day VARCHAR(16) NOT NULL DEFAULT 'Sunday',
+    email_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+    push_notifications BOOLEAN NOT NULL DEFAULT FALSE,
+    share_activity BOOLEAN NOT NULL DEFAULT TRUE,
+    theme VARCHAR(20) NOT NULL DEFAULT 'light',
+    ai_tone VARCHAR(30) NOT NULL DEFAULT 'balanced',
+    support_style VARCHAR(30) NOT NULL DEFAULT 'celebrate',
+    email_alerts BOOLEAN NOT NULL DEFAULT TRUE,
+    push_reminders BOOLEAN NOT NULL DEFAULT FALSE,
+    google_calendar BOOLEAN NOT NULL DEFAULT FALSE,
+    apple_calendar BOOLEAN NOT NULL DEFAULT FALSE,
+    fitness_sync BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- REGISTRATION VERIFICATIONS
+CREATE TABLE registration_verifications (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    code_hash VARCHAR(200) NOT NULL,
+    payload JSONB NOT NULL,
+    expires_at TIMESTAMP NOT NULL
+);
+
+-- PASSWORD RESETS
+CREATE TABLE password_resets (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    code_hash VARCHAR(200) NOT NULL,
+    expires_at TIMESTAMP NOT NULL
 );
 
 DELETE FROM assistant_memories WHERE user_id NOT IN (SELECT id FROM users);
