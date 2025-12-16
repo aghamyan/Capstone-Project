@@ -90,6 +90,48 @@ frontend UI flows, and supporting utilities. Each section blends descriptive
 text with rationale, patterns, and future-proofing guidance to help maintainers
 extend the system with confidence.
 
+\section{Research Methodology and Requirements}
+\subsection{User Discovery and Personas}
+User interviews and diary studies surfaced two primary personas:
+\begin{itemize}
+  \item \textbf{Busy Professional}: juggles work and personal goals, values fast
+        planning and minimal friction. Needs clear weekly schedules, quick habit
+        capture, and reliable reminders.
+  \item \textbf{Accountability Seeker}: motivated by social reinforcement and
+        streaks. Needs progress visualization, community challenges, and positive
+        prompts.
+\end{itemize}
+
+\subsection{Requirements Elicitation}
+Workshops converted persona needs into requirements with measurable acceptance
+criteria:
+\begin{itemize}
+  \item \textbf{Scheduling fidelity}: users can create and update habits, tasks, and
+        busy blocks with minute-level precision, and view conflicts in planner
+        screens.
+  \item \textbf{Motivation}: achievements, streaks, and reminders must be persisted
+        and queryable per user for analytics.
+  \item \textbf{AI guidance}: the system must accept a habit idea and return a
+        structured plan or rewrite (fulfilled by \texttt{Backend/services/habitIdeaService.js}).
+  \item \textbf{Security}: authentication and authorization are mandatory for all
+        non-public endpoints, while uploads are served from a sandboxed directory.
+  \item \textbf{Operability}: deploy via Docker Compose with health checks and
+        backups; support local development with minimal setup.
+\end{itemize}
+
+\subsection{Success Criteria}
+The capstone is considered successful if:
+\begin{enumerate}
+  \item A new developer can clone the repo, run \texttt{docker-compose up}, and
+        access the full stack within 10 minutes.
+  \item Users can register, log in, create a habit, see it on the planner, and
+        receive at least one notification in a single session.
+  \item AI-assisted habit coaching returns actionable steps within two seconds on
+        median hardware.
+  \item Database integrity checks pass (no orphaned rows) after repeated create /
+        delete cycles for habits, tasks, schedules, and friendships.
+\end{enumerate}
+
 \section{System Overview}
 \subsection{Technology Stack}
 \begin{itemize}
@@ -141,6 +183,42 @@ Non-functional considerations shape implementation constraints and quality bars:
         incident triage and monitoring simpler.
 \end{itemize}
 
+\section{Repository Layout and Developer Workflow}
+\subsection{Monorepo Structure}
+The project is organized as a full-stack monorepo:
+\begin{itemize}
+  \item \texttt{Backend/}: Express server, Sequelize models, controllers, services, and
+        database utilities. Entry point: \texttt{Backend/server.js}.
+  \item \texttt{Frontend/}: React application (Vite) with CoreUI layout primitives.
+  \item \texttt{docker-compose.yml}: local orchestration for backend, frontend, and
+        PostgreSQL with health checks and seeded environment variables.
+  \item \texttt{docs/}: LaTeX report artifacts, including this capstone.
+\end{itemize}
+
+\subsection{Developer Setup}
+\begin{enumerate}
+  \item Install Node.js (\texttt{>=18}) and Docker Desktop.
+  \item Copy \texttt{Backend/.env.example} to \texttt{Backend/.env}, setting database and
+        AI provider keys.
+  \item Run \texttt{npm install} in \texttt{Backend/} and \texttt{Frontend/}; use
+        \texttt{npm run dev} for local hot reloads.
+  \item For a production-like stack, run \texttt{docker-compose up}. The backend binds
+        to port \texttt{5001}, frontend to \texttt{80}, and PostgreSQL to \texttt{5432} as
+        defined in \texttt{docker-compose.yml}.
+\end{enumerate}
+
+\subsection{Coding Standards and Tooling}
+ESLint/Prettier rules guide JavaScript style. API routes share middleware for CORS
+and JSON parsing. Sequelize associations are defined centrally in
+\texttt{Backend/models/index.js} to prevent drift across modules. CoreUI components and
+lazy-loaded routes standardize UI ergonomics and bundle size.
+
+\subsection{Branching and Releases}
+Feature branches target the main branch via pull requests with checklists for:
+tests (unit/integration), linting, security review (token usage), and release notes.
+Semantic versioning communicates breaking changes in API contracts or database
+schemas.
+
 \section{Backend Architecture}
 \subsection{Express Application Entry Point}
 The \texttt{server.js} file configures middlewares, route mounts, database sync, and
@@ -191,7 +269,7 @@ schema evolution.
 \end{enumerate}
 
 \subsection{Observability}
-Operational visibility keeps the platform trustworthy:\\
+Operational visibility keeps the platform trustworthy:
 \begin{itemize}
   \item \textbf{Logging}: Structured logs around startup steps, cleanup actions, and
         controller branches aid debugging.
@@ -199,6 +277,31 @@ Operational visibility keeps the platform trustworthy:\\
         timing, DB latency, and AI token usage metrics.
   \item \textbf{Tracing}: A future improvement would wrap Sequelize calls with
         distributed trace IDs to follow user actions end-to-end.
+\end{itemize}
+
+\subsection{Backend Module Deep Dive}
+\begin{itemize}
+  \item \textbf{Routing Layer}: \texttt{Backend/server.js} mounts routers under
+        versionless prefixes (e.g., \texttt{/api/habits}, \texttt{/api/tasks}). Each router lives in
+        \texttt{Backend/routes/} and imports controller functions only, keeping
+        middleware concerns centralized.
+  \item \textbf{Controllers}: Files such as \texttt{Backend/controllers/habitController.js}
+        orchestrate validation, delegation to services, and CRUD operations. Habit
+        updates explicitly cascade deletions to progress logs and schedules to
+        avoid orphans.
+  \item \textbf{Services}: AI habit assistance lives in
+        \texttt{Backend/services/habitIdeaService.js}, abstracting prompt formatting and
+        client configuration. Additional services (analytics, messaging) can follow
+        the same pattern to isolate provider logic.
+  \item \textbf{Data Access}: Sequelize models under \texttt{Backend/models/} define fields
+        and constraints. Associations in \texttt{models/index.js} ensure controllers can
+        traverse relationships without redefining joins in every query.
+  \item \textbf{Utilities}: Shared helpers under \texttt{Backend/utils/} (e.g., date
+        handling, status enums) provide single sources of truth for validation.
+  \item \textbf{Startup Integrity}: The start sequence authenticates the database,
+        drops deprecated tables, removes orphans (friends, notifications, calendar
+        entities), adds optional columns (e.g., \texttt{avatar} on users), and performs
+        \texttt{sequelize.sync} with \texttt{alter} for forward compatibility.
 \end{itemize}
 
 \section{Data Modeling}
@@ -338,6 +441,43 @@ calendar, messaging, and the generic AI endpoint. Each router encapsulates its
 own validation and business logic while sharing authentication and error handling
 patterns established in \texttt{server.js}.
 
+\subsection{Canonical Flows}
+\paragraph{Authentication}\mbox{}\\
+\begin{enumerate}
+  \item User posts credentials to \texttt{/api/users/login}.
+  \item Controller validates email/password, signs a JWT, and returns profile
+        metadata for immediate UI hydration.
+  \item Subsequent requests include the JWT in headers; middleware guards routes
+        such as tasks, habits, notifications, and messaging.
+\end{enumerate}
+
+\paragraph{Habit Lifecycle}\mbox{}\\
+\begin{enumerate}
+  \item Create via \texttt{POST /api/habits} with \texttt{title} and \texttt{user\_id}; optional
+        fields include \texttt{category}, \texttt{target\_reps}, and \texttt{is\_daily\_goal}.
+  \item Planner queries \texttt{GET /api/habits} to render dashboards.
+  \item Deleting a habit triggers cascaded removal of \texttt{progress} and
+        \texttt{schedules} (handled in the controller) to avoid orphaned rows.
+\end{enumerate}
+
+\paragraph{AI Habit Coaching}\mbox{}\\
+\begin{enumerate}
+  \item Frontend posts freeform text to \texttt{/api/habits/ai/plan} or
+        \texttt{/api/habits/ai/rewrite}.
+  \item The service builds prompts with user context and forwards them to the
+        configured large language model via LangChain.
+  \item Responses return structured steps or rewritten phrasing for display in the
+        HabitCoach UI.
+\end{enumerate}
+
+\paragraph{Messaging}\mbox{}\\
+\begin{enumerate}
+  \item Users send chat payloads to \texttt{/api/messages}; rows are stored with
+        sender/recipient IDs for retrieval through \texttt{GET /api/messages}.
+  \item Group challenge messages are scoped by \texttt{challenge\_id} to preserve
+        context and enable threaded displays.
+\end{enumerate}
+
 \section{AI and Coaching}
 AI-powered features rely on LangChain integrations targeting Anthropic models.
 The habit controller exposes endpoints to generate structured habit plans and
@@ -420,6 +560,34 @@ Grid-based layouts adapt cards and tables for tablets and phones. Collapsible
 sidebars preserve navigation without sacrificing screen space for calendar views.
 Touch-friendly hit targets (44px minimum) are recommended for mobile interactions.
 
+\subsection{UI Flow Walkthrough}
+\begin{itemize}
+  \item \textbf{Navigation}: \texttt{Frontend/src/\_nav.js} defines sidebar groupings for
+        planner, tasks, habits, HabitCoach, community, and profile. Icons from
+        CoreUI provide consistent affordances.
+  \item \textbf{Route Loading}: \texttt{Frontend/src/routes.js} lazy-loads feature bundles
+        (auth, planner, habits, tasks, community, support) so initial payloads stay
+        small. Paths for \texttt{/habit-coach}, \texttt{/smart-scheduler}, and
+        \texttt{/group-challenges} are pre-registered for future deep links.
+  \item \textbf{HabitCoach}: submits prompts to AI endpoints, renders rewritten plans,
+        and lets users accept or tweak suggestions before saving as habits.
+  \item \textbf{Planner}: merges schedules, tasks, and busy blocks; conflict warnings
+        surface when intervals overlap.
+  \item \textbf{Community}: consolidates friends, messages, and group challenges in a
+        single view to emphasize accountability.
+\end{itemize}
+
+\subsection{API Integration Patterns}
+API clients are lightweight fetch wrappers per route module. Requests include JWT
+headers, parse JSON responses, and standardize error handling. Toasts and inline
+alerts surface validation issues without blocking navigation.
+
+\subsection{Performance and UX Tuning}
+Lazy-loading reduces Time-to-Interactive, while skeleton loaders communicate
+progress during API calls. Pagination-ready tables are preferred for lists of
+tasks, notifications, and community updates. Keyboard shortcuts for task actions
+and planner navigation are planned to improve accessibility for power users.
+
 \section{Security and Validation}
 \subsection{Authentication and Authorization}
 JWT-based authentication (via \texttt{jsonwebtoken}) secures protected endpoints.
@@ -454,6 +622,21 @@ Startup routines proactively remove orphaned records before syncing schemas,
 reducing referential drift. Associations in \texttt{models/index.js} enforce
 foreign-key relationships, and cleanup helpers delete dependent records when
 parents are removed (e.g., habit deletion cascades to progress and schedules).
+
+\subsection{Data Governance and Compliance}
+\begin{itemize}
+  \item \textbf{Data Classification}: personal data (email, name, avatar) is minimal
+        and scoped to the user table. Behavioral data (habits, tasks, progress) is
+        tagged by \texttt{user\_id} for isolation.
+  \item \textbf{Retention}: deletion requests should trigger cascaded cleanup of
+        associated rows (progress, schedules, notifications, assistant memories).
+  \item \textbf{Audit Trails}: API logs should capture route, user identifier, and
+        status code without storing sensitive payloads. Future enhancements include
+        trace IDs across frontend and backend for cross-system debugging.
+  \item \textbf{Regulatory Readiness}: GDPR/CCPA support requires export and delete
+        endpoints plus consent tracking. Data minimization policies discourage
+        storing freeform PII in AI prompts.
+\end{itemize}
 
 \section{Scheduling and Productivity Workflows}
 \subsection{Habits vs. Tasks}
@@ -538,6 +721,32 @@ JWT-based or stored in Redis. The database can scale vertically or via read
 replicas. CDN-backed static hosting for the frontend reduces load on origin
 servers.
 
+\subsection{Local Development Playbook}
+\begin{enumerate}
+  \item \textbf{Database}: start PostgreSQL with \texttt{docker-compose up postgres}; apply
+        schema via \texttt{sequelize.sync} during backend boot.
+  \item \textbf{Backend}: run \texttt{npm run dev} in \texttt{Backend/}. Health check at
+        \texttt{GET /} responds with ``StepHabit Backend is Running...'' for readiness.
+  \item \textbf{Frontend}: run \texttt{npm run dev} in \texttt{Frontend/} and open the shown
+        Vite URL. Configure the API base URL via environment files when needed.
+  \item \textbf{Debugging}: use Node.js inspector flags (\texttt{--inspect}) and browser
+        devtools. Log messages around startup integrity checks aid diagnosis of
+        schema drift.
+\end{enumerate}
+
+\subsection{CI/CD Blueprint}
+\begin{itemize}
+  \item \textbf{Lint/Format}: run ESLint and Prettier for both apps.
+  \item \textbf{Tests}: execute unit and integration suites once available; seed test
+        data with fixtures to avoid cross-test contamination.
+  \item \textbf{Build}: generate production artifacts (backend transpilation if
+        adopted, frontend \texttt{npm run build}).
+  \item \textbf{Images}: build and push Docker images mirroring \texttt{Backend/Dockerfile}
+        and \texttt{Frontend/Dockerfile} with multi-stage optimizations.
+  \item \textbf{Deploy}: roll out to staging, run smoke tests, then promote to
+        production behind feature flags for risky features like AI prompt changes.
+\end{itemize}
+
 \section{Testing and Quality}
 \subsection{Manual and Automated Checks}
 While automated test suites are not included in the current repository snapshot,
@@ -568,6 +777,34 @@ could periodically exercise critical paths.
 Qualitative feedback loops---surveys, usability tests, and feature flags for A/B
 tests---help validate whether AI prompts and scheduling recommendations actually
 improve habit adherence.
+
+\section{Evaluation and Metrics}
+\subsection{Product KPIs}
+\begin{itemize}
+  \item \textbf{Activation}: percentage of new users who create at least one habit
+        and task within 24 hours of signup.
+  \item \textbf{Engagement}: weekly active users, streak length distributions, and
+        average tasks completed per week.
+  \item \textbf{Retention}: day 7/30 retention segmented by persona and challenge
+        participation.
+  \item \textbf{AI Impact}: acceptance rate of AI-generated habit plans versus
+        manual entries and average time-to-first-plan response.
+  \item \textbf{Reliability}: error rates and p95 latency per endpoint, especially
+        for planner reads and AI routes.
+\end{itemize}
+
+\subsection{Technical Health Metrics}
+\begin{itemize}
+  \item \textbf{Database Integrity}: periodic checks for orphaned records (built into
+        startup) plus scheduled monitoring jobs.
+  \item \textbf{Test Coverage}: target thresholds for controller and service layers;
+        coverage gaps prioritized via risk (auth, payments if added, AI cost
+        controls).
+  \item \textbf{Security Posture}: dependency vulnerability scans and secret scanning
+        on commits.
+  \item \textbf{Performance}: load testing for concurrent task creation and message
+        posting; cache hit rates if caching is introduced.
+\end{itemize}
 
 \section{Future Work}
 \begin{itemize}
