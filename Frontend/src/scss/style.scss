@@ -651,6 +651,30 @@ body {
   }
 }
 
+.streak-roller {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.25em;
+  overflow: hidden;
+}
+
+.streak-slide {
+  display: inline-block;
+  animation: streakSlide 0.45s ease;
+  white-space: nowrap;
+}
+
+@keyframes streakSlide {
+  from {
+    opacity: 0;
+    transform: translateY(10%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .mini-badge {
   letter-spacing: 0.08em;
   border-radius: 999px;

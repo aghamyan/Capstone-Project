@@ -1478,13 +1478,22 @@ const Habits = () => {
     ? `${streakDisplay.days} days · ${streakDisplay.name}`
     : `${streakDisplay.days} days`
 
+  const streakValueNode = useMemo(
+    () => (
+      <span className="streak-roller" aria-live="polite">
+        <span className="streak-slide" key={streakDisplay.id || activeStreakIndex}>{streakLabel}</span>
+      </span>
+    ),
+    [activeStreakIndex, streakDisplay.id, streakLabel],
+  )
+
   const heroStats = useMemo(
     () => [
       { label: "Weekly win rate", value: formatPercent(weeklyWinRate ?? 0), tone: "success" },
-      { label: "Current streak", value: streakLabel, tone: "info" },
+      { label: "Current streak", value: streakValueNode, tone: "info" },
       { label: "Active habits", value: `${summary?.totalHabits ?? 0}`, tone: "warning" },
     ],
-    [streakLabel, summary?.totalHabits, weeklyWinRate],
+    [streakValueNode, summary?.totalHabits, weeklyWinRate],
   )
 
   return (
