@@ -1314,6 +1314,7 @@ const Habits = () => {
   const [historyEntries, setHistoryEntries] = useState([])
   const [signalsLoading, setSignalsLoading] = useState(false)
   const [signalsError, setSignalsError] = useState("")
+  const refreshTimerRef = useRef(null)
 
   const user = useMemo(() => JSON.parse(localStorage.getItem("user") || "{}"), [])
 
@@ -1340,10 +1341,30 @@ const Habits = () => {
     refreshSignals()
   }, [refreshSignals])
 
+  const requestSignalRefresh = useCallback(() => {
+    if (refreshTimerRef.current) return
+    refreshTimerRef.current = setTimeout(() => {
+      refreshTimerRef.current = null
+      refreshSignals()
+    }, 150)
+  }, [refreshSignals])
+
+  useEffect(() => () => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current)
+      refreshTimerRef.current = null
+    }
+  }, [])
+
   useEffect(() => {
     const nextTab = tabFromPath(location.pathname)
     setActiveTab(nextTab)
   }, [location.pathname, tabFromPath])
+
+  useDataRefresh(
+    [REFRESH_SCOPES.ANALYTICS, REFRESH_SCOPES.PROGRESS, REFRESH_SCOPES.HABITS],
+    requestSignalRefresh,
+  )
 
   const handleTabChange = useCallback(
     (tab) => {
@@ -1383,14 +1404,19 @@ const Habits = () => {
   }, [activeTab, scrollToAddSection])
 
   const summary = analytics?.summary
+  const streakLeader = summary?.streakLeader
+  const streakDays = streakLeader?.streak?.current ?? 0
+  const streakLabel = streakLeader?.habitName
+    ? `${streakDays} days · ${streakLeader.habitName}`
+    : `${streakDays} days`
 
   const heroStats = useMemo(
     () => [
       { label: "Weekly win rate", value: formatPercent(summary?.completionRate ?? 0), tone: "success" },
-      { label: "Current streak", value: `${summary?.streakLeader?.streak?.current ?? 0} days`, tone: "info" },
+      { label: "Current streak", value: streakLabel, tone: "info" },
       { label: "Active habits", value: `${summary?.totalHabits ?? 0}`, tone: "warning" },
     ],
-    [summary?.completionRate, summary?.streakLeader?.streak?.current, summary?.totalHabits],
+    [streakLabel, summary?.completionRate, summary?.totalHabits],
   )
 
   return (
