@@ -12,6 +12,37 @@
 \usepackage{amsmath}
 \usepackage{float}
 
+% =========================
+% Pretty DB tables (NO page split)
+% =========================
+\usepackage[table]{xcolor}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{needspace}
+\usepackage{float}
+
+\renewcommand{\arraystretch}{1.2}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+% Database table macro
+% #1 = Table name
+% #2 = Estimated number of rows
+% #3 = Table fields
+\newcommand{\DBTable}[3]{%
+  \Needspace{#2\baselineskip}
+  \begin{table}[H]
+  \centering
+  \setlength{\tabcolsep}{12pt}
+  \rowcolors{2}{gray!6}{white}
+  \begin{tabularx}{0.75\textwidth}{@{}Y@{}}
+    \rowcolor{green!25}
+    \textbf{#1} \\
+    \midrule
+    #3
+    \bottomrule
+  \end{tabularx}
+  \end{table}
+}
 
 \titleformat{\section}{\large\bfseries}{\thesection}{0.75em}{}
 \titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.75em}{}
@@ -308,328 +339,301 @@ relationships between users, posts, and interactions (likes, comments).
 \setlength{\LTleft}{0pt}
 \setlength{\LTright}{0pt}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{USERS} \\ \hline
-\underline{id} \\ \hline
-name \\ \hline
-email \\ \hline
-password \\ \hline
-age \\ \hline
-gender \\ \hline
-bio \\ \hline
-created\_at \\ \hline
-\end{longtable}
+\DBTable{USERS}{10}{
+\textbf{\underline{id}} \\
+name \\
+email \\
+password \\
+age \\
+gender \\
+bio \\
+created\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{HABITS} \\ \hline
-\underline{id} \\ \hline
-user\_id \\ \hline
-title \\ \hline
-description \\ \hline
-category \\ \hline
-target\_reps \\ \hline
-is\_daily\_goal \\ \hline
-created\_at \\ \hline
-\end{longtable}
+\DBTable{HABITS}{11}{
+\textbf{\underline{id}} \\
+user\_id \\
+title \\
+description \\
+category \\
+target\_reps \\
+is\_daily\_goal \\
+created\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{SCHEDULES} \\ \hline
-\underline{id} \\ \hline
-habit\_id \\ \hline
-userid \\ \hline
-day \\ \hline
-starttime \\ \hline
-endtime \\ \hline
-enddate \\ \hline
-repeat \\ \hline
-customdays \\ \hline
-notes \\ \hline
-createdAt \\ \hline
-updatedAt \\ \hline
-\end{longtable}
+\DBTable{SCHEDULES}{12}{
+\textbf{\underline{id}} \\
+habit\_id \\
+user\_id \\
+day \\
+start\_time \\
+end\_time \\
+end\_date \\
+custom\_days \\
+created\_at \\
+updated\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{TASKS} \\ \hline
-\underline{id} \\ \hline
-user\_id \\ \hline
-name \\ \hline
-duration\_minutes \\ \hline
-min\_duration\_minutes \\ \hline
-max\_duration\_minutes \\ \hline
-split\_up \\ \hline
-hours\_label \\ \hline
-schedule\_after \\ \hline
-due\_date \\ \hline
-created\_at \\ \hline
-\end{longtable}
+\DBTable{TASKS}{13}{
+\textbf{\underline{id}} \\
+user\_id \\
+name \\
+duration\_minutes \\
+min\_duration\_minutes \\
+max\_duration\_minutes \\
+split\_up \\
+hours\_label \\
+schedule\_after \\
+due\_date \\
+created\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{BUSY\_SCHEDULES} \\ \hline
-\underline{id} \\ \hline
-userid \\ \hline
-title \\ \hline
-day \\ \hline
-starttime \\ \hline
-endtime \\ \hline
-enddate \\ \hline
-repeat \\ \hline
-customdays \\ \hline
-notes \\ \hline
-createdAt \\ \hline
-updatedAt \\ \hline
-\end{longtable}
+\DBTable{BUSY\_SCHEDULES}{13}{
+\textbf{\underline{id}} \\
+user\_id \\
+title \\
+day \\
+start\_time \\
+end\_time \\
+end\_date \\
+repeat \\
+custom\_days \\
+notes \\
+created\_at \\
+updated\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{PROGRESS} \\ \hline
-\underline{id} \\ \hline
-user\_id \\ \hline
-habit\_id \\ \hline
-status \\ \hline
-progress\_date \\ \hline
-created\_at \\ \hline
-\end{longtable}
+\DBTable{PROGRESS}{9}{
+\textbf{\underline{id}} \\
+user\_id \\
+habit\_id \\
+status \\
+progress\_date \\
+created\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{ACHIEVEMENTS} \\ \hline
-\underline{id} \\ \hline
-title \\ \hline
-description \\ \hline
-\end{longtable}
+\DBTable{ACHIEVEMENTS}{6}{
+\textbf{\underline{id}} \\
+title \\
+description \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{USER\_ACHIEVEMENTS} \\ \hline
-\underline{id} \\ \hline
-user\_id \\ \hline
-achievement\_id \\ \hline
-achieved\_at \\ \hline
-\end{longtable}
+\DBTable{USER\_ACHIEVEMENTS}{7}{
+\textbf{\underline{id}} \\
+user\_id \\
+achievement\_id \\
+achieved\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{FRIENDS} \\ \hline
-\underline{id} \\ \hline
-user\_id \\ \hline
-friend\_id \\ \hline
-status \\ \hline
-created\_at \\ \hline
-\end{longtable}
+\DBTable{FRIENDS}{7}{
+\textbf{\underline{id}} \\
+user\_id \\
+friend\_id \\
+status \\
+created\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{GROUP\_CHALLENGES} \\ \hline
-\underline{id} \\ \hline
-title \\ \hline
-description \\ \hline
-start\_date \\ \hline
-end\_date \\ \hline
-created\_at \\ \hline
-\end{longtable}
+\DBTable{GROUP\_CHALLENGES}{8}{
+\textbf{\underline{id}} \\
+title \\
+description \\
+start\_date \\
+end\_date \\
+created\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{USER\_GROUP\_CHALLENGES} \\ \hline
-\underline{id} \\ \hline
-user\_id \\ \hline
-challenge\_id \\ \hline
-joined\_at \\ \hline
-\end{longtable}
+\DBTable{USER\_GROUP\_CHALLENGES}{7}{
+\textbf{\underline{id}} \\
+user\_id \\
+challenge\_id \\
+joined\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{NOTIFICATIONS} \\ \hline
-\underline{id} \\ \hline
-user\_id \\ \hline
-message \\ \hline
-is\_read \\ \hline
-created\_at \\ \hline
-\end{longtable}
+\DBTable{NOTIFICATIONS}{7}{
+\textbf{\underline{id}} \\
+user\_id \\
+message \\
+is\_read \\
+created\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{ASSISTANT\_MEMORIES} \\ \hline
-\underline{id} \\ \hline
-user\_id \\ \hline
-role \\ \hline
-content \\ \hline
-keywords \\ \hline
-created\_at \\ \hline
-\end{longtable}
+\DBTable{ASSISTANT\_MEMORIES}{8}{
+\textbf{\underline{id}} \\
+user\_id \\
+role \\
+content \\
+keywords \\
+created\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{CHAT\_MESSAGES} \\ \hline
-\underline{id} \\ \hline
-sender\_id \\ \hline
-receiver\_id \\ \hline
-content \\ \hline
-read\_at \\ \hline
-created\_at \\ \hline
-\end{longtable}
+\DBTable{CHAT\_MESSAGES}{8}{
+\textbf{\underline{id}} \\
+sender\_id \\
+receiver\_id \\
+content \\
+read\_at \\
+created\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{CALENDAR\_INTEGRATIONS} \\ \hline
-\underline{id} \\ \hline
-user\_id \\ \hline
-provider \\ \hline
-label \\ \hline
-source\_type \\ \hline
-source\_url \\ \hline
-external\_id \\ \hline
-metadata \\ \hline
-last\_synced\_at \\ \hline
-created\_at \\ \hline
-updated\_at \\ \hline
-\end{longtable}
+\DBTable{CALENDAR\_INTEGRATIONS}{13}{
+\textbf{\underline{id}} \\
+user\_id \\
+provider \\
+label \\
+source\_type \\
+source\_url \\
+external\_id \\
+metadata \\
+last\_synced\_at \\
+created\_at \\
+updated\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{CALENDAR\_EVENTS} \\ \hline
-\underline{id} \\ \hline
-user\_id \\ \hline
-integration\_id \\ \hline
-title \\ \hline
-description \\ \hline
-location \\ \hline
-start\_time \\ \hline
-end\_time \\ \hline
-timezone \\ \hline
-all\_day \\ \hline
-source \\ \hline
-external\_event\_id \\ \hline
-metadata \\ \hline
-created\_at \\ \hline
-updated\_at \\ \hline
-\end{longtable}
+\DBTable{CALENDAR\_EVENTS}{16}{
+\textbf{\underline{id}} \\
+user\_id \\
+integration\_id \\
+title \\
+description \\
+location \\
+start\_time \\
+end\_time \\
+timezone \\
+all\_day \\
+source \\
+external\_event\_id \\
+metadata \\
+created\_at \\
+updated\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{GROUP\_CHALLENGE\_MESSAGES} \\ \hline
-\underline{id} \\ \hline
-challenge\_id \\ \hline
-sender\_id \\ \hline
-content \\ \hline
-created\_at \\ \hline
-\end{longtable}
+\DBTable{GROUP\_CHALLENGE\_MESSAGES}{7}{
+\textbf{\underline{id}} \\
+challenge\_id \\
+sender\_id \\
+content \\
+created\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{USER\_SETTINGS} \\ \hline
-\underline{id} \\ \hline
-user\_id \\ \hline
-timezone \\ \hline
-daily\_reminder\_time \\ \hline
-weekly\_summary\_day \\ \hline
-email\_notifications \\ \hline
-push\_notifications \\ \hline
-share\_activity \\ \hline
-theme \\ \hline
-ai\_tone \\ \hline
-support\_style \\ \hline
-email\_alerts \\ \hline
-push\_reminders \\ \hline
-google\_calendar \\ \hline
-apple\_calendar \\ \hline
-fitness\_sync \\ \hline
-created\_at \\ \hline
-\end{longtable}
+\DBTable{USER\_SETTINGS}{17}{
+\textbf{\underline{id}} \\
+user\_id \\
+timezone \\
+daily\_reminder\_time \\
+weekly\_summary\_day \\
+email\_notifications \\
+push\_notifications \\
+share\_activity \\
+theme \\
+ai\_tone \\
+support\_style \\
+email\_alerts \\
+push\_reminders \\
+google\_calendar \\
+apple\_calendar \\
+fitness\_sync \\
+created\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{REGISTRATION\_VERIFICATIONS} \\ \hline
-\underline{id} \\ \hline
-email \\ \hline
-code\_hash \\ \hline
-payload \\ \hline
-expires\_at \\ \hline
-\end{longtable}
+\DBTable{REGISTRATION\_VERIFICATIONS}{7}{
+\textbf{\underline{id}} \\
+email \\
+code\_hash \\
+payload \\
+expires\_at \\
+}
 
-\begin{longtable}{|>{\raggedright\arraybackslash}p{0.6\textwidth}|}
-\hline
-\textbf{PASSWORD\_RESETS} \\ \hline
-\underline{id} \\ \hline
-email \\ \hline
-code\_hash \\ \hline
-expires\_at \\ \hline
-\end{longtable}
-
+\DBTable{PASSWORD\_RESETS}{6}{
+\textbf{\underline{id}} \\
+email \\
+code\_hash \\
+expires\_at \\
+}
+\newpage
 \subsection{Database Relationships}
-
-\begin{itemize}
-
-\item \textbf{Users–Habits:} One-to-Many (1:N).  
+\indent\hspace*{1em}
+\textbf{Users--Habits:} One-to-Many (1:N).  
 A single user can create multiple habits, while each habit belongs to exactly one user.
 
-\item \textbf{Users–Schedules:} One-to-Many (1:N).  
+\vspace{0.5em}
+\textbf{Users--Schedules:} One-to-Many (1:N).  
 A user may have multiple schedules, but each schedule is associated with a single user.
 
-\item \textbf{Habits–Schedules:} One-to-Many (1:N).  
+\vspace{0.5em}
+\textbf{Habits--Schedules:} One-to-Many (1:N).  
 Each habit can have multiple scheduled instances, whereas each schedule refers to one habit.
 
-\item \textbf{Users–Tasks:} One-to-Many (1:N).  
+\vspace{0.5em}
+\textbf{Users--Tasks:} One-to-Many (1:N).  
 A user may create multiple tasks, but each task is owned by a single user.
 
-\item \textbf{Users–Busy\_Schedules:} One-to-Many (1:N).  
+\vspace{0.5em}
+\textbf{Users--Busy\_Schedules:} One-to-Many (1:N).  
 A user can define multiple busy time blocks, while each busy schedule belongs to one user.
 
-\item \textbf{Users–Progress:} One-to-Many (1:N).  
+\vspace{0.5em}
+\textbf{Users--Progress:} One-to-Many (1:N).  
 A user may generate multiple progress records over time, each linked to that user.
 
-\item \textbf{Habits–Progress:} One-to-Many (1:N).  
+\vspace{0.5em}
+\textbf{Habits--Progress:} One-to-Many (1:N).  
 Each habit can have multiple progress entries, while each progress record refers to one habit.
 
-\item \textbf{Users–Achievements:} Many-to-Many (N:M) via \texttt{user\_achievements}.  
+\vspace{0.5em}
+\textbf{Users--Achievements:} Many-to-Many (N:M) via \texttt{user\_achievements}.  
 A user may earn multiple achievements, and each achievement may be earned by multiple users.
 
-\item \textbf{Users–Friends:} Many-to-Many (N:M) self-referencing.  
+\vspace{0.5em}
+\textbf{Users--Friends:} Many-to-Many (N:M) self-referencing.  
 Users can establish friendships with multiple other users through the friends table.
 
-\item \textbf{Users–Group\_Challenges:} Many-to-Many (N:M) via \texttt{user\_group\_challenges}.  
+\vspace{0.5em}
+\textbf{Users--Group\_Challenges:} Many-to-Many (N:M) via \texttt{user\_group\_challenges}.  
 Users may participate in multiple group challenges, and each challenge can include many users.
 
-\item \textbf{Group\_Challenges–Group\_Challenge\_Messages:} One-to-Many (1:N).  
+\vspace{0.5em}
+\textbf{Group\_Challenges--Group\_Challenge\_Messages:} One-to-Many (1:N).  
 A group challenge can contain multiple messages, while each message belongs to one challenge.
 
-\item \textbf{Users–Group\_Challenge\_Messages:} One-to-Many (1:N).  
+\vspace{0.5em}
+\textbf{Users--Group\_Challenge\_Messages:} One-to-Many (1:N).  
 A user may send multiple messages within group challenges.
 
-\item \textbf{Users–Notifications:} One-to-Many (1:N).  
+\vspace{0.5em}
+\textbf{Users--Notifications:} One-to-Many (1:N).  
 A user can receive multiple notifications, while each notification is addressed to one user.
 
-\item \textbf{Users–Assistant\_Memories:} One-to-Many (1:N).  
+\vspace{0.5em}
+\textbf{Users--Assistant\_Memories:} One-to-Many (1:N).  
 Each user may have multiple stored assistant memories associated with them.
 
-\item \textbf{Users–Chat\_Messages:} One-to-Many (1:N) for both sender and receiver roles.  
+\vspace{0.5em}
+\textbf{Users--Chat\_Messages:} One-to-Many (1:N) for both sender and receiver roles.  
 A user can send and receive multiple chat messages.
 
-\item \textbf{Users–Calendar\_Integrations:} One-to-Many (1:N).  
+\vspace{0.5em}
+\textbf{Users--Calendar\_Integrations:} One-to-Many (1:N).  
 A user may link multiple calendar integrations, while each integration belongs to one user.
 
-\item \textbf{Calendar\_Integrations–Calendar\_Events:} One-to-Many (1:N).  
+\vspace{0.5em}
+\textbf{Calendar\_Integrations--Calendar\_Events:} One-to-Many (1:N).  
 Each calendar integration may generate multiple calendar events.
 
-\item \textbf{Users–Calendar\_Events:} One-to-Many (1:N).  
+\vspace{0.5em}
+\textbf{Users--Calendar\_Events:} One-to-Many (1:N).  
 A user can have multiple calendar events aggregated from integrations.
 
-\item \textbf{Users–User\_Settings:} One-to-One (1:1).  
+\vspace{0.5em}
+\textbf{Users--User\_Settings:} One-to-One (1:1).  
 Each user has exactly one settings record, and each settings record belongs to one user.
 
-\item \textbf{Users–Registration\_Verifications:} One-to-One (1:1).  
+\vspace{0.5em}
+\textbf{Users--Registration\_Verifications:} One-to-One (1:1).  
 Each verification record corresponds to a single user email.
 
-\item \textbf{Users–Password\_Resets:} One-to-One (1:1).  
+\vspace{0.5em}
+\textbf{Users--Password\_Resets:} One-to-One (1:1).  
 Each password reset request is associated with a single user email.
-
-\end{itemize}
-
 
 
 
