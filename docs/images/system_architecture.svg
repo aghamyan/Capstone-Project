@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" font-family="'Inter', 'Segoe UI', Arial" fill="#0f172a">
+  <style>
+    .title { font-size: 26px; font-weight: 700; }
+    .label { font-size: 16px; font-weight: 600; }
+    .text { font-size: 14px; }
+    .box { fill: #f8fafc; stroke: #0f172a; stroke-width: 2; rx: 10; }
+    .light-box { fill: #eef2ff; stroke: #312e81; }
+    .accent-box { fill: #ecfeff; stroke: #0ea5e9; }
+    .arrow { stroke: #334155; stroke-width: 2.5; marker-end: url(#arrowhead); }
+    .dashed { stroke-dasharray: 8 6; }
+    .caption { font-size: 12px; fill: #475569; }
+  </style>
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="5" refY="3" orient="auto">
+      <polygon points="0 0, 6 3, 0 6" fill="#334155" />
+    </marker>
+  </defs>
+
+  <text x="40" y="50" class="title">StepHabit System Architecture</text>
+  <text x="40" y="78" class="caption">Illustrates the end-to-end flow between the Vite/React frontend, Express API, data layer, and external integrations.</text>
+
+  <!-- Frontend -->
+  <rect x="60" y="120" width="320" height="170" class="box light-box" />
+  <text x="80" y="150" class="label">Browser Client</text>
+  <text x="80" y="175" class="text">React + Vite (CoreUI, Redux)</text>
+  <text x="80" y="195" class="text">Axios calls to REST/AI endpoints</text>
+  <text x="80" y="215" class="text">Routes/UI under <tspan font-family="monospace">Frontend/src</tspan></text>
+  <text x="80" y="235" class="text">Static assets served by Nginx</text>
+
+  <rect x="60" y="310" width="320" height="120" class="box" />
+  <text x="80" y="340" class="label">Frontend Container (Docker)</text>
+  <text x="80" y="365" class="text">Vite build → Nginx (port 80)</text>
+  <text x="80" y="385" class="text">Configured via <tspan font-family="monospace">docker-compose.yml</tspan></text>
+
+  <!-- Backend cluster -->
+  <rect x="450" y="120" width="670" height="520" class="box" />
+  <text x="470" y="150" class="label">Backend API (Node + Express)</text>
+  <text x="470" y="170" class="text">CORS, JSON parsing, static uploads, global error handler</text>
+  <text x="470" y="190" class="text">Entry: <tspan font-family="monospace">Backend/server.js</tspan></text>
+
+  <rect x="480" y="210" width="300" height="180" class="box light-box" />
+  <text x="500" y="240" class="label">Routing & Controllers</text>
+  <text x="500" y="265" class="text">REST endpoints: users, habits, progress, schedules,</text>
+  <text x="500" y="285" class="text">notifications, group challenges, achievements,</text>
+  <text x="500" y="305" class="text">friends, analytics, tasks, calendars, messages</text>
+  <text x="500" y="325" class="text">Authentication with JWT + bcrypt hashing</text>
+
+  <rect x="800" y="210" width="300" height="180" class="box light-box" />
+  <text x="820" y="240" class="label">Domain Services</text>
+  <text x="820" y="265" class="text">Habit/task orchestration & analytics helpers</text>
+  <text x="820" y="285" class="text">AI assistants (LangChain + Anthropic)</text>
+  <text x="820" y="305" class="text">Memory, scheduling, library/daily challenge logic</text>
+  <text x="820" y="325" class="text">Email notifications via Nodemailer</text>
+
+  <rect x="480" y="410" width="620" height="170" class="box accent-box" />
+  <text x="500" y="440" class="label">Data & Integration Layer</text>
+  <text x="500" y="465" class="text">Sequelize models: users, habits, tasks, progress, calendars,</text>
+  <text x="500" y="485" class="text">notifications, group challenges, achievements, chat messages</text>
+  <text x="500" y="505" class="text">Migrations/cleanup at startup before <tspan font-family="monospace">sequelize.sync()</tspan></text>
+  <text x="500" y="525" class="text">Uploads stored locally under <tspan font-family="monospace">/uploads</tspan> (served as static files)</text>
+  <text x="500" y="545" class="text">Outbound integrations: SMTP (Nodemailer), LLM APIs</text>
+
+  <!-- Database -->
+  <rect x="520" y="620" width="250" height="160" class="box" />
+  <text x="540" y="650" class="label">PostgreSQL</text>
+  <text x="540" y="675" class="text">Managed via Sequelize ORM</text>
+  <text x="540" y="695" class="text">Persistent volume (pgdata)</text>
+  <text x="540" y="715" class="text">Tables aligned with models & relations</text>
+
+  <!-- External services -->
+  <rect x="810" y="620" width="310" height="160" class="box" />
+  <text x="830" y="650" class="label">External Providers</text>
+  <text x="830" y="675" class="text">LLM/AI APIs (Anthropic Claude via LangChain)</text>
+  <text x="830" y="695" class="text">SMTP server for transactional email</text>
+  <text x="830" y="715" class="text">Optional calendar/fitness sync toggles</text>
+
+  <!-- Arrows -->
+  <line x1="380" y1="200" x2="450" y2="220" class="arrow" />
+  <line x1="380" y1="370" x2="450" y2="370" class="arrow" />
+  <text x="395" y="350" class="caption">HTTPS / REST + JWT</text>
+
+  <line x1="610" y1="580" x2="645" y2="620" class="arrow" />
+  <text x="580" y="600" class="caption">SQL via Sequelize</text>
+
+  <line x1="820" y1="580" x2="870" y2="620" class="arrow" />
+  <text x="835" y="600" class="caption">Service calls</text>
+
+  <line x1="250" y1="430" x2="250" y2="720" class="arrow dashed" />
+  <rect x="120" y="720" width="260" height="70" class="box" />
+  <text x="140" y="750" class="label">Docker Compose Orchestration</text>
+  <text x="140" y="770" class="text">Services: frontend (80), backend (5001), postgres (5432)</text>
+
+  <line x1="250" y1="430" x2="610" y2="620" class="arrow dashed" />
+  <line x1="250" y1="430" x2="960" y2="620" class="arrow dashed" />
+</svg>
